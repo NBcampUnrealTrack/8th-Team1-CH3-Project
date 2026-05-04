@@ -1,5 +1,6 @@
 # 8th-Team1-CH3-Project
-# Convention ✅
+
+## Naming Convention ✅
 
 ### Branch Naming Convention 🪵
 
@@ -33,3 +34,19 @@
 | State variables   | (boolean values) is, has, should |
 | Event handlers    | handle                           |
 | Constants         | UPPER_SNAKE_CASE                 |
+
+
+### Unreal Naming Rule
+| 머릿말            | 설명                             |
+| ----------------- | -------------------------------- |
+| SM_               | Static Mesh                      |
+| SK_               | Skeletal Mesh                    |
+| T_                | Texture                          |
+| M_                | Material                         |
+| MI_               | Material Instance                |
+| BP_               | Blueprint                        |
+| WBP_              | Widget Blueprint                 |
+| DA_               | Data Asset                       |
+| DT_               | Data Table                       |
+| ABP_              | Animation Blueprint              |
+| AM_               | Animation Montage                |
