@@ -1,9 +1,9 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "HitDetector.h"
+#include "DamageProcessor.h"
 #include "CombatManager.generated.h"
 
 
@@ -13,16 +13,21 @@ class SPARTA_H_API UCombatManager : public UActorComponent
 	GENERATED_BODY()
 
 public:	
-	// Sets default values for this component's properties
 	UCombatManager();
+	
+	UPROPERTY()
+	UHitDetector* HitDetector;
 
-protected:
-	// Called when the game starts
-	virtual void BeginPlay() override;
+	UPROPERTY()
+	UDamageProcessor* DamageProcessor;
+	
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	float BaseDamage = 50.f;
+	
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	float TraceRange = 20000.f;
 
-public:	
-	// Called every frame
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-
+	// 사격 처리 메인 함수
+	void Fire(const FVector& AimStart, const FVector& AimDirection);
 		
 };

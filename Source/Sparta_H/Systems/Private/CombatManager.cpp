@@ -1,34 +1,45 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "CombatManager.h"
+#include "Kismet/GameplayStatics.h"
 
-// Sets default values for this component's properties
+
 UCombatManager::UCombatManager()
 {
-	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
-	// off to improve performance if you don't need them.
-	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bCanEverTick = false;
 
-	// ...
+	HitDetector = CreateDefaultSubobject<UHitDetector>(TEXT("HitDetector"));
+	DamageProcessor = CreateDefaultSubobject<UDamageProcessor>(TEXT("DamageProcessor"));
 }
 
-
-// Called when the game starts
-void UCombatManager::BeginPlay()
+void UCombatManager::Fire(const FVector& AimStart, const FVector& AimDirection)
 {
-	Super::BeginPlay();
 
-	// ...
+	FHitResult HitResult;
+	const bool bIsHit = HitDetector->PerformLineTrace(AimStart, AimDirection, TraceRange, HitResult);
+
+	if (!bIsHit)
+	{
+		return; // 아무것도 안 맞았으면 종료
+	}
 	
+	// 2. 대미지 정보 구성
+	FCombatDamageInfo DamageInfo;
+	DamageInfo.BaseDamage = BaseDamage;
+	DamageInfo.Distance   = HitResult.Distance;
+	DamageInfo.HitBone    = UHitDetector::IdentifyHitBone(HitResult.BoneName);
+
+	// 3. 최종 대미지 계산
+	const float FinalDamage = DamageProcessor->CalculateFinalDamage(DamageInfo);
+	
+	// 4. 피격 대상에 대미지 전달
+	AActor* HitActor = HitResult.GetActor();
+	if (IsValid(HitActor))
+	{
+		UGameplayStatics::ApplyDamage(
+			HitActor,           // 맞은 액터
+			FinalDamage,        // 최종 대미지
+			nullptr,            // 가해자 컨트롤러 (나중에 연결)
+			GetOwner(),         // 가해자 액터
+			nullptr             // 대미지 타입 (기본값)
+		);
+	}
 }
-
-
-// Called every frame
-void UCombatManager::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	// ...
-}
-
