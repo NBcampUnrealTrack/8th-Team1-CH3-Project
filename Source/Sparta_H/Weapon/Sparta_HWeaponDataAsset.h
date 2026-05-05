@@ -5,12 +5,21 @@
 #include "Sparta_HWeaponTypes.h"
 #include "Sparta_HWeaponDataAsset.generated.h"
 
+class UAnimInstance;
+class USkeletalMesh;
+
 UCLASS(BlueprintType)
 class SPARTA_H_API USparta_HWeaponDataAsset : public UDataAsset
 {
 	GENERATED_BODY()
 
 public:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
+	TSoftObjectPtr<USkeletalMesh> WeaponMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
+	TSoftClassPtr<UAnimInstance> WeaponAnimationClass;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
 	EWeaponType WeaponType = EWeaponType::Pistol;
 
