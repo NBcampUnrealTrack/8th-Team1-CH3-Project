@@ -22,7 +22,7 @@ ASparta_HCharacter::ASparta_HCharacter()
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(55.f, 96.0f);
 
-	// Create a CameraComponent	
+	// Create a CameraComponent
 	FirstPersonCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
 	FirstPersonCameraComponent->SetupAttachment(GetCapsuleComponent());
 	FirstPersonCameraComponent->SetRelativeLocation(FVector(-10.f, 0.f, 60.f)); // Position the camera
@@ -36,6 +36,7 @@ ASparta_HCharacter::ASparta_HCharacter()
 	Mesh1P->CastShadow = false;
 	Mesh1P->SetRelativeLocation(FVector(-30.f, 0.f, -150.f));
 
+	// 무기 메시는 팔 메시의 GripPoint 소켓에 부착 — 팔 애니에 자연스럽게 따라감
 	WeaponMeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMeshComponent"));
 	WeaponMeshComponent->SetOnlyOwnerSee(true);
 	WeaponMeshComponent->SetupAttachment(Mesh1P, FName(TEXT("GripPoint")));
@@ -49,6 +50,7 @@ void ASparta_HCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// 슬롯에 무기가 등록돼 있으면 첫 번째 무기를 기본 장착
 	if (!EquippedWeapons.IsEmpty())
 	{
 		EquipWeaponByIndex(0);
@@ -85,7 +87,7 @@ void ASparta_HCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		// Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ASparta_HCharacter::Look);
 
-		// Weapon Equip — Slot은 Triggered로 (Started 시점 raw=0 회피)
+		// 슬롯 장착은 Started에서 Value가 0으로 들어오는 이슈 때문에 Triggered로 바인딩하고 콜백에서 raw 값으로 가드
 		EnhancedInputComponent->BindAction(EquipSlotAction, ETriggerEvent::Triggered, this,
 		                                   &ASparta_HCharacter::OnEquipSlotPressed);
 		EnhancedInputComponent->BindAction(EquipNextWeaponAction, ETriggerEvent::Started, this,
@@ -109,11 +111,13 @@ void ASparta_HCharacter::EquipWeaponByIndex(int32 NewWeaponIndex)
 		return;
 	}
 
+	// 재장전/교체 중에는 무기 변경 차단
 	if (CurrentWeaponState == EWeaponState::Reloading || CurrentWeaponState == EWeaponState::Swapping)
 	{
 		return;
 	}
 
+	// 같은 무기 재선택 시 무시 — Triggered 매 틱 호출에서 중복 장착 방지
 	USparta_HWeaponDataAsset* NewWeaponData = EquippedWeapons[NewWeaponIndex];
 	if (NewWeaponData == nullptr || NewWeaponData == CurrentWeaponData)
 	{
@@ -126,6 +130,7 @@ void ASparta_HCharacter::EquipWeaponByIndex(int32 NewWeaponIndex)
 
 	if (WeaponMeshComponent != nullptr)
 	{
+		// SoftObjectPtr는 동기 로드 — 추후 비동기 로드로 전환 검토 필요
 		WeaponMeshComponent->SetSkeletalMesh(NewWeaponData->WeaponMesh.LoadSynchronous());
 
 		if (!NewWeaponData->WeaponAnimationClass.IsNull())
@@ -134,6 +139,7 @@ void ASparta_HCharacter::EquipWeaponByIndex(int32 NewWeaponIndex)
 		}
 	}
 
+	// 교체 애니/딜레이 들어가면 이 라인을 몽타주 종료 콜백으로 옮길 것
 	CurrentWeaponState = EWeaponState::Idle;
 }
 
@@ -155,6 +161,7 @@ void ASparta_HCharacter::EquipPreviousWeapon()
 		return;
 	}
 
+	// 음수 모듈로 회피용 + Num
 	const int32 Num = EquippedWeapons.Num();
 	const int32 PreviousWeaponIndex = (CurrentWeaponIndex - 1 + Num) % Num;
 	EquipWeaponByIndex(PreviousWeaponIndex);
@@ -192,7 +199,7 @@ void ASparta_HCharacter::Move(const FInputActionValue& Value)
 
 	if (Controller != nullptr)
 	{
-		// add movement 
+		// add movement
 		AddMovementInput(GetActorForwardVector(), MovementVector.Y);
 		AddMovementInput(GetActorRightVector(), MovementVector.X);
 	}

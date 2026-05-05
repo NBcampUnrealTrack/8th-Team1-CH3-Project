@@ -19,6 +19,7 @@ class USparta_HWeaponDataAsset;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
+// 1인칭 플레이어 캐릭터. 카메라/팔 메시/무기 슬롯 시스템을 보유
 UCLASS(config=Game)
 class ASparta_HCharacter : public ACharacter
 {
@@ -47,16 +48,19 @@ class ASparta_HCharacter : public ACharacter
 	/** Look Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInputAction> LookAction;
-	
+
+	// 1~4 키로 슬롯 직접 선택 (Axis1D, Scalar Modifier 1~4)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInputAction> EquipSlotAction;   // Int32 value (1~4)
 
+	// 마우스 휠 다운 — 다음 슬롯으로 순환
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInputAction> EquipNextWeaponAction;   // Bool (휠 다운)
 
+	// 마우스 휠 업 — 이전 슬롯으로 순환
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInputAction> EquipPreviousWeaponAction; // Bool (휠 업)
-	
+
 public:
 	ASparta_HCharacter();
 
@@ -79,8 +83,9 @@ public:
 	USkeletalMeshComponent* GetMesh1P() const { return Mesh1P; }
 	/** Returns FirstPersonCameraComponent subobject **/
 	UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
-	
+
 	/** Weapon System **/
+	// 인덱스로 슬롯 무기 장착. 잘못된 인덱스/같은 무기/재장전·교체 중이면 무시
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	void EquipWeaponByIndex(int32 NewWeaponIndex);
 
@@ -90,6 +95,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	void EquipPreviousWeapon();
 
+	// 현재 장착된 무기의 DA. 발사/재장전/AnimBP 분기에서 참조
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	USparta_HWeaponDataAsset* GetCurrentWeaponData() const { return CurrentWeaponData; }
 	/** End of Weapon System **/
@@ -101,9 +107,11 @@ private:
 	void OnEquipPreviousPressed(const FInputActionValue& Value);
 
 	/** Weapon System **/
+	// Mesh1P의 GripPoint 소켓에 부착되는 무기 메시
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<USkeletalMeshComponent> WeaponMeshComponent;
 
+	// 인벤토리 슬롯. BP 디테일에서 DA를 인덱스 0~3에 직접 등록
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
 	TArray<TObjectPtr<USparta_HWeaponDataAsset>> EquippedWeapons;
 
