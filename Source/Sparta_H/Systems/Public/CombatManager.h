@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "HitDetector.h"
+#include "CombatTypes.h"
 #include "GameFramework/Pawn.h"
 #include "DamageProcessor.h"
 #include "CombatManager.generated.h"
@@ -29,15 +30,22 @@ public:
 	float TraceRange = 20000.f;
 	
 	UPROPERTY(EditAnywhere, Category = "Combat")
-	float FireNoiseRange = 30000.f;  // 발사 소음 300m
+	float KnifeRange = 200.f;
+	
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	float KnifeBackDamage = 100.f;
 
 	UPROPERTY(EditAnywhere, Category = "Combat")
-	float HitNoiseRange = 2000.f;    // 피격 소음 20m
+	float KnifeFrontDamage = 50.f;
 
 	// 사격 처리 메인 함수
-	void Fire(const FVector& AimStart, const FVector& AimDirection);
+	void Fire(const FVector& AimStart, const FVector& AimDirection, ECombatWeaponType WeaponType);
 	
 	// 소음 발생 함수
 	void EmitNoise(const FVector& NoiseLocation, float NoiseRange);
-		
+	
+private:
+	float GetFireNoiseRange(ECombatWeaponType WeaponType) const;
+	float GetHitNoiseRange(ECombatWeaponType WeaponType) const;
+	void KnifeAttack(const FVector& AimStart, const FVector& AimDirection);
 };
