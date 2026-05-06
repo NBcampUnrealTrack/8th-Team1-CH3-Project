@@ -96,11 +96,9 @@ float UCombatManager::GetFireNoiseRange(ECombatWeaponType WeaponType) const
 {
 	switch (WeaponType)
 	{
-	case ECombatWeaponType::Pistol: return 30000.f;  // 300m
-	case ECombatWeaponType::Rifle:  return 150000.f;  // 1500m
-	case ECombatWeaponType::Knife:  return 1000.f;   // 10m
-	case ECombatWeaponType::Rock:   return 0.f;      // 0m
-	default:                        return 0.f;
+		case ECombatWeaponType::Pistol: return HitNoiseRangePistol;
+		case ECombatWeaponType::Rock:   return HitNoiseRangeRock;
+		default:                        return 0.f;
 	}
 }
 

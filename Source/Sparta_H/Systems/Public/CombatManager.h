@@ -38,6 +38,12 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	float KnifeFrontDamage = 50.f;
+	
+	UPROPERTY(EditAnywhere, Category = "Combat|Noise")
+	float HitNoiseRangePistol = 200.f;   // 2m
+
+	UPROPERTY(EditAnywhere, Category = "Combat|Noise")
+	float HitNoiseRangeRock = 500.f;     // 5m
 
 	// 사격 처리 메인 함수
 	void OnFire(const FVector& AimStart, const FVector& AimDirection, ECombatWeaponType WeaponType);
