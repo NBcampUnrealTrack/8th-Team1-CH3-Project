@@ -12,7 +12,8 @@ UCombatManager::UCombatManager()
 
 void UCombatManager::Fire(const FVector& AimStart, const FVector& AimDirection)
 {
-
+	// 1. 발사 소음 (발사 위치)
+	EmitNoise(AimStart, FireNoiseRange);
 	FHitResult HitResult;
 	const bool bIsHit = HitDetector->PerformLineTrace(AimStart, AimDirection, TraceRange, HitResult);
 
@@ -42,4 +43,15 @@ void UCombatManager::Fire(const FVector& AimStart, const FVector& AimDirection)
 			nullptr             // 대미지 타입 (기본값)
 		);
 	}
+	
+	// 5. 피격 소음 (피격 위치)
+	EmitNoise(HitResult.ImpactPoint, HitNoiseRange);
+}
+
+void UCombatManager::EmitNoise(const FVector& NoiseLocation, float NoiseRange)
+{
+	APawn* OwnerPawn = Cast<APawn>(GetOwner());
+	if (!IsValid(OwnerPawn)) return;
+
+	OwnerPawn->MakeNoise(NoiseRange, OwnerPawn, NoiseLocation);
 }
