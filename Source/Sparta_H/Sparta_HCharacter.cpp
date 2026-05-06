@@ -238,6 +238,11 @@ UWeaponDataAsset* ASparta_HCharacter::GetCurrentWeaponData() const
 	return CurrentWeapon != nullptr ? CurrentWeapon->GetWeaponData() : nullptr;
 }
 
+void ASparta_HCharacter::NotifyEnemyKilled()
+{
+	// Modified: 적 처치 시 호출되는 함수. 필요 시 이곳에 로직 추가
+}
+
 void ASparta_HCharacter::Move(const FInputActionValue& Value)
 {
 	// input is a Vector2D

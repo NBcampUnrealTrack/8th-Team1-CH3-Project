@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "../Weapon/WeaponTypes.h"
 #include "H_HUDWidget.generated.h"
 
 class ASparta_HCharacter;
@@ -20,12 +21,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HUD")
 	ASparta_HCharacter* GetOwningCharacter() const;
 
-	/** 체력 관련 **/
+	/** 체력 및 스태미너 관련 **/
 	UFUNCTION(BlueprintCallable, Category = "HUD|Stats")
 	float GetHealthPercent() const;
 
 	UFUNCTION(BlueprintCallable, Category = "HUD|Stats")
 	FText GetHealthText() const;
+
+	UFUNCTION(BlueprintCallable, Category = "HUD|Stats")
+	float GetStaminaPercent() const;
+
+	UFUNCTION(BlueprintCallable, Category = "HUD|Stats")
+	FText GetStaminaText() const;
 
 	/** 무기 및 탄약 관련 **/
 	UFUNCTION(BlueprintCallable, Category = "HUD|Weapon")
@@ -33,6 +40,10 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "HUD|Weapon")
 	FText GetAmmoText() const;
+
+
+	UFUNCTION(BlueprintCallable, Category = "HUD|Weapon")
+	ECrosshairState GetCrosshairState() const;
 
 	/** 목표 관련 **/
 	UFUNCTION(BlueprintCallable, Category = "HUD|Objective")

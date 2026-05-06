@@ -61,3 +61,12 @@ struct FWeaponSlot
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
 	EWeaponState WeaponState = EWeaponState::Idle;
 };
+
+// 크로스헤어의 시각적 상태 정의
+UENUM(BlueprintType)
+enum class ECrosshairState : uint8
+{
+	Default, // 일반
+	ADS, // 정조준
+	KillConfirm // 적 처치 시
+};
