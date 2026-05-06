@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Logging/LogMacros.h"
+#include "Weapon/WeaponTypes.h"
 #include "Sparta_HCharacter.generated.h"
 
 class UInputComponent;
@@ -51,11 +52,11 @@ class ASparta_HCharacter : public ACharacter
 
 	// 1~4 키로 슬롯 직접 선택 (Axis1D, Scalar Modifier 1~4)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UInputAction> EquipSlotAction;   // Int32 value (1~4)
+	TObjectPtr<UInputAction> EquipSlotAction; // Int32 value (1~4)
 
 	// 마우스 휠 다운 — 다음 슬롯으로 순환
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UInputAction> EquipNextWeaponAction;   // Bool (휠 다운)
+	TObjectPtr<UInputAction> EquipNextWeaponAction; // Bool (휠 다운)
 
 	// 마우스 휠 업 — 이전 슬롯으로 순환
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
@@ -71,7 +72,6 @@ protected:
 	/** Called for looking input */
 	void Look(const FInputActionValue& Value);
 
-protected:
 	// APawn interface
 	virtual void BeginPlay() override;
 	virtual void NotifyControllerChanged() override;
@@ -103,7 +103,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	UWeaponDataAsset* GetCurrentWeaponData() const;
 	/** End of Weapon System **/
-	
+
 	/** 플레이어 스탯 / 목표 **/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats")
 	float CurrentHealth = 100.0f;
@@ -113,7 +113,16 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Objective")
 	FString CurrentObjective = TEXT("기밀실로 잠입하여 서류를 획득하십시오.");
+
+	// 현재 크로스헤어 상태 (Modified: 전용 타입 사용)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|UI")
+	ECrosshairState CurrentCrosshairState = ECrosshairState::Default;
+
+	// 적 처치 시 UI 연출을 트리거하기 위한 함수
+	UFUNCTION(BlueprintCallable, Category = "Player|UI")
+	void NotifyEnemyKilled();
 	/** 플레이어 스탯 / 목표 **/
+
 
 private:
 	/** Weapon Input Callbacks **/
@@ -143,6 +152,4 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
 	int32 CurrentWeaponIndex = 0;
 	/** End of Weapon System **/
-
-
 };

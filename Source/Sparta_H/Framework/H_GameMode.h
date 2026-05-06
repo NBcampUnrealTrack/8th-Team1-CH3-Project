@@ -4,16 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
-#include "Sparta_HGameMode.generated.h"
+#include "H_GameMode.generated.h"
 
 UCLASS(minimalapi)
-class ASparta_HGameMode : public AGameModeBase
+class AH_GameMode : public AGameModeBase
 {
 	GENERATED_BODY()
 
 public:
-	ASparta_HGameMode();
+	AH_GameMode();
 };
-
-
-

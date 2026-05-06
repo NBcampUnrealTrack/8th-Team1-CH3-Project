@@ -6,9 +6,6 @@
 
 class UH_HUDWidget;
 
-/**
- * HUD 위젯을 생성하고 관리하는 플레이어 컨트롤러 클래스입니다.
- */
 UCLASS()
 class SPARTA_H_API AH_PlayerController : public APlayerController
 {
