@@ -1,5 +1,6 @@
 #include "CombatManager.h"
 #include "Kismet/GameplayStatics.h"
+#include "Perception/AISense_Hearing.h"
 
 
 UCombatManager::UCombatManager()
@@ -80,8 +81,15 @@ void UCombatManager::EmitNoise(const FVector& NoiseLocation, float NoiseRange)
 {
 	APawn* OwnerPawn = Cast<APawn>(GetOwner());
 	if (!IsValid(OwnerPawn)) return;
-
-	OwnerPawn->MakeNoise(NoiseRange, OwnerPawn, NoiseLocation);
+	
+	UAISense_Hearing::ReportNoiseEvent(
+		GetWorld(),
+		NoiseLocation,
+		1.f,           // Loudness (0.0~1.0)
+		OwnerPawn,
+		NoiseRange,    // 무기별 Range를 여기에 전달
+		NAME_None
+	);
 }
 
 float UCombatManager::GetFireNoiseRange(ECombatWeaponType WeaponType) const
@@ -89,7 +97,7 @@ float UCombatManager::GetFireNoiseRange(ECombatWeaponType WeaponType) const
 	switch (WeaponType)
 	{
 	case ECombatWeaponType::Pistol: return 30000.f;  // 300m
-	case ECombatWeaponType::Rifle:  return 30000.f;  // 300m
+	case ECombatWeaponType::Rifle:  return 150000.f;  // 1500m
 	case ECombatWeaponType::Knife:  return 1000.f;   // 10m
 	case ECombatWeaponType::Rock:   return 0.f;      // 0m
 	default:                        return 0.f;
