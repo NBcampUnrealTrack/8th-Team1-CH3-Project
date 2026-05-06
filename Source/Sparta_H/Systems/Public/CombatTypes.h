@@ -19,6 +19,7 @@ enum class ECombatWeaponType : uint8
 	Rifle,
 	Pistol,
 	Knife,
+	Grenade, 
 	Rock,
 	None
 };

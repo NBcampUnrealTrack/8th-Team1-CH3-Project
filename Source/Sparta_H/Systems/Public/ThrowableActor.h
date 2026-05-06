@@ -1,17 +1,18 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CombatTypes.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/ProjectileMovementComponent.h"
-#include "GrenadeActor.generated.h"
+#include "ThrowableActor.generated.h"
 
 UCLASS()
-class SPARTA_H_API AGrenadeActor : public AActor
+class SPARTA_H_API AThrowableActor : public AActor
 {
 	GENERATED_BODY()
 	
 public:	
-	AGrenadeActor();
+	AThrowableActor();
 
 protected:
 	virtual void BeginPlay() override;
@@ -33,6 +34,9 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	float ExplosionDamage = 150.f;
+	
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	ECombatWeaponType ThrowableType = ECombatWeaponType::Grenade;
 	
 	void Launch(const FVector& Direction);
 
