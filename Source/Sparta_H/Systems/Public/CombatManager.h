@@ -40,7 +40,7 @@ public:
 	float KnifeFrontDamage = 50.f;
 
 	// 사격 처리 메인 함수
-	void OnFire(const FVector& AimStart, const FVector& AimDirection, ECombatWeaponType WeaponType);
+	void OnFire(const FVector& AimStart, const FVector& AimDirection, ECombatWeaponType WeaponType, float BaseDamage);
 	
 	// 소음 발생 함수
 	void EmitNoise(const FVector& NoiseLocation, float NoiseRange);

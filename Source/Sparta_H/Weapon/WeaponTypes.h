@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CombatTypes.h"
 #include "WeaponTypes.generated.h"
 
 // 무기 종류. AnimBP State Machine 분기 및 DA 분류 키로 사용
@@ -70,3 +71,18 @@ enum class ECrosshairState : uint8
 	ADS, // 정조준
 	KillConfirm // 적 처치 시
 };
+
+
+// 무기 시스템 enum -> 컴뱃 시스템 enum 매핑.
+// 두 enum은 별도라 변환이 필요 (통합 리팩터는 별도 작업)
+inline ECombatWeaponType ToCombatWeaponType(EWeaponType Type)
+{
+	switch (Type)
+	{
+	case EWeaponType::Knife:  return ECombatWeaponType::Knife;
+	case EWeaponType::Pistol: return ECombatWeaponType::Pistol;
+	case EWeaponType::Rifle:  return ECombatWeaponType::Rifle;
+	case EWeaponType::Rock:   return ECombatWeaponType::Rock;
+	default:                  return ECombatWeaponType::None;
+	}
+}

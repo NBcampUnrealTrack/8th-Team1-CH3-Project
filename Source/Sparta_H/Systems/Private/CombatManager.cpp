@@ -11,7 +11,7 @@ UCombatManager::UCombatManager()
 	FeedbackHandler = CreateDefaultSubobject<UCombatFeedbackHandler>(TEXT("FeedbackHandler"));
 }
 
-void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection, ECombatWeaponType WeaponType)
+void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection, ECombatWeaponType WeaponType, float BaseDamage)
 {
 	// 칼은 별도 처리
 	if (WeaponType == ECombatWeaponType::Knife)
@@ -32,6 +32,7 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 	
 	// 2. 대미지 정보 구성
 	FCombatDamageInfo DamageInfo;
+	DamageInfo.BaseDamage = BaseDamage;
 	DamageInfo.Distance   = HitResult.Distance;
 	DamageInfo.HitBone    = UHitDetector::IdentifyHitBone(HitResult.BoneName);
 	DamageInfo.WeaponType  = WeaponType; 
