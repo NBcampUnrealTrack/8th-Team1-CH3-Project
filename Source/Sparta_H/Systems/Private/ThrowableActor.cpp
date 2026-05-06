@@ -1,5 +1,6 @@
 #include "ThrowableActor.h"
 #include "Kismet/GameplayStatics.h"
+#include "Engine/OverlapResult.h"
 
 AThrowableActor::AThrowableActor()
 {
@@ -27,16 +28,36 @@ void AThrowableActor::HandleOnHit(UPrimitiveComponent* HitComponent, AActor* Oth
 {
 	if (ThrowableType == ECombatWeaponType::Grenade)
 	{
-		UGameplayStatics::ApplyRadialDamage(
-			GetWorld(),
-			ExplosionDamage,
+		// 범위 안 액터 탐색
+		TArray<FOverlapResult> Overlaps;
+		FCollisionShape Sphere = FCollisionShape::MakeSphere(ExplosionRadius);
+		GetWorld()->OverlapMultiByChannel(
+			Overlaps,
 			GetActorLocation(),
-			ExplosionRadius,
-			nullptr,
-			TArray<AActor*>(),
-			this,
-			nullptr
+			FQuat::Identity,
+			ECC_Pawn,
+			Sphere
 		);
+
+		for (FOverlapResult& Overlap : Overlaps)
+		{
+			AActor* Target = Overlap.GetActor();
+			if (!IsValid(Target)) continue;
+			if (!Target->ActorHasTag("Enemy")) continue;
+
+			const float Distance = FVector::Dist(GetActorLocation(), Target->GetActorLocation()) / 100.f;
+
+			float Multiplier = 0.f;
+			if      (Distance <= 2.f) Multiplier = 1.0f;
+			else if (Distance <= 4.f) Multiplier = 0.7f;
+			else if (Distance <= 6.f) Multiplier = 0.5f;
+			else                      Multiplier = 0.f;
+
+			if (Multiplier <= 0.f) continue;
+
+			const float FinalDamage = ExplosionDamage * Multiplier;
+			UGameplayStatics::ApplyDamage(Target, FinalDamage, nullptr, this, nullptr);
+		}
 	}
 	else if (ThrowableType == ECombatWeaponType::Rock)
 	{
@@ -50,6 +71,7 @@ void AThrowableActor::HandleOnHit(UPrimitiveComponent* HitComponent, AActor* Oth
 
 	Destroy();
 }
+
 void AThrowableActor::Launch(const FVector& Direction)
 {
 	ProjectileMovement->Velocity = Direction * ProjectileMovement->InitialSpeed;

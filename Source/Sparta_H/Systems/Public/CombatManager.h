@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CombatFeedbackHandler.h"
 #include "Components/ActorComponent.h"
 #include "HitDetector.h"
 #include "CombatTypes.h"
@@ -23,6 +24,9 @@ public:
 	UPROPERTY()
 	UDamageProcessor* DamageProcessor;
 	
+	UPROPERTY()
+	UCombatFeedbackHandler* FeedbackHandler;
+	
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	float BaseDamage = 50.f;
 	
@@ -39,7 +43,7 @@ public:
 	float KnifeFrontDamage = 50.f;
 
 	// 사격 처리 메인 함수
-	void Fire(const FVector& AimStart, const FVector& AimDirection, ECombatWeaponType WeaponType);
+	void OnFire(const FVector& AimStart, const FVector& AimDirection, ECombatWeaponType WeaponType);
 	
 	// 소음 발생 함수
 	void EmitNoise(const FVector& NoiseLocation, float NoiseRange);

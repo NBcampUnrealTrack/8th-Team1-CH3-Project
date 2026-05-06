@@ -8,9 +8,10 @@ UCombatManager::UCombatManager()
 
 	HitDetector = CreateDefaultSubobject<UHitDetector>(TEXT("HitDetector"));
 	DamageProcessor = CreateDefaultSubobject<UDamageProcessor>(TEXT("DamageProcessor"));
+	FeedbackHandler = CreateDefaultSubobject<UCombatFeedbackHandler>(TEXT("FeedbackHandler"));
 }
 
-void UCombatManager::Fire(const FVector& AimStart, const FVector& AimDirection, ECombatWeaponType WeaponType)
+void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection, ECombatWeaponType WeaponType)
 {
 	// 칼은 별도 처리
 	if (WeaponType == ECombatWeaponType::Knife)
@@ -57,6 +58,12 @@ void UCombatManager::Fire(const FVector& AimStart, const FVector& AimDirection, 
 				GetOwner(),
 				nullptr
 			);
+			
+			// 처치 확인 후 OnKill 호출
+			if (!IsValid(HitActor) || HitActor->IsActorBeingDestroyed())
+			{
+				FeedbackHandler->OnKill();
+			}
 		}
 		else
 		{
@@ -126,6 +133,12 @@ void UCombatManager::KnifeAttack(const FVector& AimStart, const FVector& AimDire
 	UGameplayStatics::ApplyDamage(
 		HitActor, KnifeDamage, nullptr, GetOwner(), nullptr
 	);
+	
+	// 처치 확인 후 OnKill 호출
+	if (!IsValid(HitActor) || HitActor->IsActorBeingDestroyed())
+	{
+		FeedbackHandler->OnKill();
+	}
 
 	EmitNoise(HitResult.ImpactPoint, GetHitNoiseRange(ECombatWeaponType::Knife));
 }
