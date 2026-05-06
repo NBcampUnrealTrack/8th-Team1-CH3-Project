@@ -1,7 +1,7 @@
 #include "CombatManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "Perception/AISense_Hearing.h"
-
+#include "BaseEnemy.h"
 
 UCombatManager::UCombatManager()
 {
@@ -12,12 +12,12 @@ UCombatManager::UCombatManager()
 	FeedbackHandler = CreateDefaultSubobject<UCombatFeedbackHandler>(TEXT("FeedbackHandler"));
 }
 
-void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection, ECombatWeaponType WeaponType)
+void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection, ECombatWeaponType WeaponType,float BaseDamage,float BackAttackDamage )
 {
 	// 칼은 별도 처리
 	if (WeaponType == ECombatWeaponType::Knife)
 	{
-		KnifeAttack(AimStart, AimDirection);
+		KnifeAttack(AimStart, AimDirection,BaseDamage, BackAttackDamage);
 		return;
 	}
 	
@@ -33,6 +33,7 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 	
 	// 2. 대미지 정보 구성
 	FCombatDamageInfo DamageInfo;
+	DamageInfo.BaseDamage = BaseDamage;
 	DamageInfo.Distance   = HitResult.Distance;
 	DamageInfo.HitBone    = UHitDetector::IdentifyHitBone(HitResult.BoneName);
 	DamageInfo.WeaponType  = WeaponType; 
@@ -50,6 +51,15 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 			// 공격자도 적이면 무효
 			if (GetOwner()->ActorHasTag("Enemy")) return;
 			
+			
+			ABaseEnemy* Enemy = Cast<ABaseEnemy>(HitActor);
+			if (IsValid(Enemy) && !Enemy->IsDead())
+			{
+				Enemy->OnDeath.AddUniqueDynamic(
+					FeedbackHandler, &UCombatFeedbackHandler::OnKill
+				);
+			}
+			
 			// 적 → 대미지 전달
 			UGameplayStatics::ApplyDamage(
 				HitActor,
@@ -58,12 +68,6 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 				GetOwner(),
 				nullptr
 			);
-			
-			// 처치 확인 후 OnKill 호출
-			if (!IsValid(HitActor) || HitActor->IsActorBeingDestroyed())
-			{
-				FeedbackHandler->OnKill();
-			}
 		}
 		else
 		{
@@ -96,9 +100,11 @@ float UCombatManager::GetFireNoiseRange(ECombatWeaponType WeaponType) const
 {
 	switch (WeaponType)
 	{
-		case ECombatWeaponType::Pistol: return HitNoiseRangePistol;
-		case ECombatWeaponType::Rock:   return HitNoiseRangeRock;
-		default:                        return 0.f;
+	case ECombatWeaponType::Pistol: return 30000.f;   // 300m
+	case ECombatWeaponType::Rifle:  return 150000.f;  // 1500m
+	case ECombatWeaponType::Knife:  return 1000.f;    // 10m
+	case ECombatWeaponType::Rock:   return 0.f;       // 0m
+	default:                        return 0.f;
 	}
 }
 
@@ -106,14 +112,13 @@ float UCombatManager::GetHitNoiseRange(ECombatWeaponType WeaponType) const
 {
 	switch (WeaponType)
 	{
-	case ECombatWeaponType::Pistol: return 2000.f;   // 20m
-	case ECombatWeaponType::Rifle:  return 2000.f;   // 20m
-	case ECombatWeaponType::Rock:   return 10000.f;  // 100m
+	case ECombatWeaponType::Pistol: return HitNoiseRangePistol;
+	case ECombatWeaponType::Rock:   return HitNoiseRangeRock;
 	default:                        return 0.f;
 	}
 }
 
-void UCombatManager::KnifeAttack(const FVector& AimStart, const FVector& AimDirection)
+void UCombatManager::KnifeAttack(const FVector& AimStart, const FVector& AimDirection,float FrontDamage,float BackDamage)
 {
 	FHitResult HitResult;
 	const bool bIsHit = HitDetector->PerformLineTrace(AimStart, AimDirection, KnifeRange, HitResult);
@@ -133,17 +138,19 @@ void UCombatManager::KnifeAttack(const FVector& AimStart, const FVector& AimDire
 	const FVector ToTarget = (HitActor->GetActorLocation() - GetOwner()->GetActorLocation()).GetSafeNormal();
 	const float DotProduct = FVector::DotProduct(HitActorForward, ToTarget);
 
-	const float KnifeDamage = (DotProduct > 0.f) ? KnifeBackDamage : KnifeFrontDamage;
-
+	const float KnifeDamage = (DotProduct > 0.f) ? BackDamage : FrontDamage;
+	
+	ABaseEnemy* Enemy = Cast<ABaseEnemy>(HitActor);
+	if (IsValid(Enemy) && !Enemy->IsDead())
+	{
+		Enemy->OnDeath.AddUniqueDynamic(
+			FeedbackHandler, &UCombatFeedbackHandler::OnKill
+		);
+	}
+	
 	UGameplayStatics::ApplyDamage(
 		HitActor, KnifeDamage, nullptr, GetOwner(), nullptr
 	);
-	
-	// 처치 확인 후 OnKill 호출
-	if (!IsValid(HitActor) || HitActor->IsActorBeingDestroyed())
-	{
-		FeedbackHandler->OnKill();
-	}
 
 	EmitNoise(HitResult.ImpactPoint, GetHitNoiseRange(ECombatWeaponType::Knife));
 }
