@@ -10,7 +10,9 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "Engine/LocalPlayer.h"
-#include "Weapon/Sparta_HWeaponDataAsset.h"
+#include "Engine/World.h"
+#include "Weapon/WeaponBase.h"
+#include "Weapon/WeaponDataAsset.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -36,12 +38,8 @@ ASparta_HCharacter::ASparta_HCharacter()
 	Mesh1P->CastShadow = false;
 	Mesh1P->SetRelativeLocation(FVector(-30.f, 0.f, -150.f));
 
-	// 무기 메시는 팔 메시의 GripPoint 소켓에 부착 — 팔 애니에 자연스럽게 따라감
-	WeaponMeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMeshComponent"));
-	WeaponMeshComponent->SetOnlyOwnerSee(true);
-	WeaponMeshComponent->SetupAttachment(Mesh1P, FName(TEXT("GripPoint")));
-	WeaponMeshComponent->bCastDynamicShadow = false;
-	WeaponMeshComponent->CastShadow = false;
+	// BP에서 미지정 시 베이스 클래스로 폴백 (무기별 특수 로직이 없으면 그대로 사용)
+	WeaponBaseClass = AWeaponBase::StaticClass();
 }
 
 //////////////////////////////////////////////////////////////////////////// Input
@@ -50,8 +48,10 @@ void ASparta_HCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// 슬롯에 무기가 등록돼 있으면 첫 번째 무기를 기본 장착
-	if (!EquippedWeapons.IsEmpty())
+	// 슬롯에 등록된 모든 무기를 미리 스폰해 GripPoint에 부착, 첫 번째 무기 자동 장착
+	SpawnEquippedWeapons();
+
+	if (!SpawnedWeapons.IsEmpty())
 	{
 		EquipWeaponByIndex(0);
 	}
@@ -104,65 +104,106 @@ void ASparta_HCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	}
 }
 
+void ASparta_HCharacter::SpawnEquippedWeapons()
+{
+	UWorld* World = GetWorld();
+	if (World == nullptr || WeaponBaseClass == nullptr)
+	{
+		return;
+	}
+
+	SpawnedWeapons.Reserve(EquippedWeapons.Num());
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.Instigator = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	for (UWeaponDataAsset* WeaponData : EquippedWeapons)
+	{
+		// 빈 슬롯은 nullptr로 보존해 EquippedWeapons와 인덱스 정합 유지
+		if (WeaponData == nullptr)
+		{
+			SpawnedWeapons.Add(nullptr);
+			continue;
+		}
+
+		AWeaponBase* Weapon = World->SpawnActor<AWeaponBase>(WeaponBaseClass, SpawnParams);
+		if (Weapon == nullptr)
+		{
+			SpawnedWeapons.Add(nullptr);
+			continue;
+		}
+
+		Weapon->Initialize(WeaponData);
+		Weapon->AttachToComponent(Mesh1P,
+		                          FAttachmentTransformRules::SnapToTargetIncludingScale,
+		                          FName(TEXT("GripPoint")));
+		Weapon->SetActorHiddenInGame(true);
+
+		SpawnedWeapons.Add(Weapon);
+	}
+}
+
 void ASparta_HCharacter::EquipWeaponByIndex(int32 NewWeaponIndex)
 {
-	if (!EquippedWeapons.IsValidIndex(NewWeaponIndex))
+	if (!SpawnedWeapons.IsValidIndex(NewWeaponIndex))
 	{
 		return;
 	}
 
 	// 재장전/교체 중에는 무기 변경 차단
-	if (CurrentWeaponState == EWeaponState::Reloading || CurrentWeaponState == EWeaponState::Swapping)
+	if (CurrentWeapon != nullptr)
 	{
-		return;
-	}
-
-	// 같은 무기 재선택 시 무시 — Triggered 매 틱 호출에서 중복 장착 방지
-	USparta_HWeaponDataAsset* NewWeaponData = EquippedWeapons[NewWeaponIndex];
-	if (NewWeaponData == nullptr || NewWeaponData == CurrentWeaponData)
-	{
-		return;
-	}
-
-	CurrentWeaponState = EWeaponState::Swapping;
-	CurrentWeaponIndex = NewWeaponIndex;
-	CurrentWeaponData = NewWeaponData;
-
-	if (WeaponMeshComponent != nullptr)
-	{
-		// SoftObjectPtr는 동기 로드 — 추후 비동기 로드로 전환 검토 필요
-		WeaponMeshComponent->SetSkeletalMesh(NewWeaponData->WeaponMesh.LoadSynchronous());
-
-		if (!NewWeaponData->WeaponAnimationClass.IsNull())
+		const EWeaponState State = CurrentWeapon->GetWeaponState();
+		if (State == EWeaponState::Reloading || State == EWeaponState::Swapping)
 		{
-			WeaponMeshComponent->SetAnimInstanceClass(NewWeaponData->WeaponAnimationClass.LoadSynchronous());
+			return;
 		}
 	}
 
-	// 교체 애니/딜레이 들어가면 이 라인을 몽타주 종료 콜백으로 옮길 것
-	CurrentWeaponState = EWeaponState::Idle;
+	// 같은 무기 재선택 시 무시 — Triggered 매 틱 호출에서 중복 장착 방지
+	AWeaponBase* NewWeapon = SpawnedWeapons[NewWeaponIndex];
+	if (NewWeapon == nullptr || NewWeapon == CurrentWeapon)
+	{
+		return;
+	}
+
+	if (CurrentWeapon != nullptr)
+	{
+		CurrentWeapon->SetActorHiddenInGame(true);
+	}
+
+	CurrentWeapon = NewWeapon;
+	CurrentWeaponIndex = NewWeaponIndex;
+
+	CurrentWeapon->SetWeaponState(EWeaponState::Swapping);
+	CurrentWeapon->SetActorHiddenInGame(false);
+
+	// 교체 몽타주 도입 시 이 라인을 종료 콜백으로 옮길 것
+	CurrentWeapon->SetWeaponState(EWeaponState::Idle);
 }
 
 void ASparta_HCharacter::EquipNextWeapon()
 {
-	if (EquippedWeapons.IsEmpty())
+	if (SpawnedWeapons.IsEmpty())
 	{
 		return;
 	}
 
-	const int32 NextWeaponIndex = (CurrentWeaponIndex + 1) % EquippedWeapons.Num();
+	const int32 NextWeaponIndex = (CurrentWeaponIndex + 1) % SpawnedWeapons.Num();
 	EquipWeaponByIndex(NextWeaponIndex);
 }
 
 void ASparta_HCharacter::EquipPreviousWeapon()
 {
-	if (EquippedWeapons.IsEmpty())
+	if (SpawnedWeapons.IsEmpty())
 	{
 		return;
 	}
 
 	// 음수 모듈로 회피용 + Num
-	const int32 Num = EquippedWeapons.Num();
+	const int32 Num = SpawnedWeapons.Num();
 	const int32 PreviousWeaponIndex = (CurrentWeaponIndex - 1 + Num) % Num;
 	EquipWeaponByIndex(PreviousWeaponIndex);
 }
@@ -190,6 +231,11 @@ void ASparta_HCharacter::OnEquipNextPressed(const FInputActionValue& /*Value*/)
 void ASparta_HCharacter::OnEquipPreviousPressed(const FInputActionValue& /*Value*/)
 {
 	EquipPreviousWeapon();
+}
+
+UWeaponDataAsset* ASparta_HCharacter::GetCurrentWeaponData() const
+{
+	return CurrentWeapon != nullptr ? CurrentWeapon->GetWeaponData() : nullptr;
 }
 
 void ASparta_HCharacter::Move(const FInputActionValue& Value)

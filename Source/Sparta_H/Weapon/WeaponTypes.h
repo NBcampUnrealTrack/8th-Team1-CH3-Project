@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Sparta_HWeaponTypes.generated.h"
+#include "WeaponTypes.generated.h"
 
 // 무기 종류. AnimBP State Machine 분기 및 DA 분류 키로 사용
 UENUM(BlueprintType)

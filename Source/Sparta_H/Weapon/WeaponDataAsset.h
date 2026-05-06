@@ -2,8 +2,8 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
-#include "Sparta_HWeaponTypes.h"
-#include "Sparta_HWeaponDataAsset.generated.h"
+#include "WeaponTypes.h"
+#include "WeaponDataAsset.generated.h"
 
 class UAnimInstance;
 class USkeletalMesh;
@@ -11,7 +11,7 @@ class USkeletalMesh;
 // 무기 한 종(개체가 아닌 종류)의 정적 스펙을 담는 DA.
 // 런타임 상태(현재 탄약, 상태 등)는 캐릭터/컴포넌트에서 관리
 UCLASS(BlueprintType)
-class SPARTA_H_API USparta_HWeaponDataAsset : public UDataAsset
+class SPARTA_H_API UWeaponDataAsset : public UDataAsset
 {
 	GENERATED_BODY()
 

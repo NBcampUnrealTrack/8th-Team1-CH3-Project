@@ -1,18 +1,18 @@
-#include "Sparta_HAmmoComponent.h"
+#include "AmmoComponent.h"
 
-USparta_HAmmoComponent::USparta_HAmmoComponent()
+UAmmoComponent::UAmmoComponent()
 {
 	// 탄약은 이벤트 기반으로만 갱신되므로 Tick 불필요
 	PrimaryComponentTick.bCanEverTick = false;
 }
 
-void USparta_HAmmoComponent::InitializeAmmo(int32 NewMaxAmmoCount)
+void UAmmoComponent::InitializeAmmo(int32 NewMaxAmmoCount)
 {
 	MaxAmmoCount = NewMaxAmmoCount;
 	CurrentAmmoCount = MaxAmmoCount;
 }
 
-bool USparta_HAmmoComponent::ConsumeAmmo()
+bool UAmmoComponent::ConsumeAmmo()
 {
 	if (!HasAmmo())
 	{
@@ -23,23 +23,23 @@ bool USparta_HAmmoComponent::ConsumeAmmo()
 	return true;
 }
 
-void USparta_HAmmoComponent::ReloadAmmo()
+void UAmmoComponent::ReloadAmmo()
 {
 	// 부분 재장전 없이 풀 채움. 부분 재장전 필요 시 여기서 분기
 	CurrentAmmoCount = MaxAmmoCount;
 }
 
-bool USparta_HAmmoComponent::HasAmmo() const
+bool UAmmoComponent::HasAmmo() const
 {
 	return CurrentAmmoCount > 0;
 }
 
-int32 USparta_HAmmoComponent::GetCurrentAmmoCount() const
+int32 UAmmoComponent::GetCurrentAmmoCount() const
 {
 	return CurrentAmmoCount;
 }
 
-int32 USparta_HAmmoComponent::GetMaxAmmoCount() const
+int32 UAmmoComponent::GetMaxAmmoCount() const
 {
 	return MaxAmmoCount;
 }

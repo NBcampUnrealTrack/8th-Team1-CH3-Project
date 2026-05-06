@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Logging/LogMacros.h"
-#include "Weapon/Sparta_HWeaponTypes.h"
 #include "Sparta_HCharacter.generated.h"
 
 class UInputComponent;
@@ -15,7 +14,8 @@ class UInputAction;
 class UInputMappingContext;
 struct FInputActionValue;
 
-class USparta_HWeaponDataAsset;
+class UWeaponDataAsset;
+class AWeaponBase;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -95,9 +95,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	void EquipPreviousWeapon();
 
-	// 현재 장착된 무기의 DA. 발사/재장전/AnimBP 분기에서 참조
+	// 현재 장착된 무기 액터. 발사/반동/탄약 등 무기 측 로직 접근 시 사용
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
-	USparta_HWeaponDataAsset* GetCurrentWeaponData() const { return CurrentWeaponData; }
+	AWeaponBase* GetCurrentWeapon() const { return CurrentWeapon; }
+
+	// 현재 장착된 무기의 DA. AnimBP 분기 등 정적 스펙 조회용
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
+	UWeaponDataAsset* GetCurrentWeaponData() const;
 	/** End of Weapon System **/
 
 private:
@@ -106,23 +110,26 @@ private:
 	void OnEquipNextPressed(const FInputActionValue& Value);
 	void OnEquipPreviousPressed(const FInputActionValue& Value);
 
+	// BeginPlay에서 EquippedWeapons 각 DA로 무기 액터를 스폰해 GripPoint에 부착
+	void SpawnEquippedWeapons();
+
 	/** Weapon System **/
-	// Mesh1P의 GripPoint 소켓에 부착되는 무기 메시
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<USkeletalMeshComponent> WeaponMeshComponent;
-
-	// 인벤토리 슬롯. BP 디테일에서 DA를 인덱스 0~3에 직접 등록
+	// 슬롯에 등록할 무기 DA. BP 디테일에서 인덱스 0~3에 직접 등록
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
-	TArray<TObjectPtr<USparta_HWeaponDataAsset>> EquippedWeapons;
+	TArray<TObjectPtr<UWeaponDataAsset>> EquippedWeapons;
+
+	// 스폰 시 사용할 베이스 액터 클래스. 무기별 특수 로직 필요해지면 BP에서 파생 클래스 지정
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<AWeaponBase> WeaponBaseClass;
+
+	// EquippedWeapons와 1:1로 스폰된 무기 액터들. 인덱스 정합 유지를 위해 nullptr도 보존
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
+	TArray<TObjectPtr<AWeaponBase>> SpawnedWeapons;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<USparta_HWeaponDataAsset> CurrentWeaponData;
+	TObjectPtr<AWeaponBase> CurrentWeapon;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
 	int32 CurrentWeaponIndex = 0;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
-	EWeaponState CurrentWeaponState = EWeaponState::Idle;
 	/** End of Weapon System **/
 };
-
