@@ -28,9 +28,6 @@ public:
 	UCombatFeedbackHandler* FeedbackHandler;
 	
 	UPROPERTY(EditAnywhere, Category = "Combat")
-	float BaseDamage = 50.f;
-	
-	UPROPERTY(EditAnywhere, Category = "Combat")
 	float TraceRange = 20000.f;
 	
 	UPROPERTY(EditAnywhere, Category = "Combat")

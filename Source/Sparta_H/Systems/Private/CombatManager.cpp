@@ -32,7 +32,6 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 	
 	// 2. 대미지 정보 구성
 	FCombatDamageInfo DamageInfo;
-	DamageInfo.BaseDamage = BaseDamage;
 	DamageInfo.Distance   = HitResult.Distance;
 	DamageInfo.HitBone    = UHitDetector::IdentifyHitBone(HitResult.BoneName);
 	DamageInfo.WeaponType  = WeaponType; 
