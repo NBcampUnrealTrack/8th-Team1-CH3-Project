@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 using UnrealBuildTool;
+using System.IO;
 
 public class Sparta_H : ModuleRules
 {
@@ -8,6 +9,9 @@ public class Sparta_H : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "UMG", "Slate", "SlateCore" , "AIModule" });
+		PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Systems/Public"));
+		PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "Systems/Private"));
+
 	}
 }
