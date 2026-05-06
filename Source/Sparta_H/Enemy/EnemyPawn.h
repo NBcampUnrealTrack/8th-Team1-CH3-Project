@@ -44,7 +44,7 @@ private:
     float SightRange = 1500.0f;
 
     UPROPERTY(EditDefaultsOnly, Category = "AI|Hearing")
-    float HearingRange = 1000.0f;
+    float HearingRange = 150000.0f;
     
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Combat", meta = (AllowPrivateAccess = "true"))
     float FireRange = 1200.0f;
