@@ -30,7 +30,7 @@ struct FCombatDamageInfo
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, Category = "Damage")
-	float BaseDamage = 10.0f;
+	float BaseDamage = 50.0f;
 	
 	UPROPERTY(EditAnywhere, Category = "Damage")
 	float Distance = 0.0f;
