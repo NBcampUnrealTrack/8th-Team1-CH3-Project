@@ -103,6 +103,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	UWeaponDataAsset* GetCurrentWeaponData() const;
 	/** End of Weapon System **/
+	
+	/** 플레이어 스탯 / 목표 **/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats")
+	float CurrentHealth = 100.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats")
+	float MaxHealth = 100.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Objective")
+	FString CurrentObjective = TEXT("기밀실로 잠입하여 서류를 획득하십시오.");
+	/** 플레이어 스탯 / 목표 **/
 
 private:
 	/** Weapon Input Callbacks **/
@@ -132,4 +143,6 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
 	int32 CurrentWeaponIndex = 0;
 	/** End of Weapon System **/
+
+
 };
