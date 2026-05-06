@@ -3,19 +3,19 @@
 #include "CoreMinimal.h"
 #include "BaseEnemy.h"
 #include "Perception/AIPerceptionTypes.h"
-#include "EnemyPawn.generated.h"
+#include "EnemyCharacter.generated.h"
 
 class UAIPerceptionComponent;
 class UAISenseConfig_Sight;
 class UAISenseConfig_Hearing;
 
 UCLASS()
-class SPARTA_H_API AEnemyPawn : public ABaseEnemy
+class SPARTA_H_API AEnemyCharacter : public ABaseEnemy
 {
     GENERATED_BODY()
 
 public:
-    AEnemyPawn();
+    AEnemyCharacter();
 
     UFUNCTION(BlueprintCallable, Category = "AI|Combat")
     bool CanShootTarget(AActor* TargetActor);

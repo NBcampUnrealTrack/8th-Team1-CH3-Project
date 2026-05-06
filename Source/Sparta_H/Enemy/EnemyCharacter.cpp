@@ -1,4 +1,4 @@
-#include "EnemyPawn.h"
+#include "EnemyCharacter.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
 #include "Perception/AISenseConfig_Hearing.h"
@@ -8,7 +8,7 @@
 #include "CollisionQueryParams.h"
 #include "TimerManager.h"
 
-AEnemyPawn::AEnemyPawn()
+AEnemyCharacter::AEnemyCharacter()
 {
     // Perception 컴포넌트 및 기본 감지 에셋 생성
     AIPerceptionComp = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("PerceptionComp"));
@@ -40,14 +40,14 @@ AEnemyPawn::AEnemyPawn()
     AIPerceptionComp->SetDominantSense(SightConfig->GetSenseImplementation());
 }
 
-void AEnemyPawn::BeginPlay()
+void AEnemyCharacter::BeginPlay()
 {
     Super::BeginPlay();
     
-    AIPerceptionComp->OnTargetPerceptionUpdated.AddDynamic(this, &AEnemyPawn::OnTargetPerceived);
+    AIPerceptionComp->OnTargetPerceptionUpdated.AddDynamic(this, &AEnemyCharacter::OnTargetPerceived);
 }
 
-void AEnemyPawn::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
+void AEnemyCharacter::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
 {
     if (bIsDead) return;
 
@@ -67,7 +67,7 @@ void AEnemyPawn::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
                 GetWorldTimerManager().SetTimer(
                     DetectionTimerHandle, 
                     this, 
-                    &AEnemyPawn::OnDetectionTimerExpired, 
+                    &AEnemyCharacter::OnDetectionTimerExpired, 
                     1.0f, 
                     false
                 );
@@ -100,7 +100,7 @@ void AEnemyPawn::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
 }
 
 // 1초 동안 성공적으로 시야를 잃지 않고 버텼을 때 호출되는 발각 처리 함수
-void AEnemyPawn::OnDetectionTimerExpired()
+void AEnemyCharacter::OnDetectionTimerExpired()
 {
     if (bIsDead || !SuspectedTarget) return;
 
@@ -115,7 +115,7 @@ void AEnemyPawn::OnDetectionTimerExpired()
     SuspectedTarget = nullptr;
 }
 
-bool AEnemyPawn::CanShootTarget(AActor* TargetActor)
+bool AEnemyCharacter::CanShootTarget(AActor* TargetActor)
 {
     if (!TargetActor) return false;
 

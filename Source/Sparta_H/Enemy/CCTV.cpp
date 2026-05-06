@@ -1,7 +1,7 @@
 #include "CCTV.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
-#include "EnemyPawn.h" 
+#include "EnemyCharacter.h" 
 #include "Engine/World.h"
 #include "AIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
@@ -80,7 +80,7 @@ void ACCTV::AlertNearbyEnemies(AActor* TargetPlayer)
             AActor* OverlappedActor = Result.GetActor();
             if (OverlappedActor)
             {
-                AEnemyPawn* Enemy = Cast<AEnemyPawn>(OverlappedActor);
+                AEnemyCharacter* Enemy = Cast<AEnemyCharacter>(OverlappedActor);
                 if (Enemy)
                 {
                     AAIController* AIC = Cast<AAIController>(Enemy->GetController());
