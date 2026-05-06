@@ -4,12 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "Components/SkeletalMeshComponent.h"
-#include "Sparta_HWeaponComponent.generated.h"
+#include "WeaponComponent.generated.h"
 
 class ASparta_HCharacter;
 
 UCLASS(Blueprintable, BlueprintType, ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
-class SPARTA_H_API USparta_HWeaponComponent : public USkeletalMeshComponent
+class SPARTA_H_API UWeaponComponent : public USkeletalMeshComponent
 {
 	GENERATED_BODY()
 
@@ -39,7 +39,7 @@ public:
 	class UInputAction* FireAction;
 
 	/** Sets default values for this component's properties */
-	USparta_HWeaponComponent();
+	UWeaponComponent();
 
 	/** Attaches the actor to a FirstPersonCharacter */
 	UFUNCTION(BlueprintCallable, Category="Weapon")

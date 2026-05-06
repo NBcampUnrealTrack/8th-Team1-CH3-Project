@@ -1,9 +1,9 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 
-#include "Sparta_HWeaponComponent.h"
-#include "Sparta_HCharacter.h"
-#include "Sparta_HProjectile.h"
+#include "WeaponComponent.h"
+#include "../Sparta_HCharacter.h"
+#include "../Sparta_HProjectile.h"
 #include "GameFramework/PlayerController.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Kismet/GameplayStatics.h"
@@ -14,14 +14,14 @@
 #include "Engine/World.h"
 
 // Sets default values for this component's properties
-USparta_HWeaponComponent::USparta_HWeaponComponent()
+UWeaponComponent::UWeaponComponent()
 {
 	// Default offset from the character location for projectiles to spawn
 	MuzzleOffset = FVector(100.0f, 0.0f, 10.0f);
 }
 
 
-void USparta_HWeaponComponent::Fire()
+void UWeaponComponent::Fire()
 {
 	if (Character == nullptr || Character->GetController() == nullptr)
 	{
@@ -66,12 +66,12 @@ void USparta_HWeaponComponent::Fire()
 	}
 }
 
-bool USparta_HWeaponComponent::AttachWeapon(ASparta_HCharacter* TargetCharacter)
+bool UWeaponComponent::AttachWeapon(ASparta_HCharacter* TargetCharacter)
 {
 	Character = TargetCharacter;
 
 	// Check that the character is valid, and has no weapon component yet
-	if (Character == nullptr || Character->GetInstanceComponents().FindItemByClass<USparta_HWeaponComponent>())
+	if (Character == nullptr || Character->GetInstanceComponents().FindItemByClass<UWeaponComponent>())
 	{
 		return false;
 	}
@@ -92,14 +92,14 @@ bool USparta_HWeaponComponent::AttachWeapon(ASparta_HCharacter* TargetCharacter)
 		if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerController->InputComponent))
 		{
 			// Fire
-			EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Triggered, this, &USparta_HWeaponComponent::Fire);
+			EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Triggered, this, &UWeaponComponent::Fire);
 		}
 	}
 
 	return true;
 }
 
-void USparta_HWeaponComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+void UWeaponComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	// ensure we have a character owner
 	if (Character != nullptr)
