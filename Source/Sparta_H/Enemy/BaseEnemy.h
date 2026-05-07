@@ -14,6 +14,8 @@ enum class EAlertLevel : uint8
 	Lost = 4        UMETA(DisplayName = "Lost")
 };
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeathDelegate);
+
 UCLASS()
 class SPARTA_H_API ABaseEnemy : public ACharacter
 {
@@ -38,7 +40,26 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
 	bool bIsDead;
 	
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+	float MaxHealth = 100.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
+	float CurrentHealth = 100.f;
+	
 public : 
 	UFUNCTION(BlueprintCallable, Category = "AI")
 	EAlertLevel GetCurrentAlertLevel() const { return CurrentAlertLevel; }
+	
+	UFUNCTION(BlueprintCallable, Category = "AI")
+	bool IsDead() const { return bIsDead; }
+	
+	virtual float TakeDamage(
+	float DamageAmount,
+	FDamageEvent const& DamageEvent,
+	AController* EventInstigator,
+	AActor* DamageCauser) override;
+	
+	UPROPERTY(BlueprintAssignable)
+	FOnDeathDelegate OnDeath;
 };

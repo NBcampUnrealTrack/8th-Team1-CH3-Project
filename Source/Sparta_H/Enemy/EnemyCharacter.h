@@ -3,19 +3,19 @@
 #include "CoreMinimal.h"
 #include "BaseEnemy.h"
 #include "Perception/AIPerceptionTypes.h"
-#include "EnemyPawn.generated.h"
+#include "EnemyCharacter.generated.h"
 
 class UAIPerceptionComponent;
 class UAISenseConfig_Sight;
 class UAISenseConfig_Hearing;
 
 UCLASS()
-class SPARTA_H_API AEnemyPawn : public ABaseEnemy
+class SPARTA_H_API AEnemyCharacter : public ABaseEnemy
 {
     GENERATED_BODY()
 
 public:
-    AEnemyPawn();
+    AEnemyCharacter();
 
     UFUNCTION(BlueprintCallable, Category = "AI|Combat")
     bool CanShootTarget(AActor* TargetActor);
@@ -44,7 +44,7 @@ private:
     float SightRange = 1500.0f;
 
     UPROPERTY(EditDefaultsOnly, Category = "AI|Hearing")
-    float HearingRange = 1000.0f;
+    float HearingRange = 150000.0f;
     
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Combat", meta = (AllowPrivateAccess = "true"))
     float FireRange = 1200.0f;

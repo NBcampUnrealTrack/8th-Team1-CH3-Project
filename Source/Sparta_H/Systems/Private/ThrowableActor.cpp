@@ -1,6 +1,7 @@
 #include "ThrowableActor.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/OverlapResult.h"
+#include "Perception/AISense_Hearing.h"
 
 AThrowableActor::AThrowableActor()
 {
@@ -61,12 +62,21 @@ void AThrowableActor::HandleOnHit(UPrimitiveComponent* HitComponent, AActor* Oth
 	}
 	else if (ThrowableType == ECombatWeaponType::Rock)
 	{
-		if (IsValid(OtherActor))
+		if (IsValid(OtherActor) && OtherActor->ActorHasTag("Enemy"))
 		{
 			UGameplayStatics::ApplyDamage(
 				OtherActor, 1.f, nullptr, this, nullptr
 			);
 		}
+		
+		UAISense_Hearing::ReportNoiseEvent(
+			GetWorld(),
+			GetActorLocation(),
+			1.f,
+			nullptr,
+			500.f,        // 5m
+			FName("Rock")
+		);
 	}
 
 	Destroy();

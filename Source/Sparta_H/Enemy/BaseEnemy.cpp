@@ -20,6 +20,23 @@ void ABaseEnemy::OnAlertLevelChanged(EAlertLevel NewLevel)
 }
 
 void ABaseEnemy::Die()
-{
+{   
+	if (bIsDead) return;
 	bIsDead = true;
+	OnDeath.Broadcast();
+}
+
+float ABaseEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
+	AController* EventInstigator, AActor* DamageCauser)
+{
+	if (bIsDead) return 0.f;
+
+	CurrentHealth = FMath::Clamp(CurrentHealth - DamageAmount, 0.f, MaxHealth);
+
+	if (CurrentHealth <= 0.f)
+	{
+		Die();
+	}
+
+	return DamageAmount;
 }

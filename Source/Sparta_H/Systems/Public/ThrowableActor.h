@@ -30,7 +30,7 @@ public:
 	UProjectileMovementComponent* ProjectileMovement;
 	
 	UPROPERTY(EditAnywhere, Category = "Combat")
-	float ExplosionRadius = 200.f;
+	float ExplosionRadius = 600.f;
 
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	float ExplosionDamage = 150.f;

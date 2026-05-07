@@ -24,5 +24,7 @@ public class Sparta_H : ModuleRules
 		});
 		PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Systems/Public"));
 		PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "Systems/Private"));
+		PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "Enemy"));
+
 	}
 }
