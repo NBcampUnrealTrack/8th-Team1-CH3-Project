@@ -12,8 +12,13 @@ AMyPlayerController::AMyPlayerController()
 	RunAction = nullptr;
 	HideAction = nullptr;
 	RollAction = nullptr;
-	LeanAction = nullptr;	
+	LeanAction = nullptr;
 	Interaction = nullptr;
+	FireAction = nullptr;
+	ReloadAction = nullptr;
+	EquipSlotAction = nullptr;
+	EquipNextWeaponAction = nullptr;
+	EquipPreviousWeaponAction = nullptr;
 }
 
 void AMyPlayerController::BeginPlay()

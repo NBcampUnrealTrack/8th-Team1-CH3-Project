@@ -30,6 +30,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Animation")
 	TSoftObjectPtr<UAnimMontage> FireMontage1P;
 
+	// 1인칭 팔(Mesh1P)에 재생할 재장전 몽타주. 길이는 DA의 ReloadTime과 맞춰 세팅
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Animation")
+	TSoftObjectPtr<UAnimMontage> ReloadMontage1P;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
 	EWeaponType WeaponType = EWeaponType::Pistol;
 
@@ -71,7 +75,7 @@ public:
 	// 발사 시 AI 어그로를 끌어야 하는 무기인지 (소음무기 등은 false)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
 	bool bShouldTriggerAIAggro = false;
-	
+
 	// 발사 시 무기 메시의 MuzzleSocketName 위치에 스폰할 총구 화염 이펙트
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|VFX")
 	TSoftObjectPtr<UNiagaraSystem> MuzzleFlashEffect;

@@ -19,8 +19,8 @@ void USparta_HPickUpComponent::BeginPlay()
 
 void USparta_HPickUpComponent::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	// Checking if it is a First Person Character overlapping
-	ASparta_HCharacter* Character = Cast<ASparta_HCharacter>(OtherActor);
+	// Checking if it is a Player Character overlapping
+	APlayerCharacter* Character = Cast<APlayerCharacter>(OtherActor);
 	if(Character != nullptr)
 	{
 		// Notify that the actor is being picked up

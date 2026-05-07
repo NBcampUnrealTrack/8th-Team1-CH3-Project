@@ -79,10 +79,10 @@ inline ECombatWeaponType ToCombatWeaponType(EWeaponType Type)
 {
 	switch (Type)
 	{
-	case EWeaponType::Knife:  return ECombatWeaponType::Knife;
+	case EWeaponType::Knife: return ECombatWeaponType::Knife;
 	case EWeaponType::Pistol: return ECombatWeaponType::Pistol;
-	case EWeaponType::Rifle:  return ECombatWeaponType::Rifle;
-	case EWeaponType::Rock:   return ECombatWeaponType::Rock;
-	default:                  return ECombatWeaponType::None;
+	case EWeaponType::Rifle: return ECombatWeaponType::Rifle;
+	case EWeaponType::Rock: return ECombatWeaponType::Rock;
+	default: return ECombatWeaponType::None;
 	}
 }
