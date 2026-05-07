@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Sparta_HPickUpComponent.h"
+#include "GameFramework/Character.h"
 
 USparta_HPickUpComponent::USparta_HPickUpComponent()
 {
