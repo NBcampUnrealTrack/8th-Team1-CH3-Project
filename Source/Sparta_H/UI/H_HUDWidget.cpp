@@ -1,5 +1,5 @@
 #include "H_HUDWidget.h"
-#include "../Sparta_HCharacter.h"
+#include "../Characters/PlayerCharacter.h"
 #include "H_StatBarWidget.h"
 #include "H_WeaponWidget.h"
 #include "H_MissionWidget.h"
@@ -13,7 +13,7 @@ void UH_HUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
 
-	ASparta_HCharacter* Character = GetOwningCharacter();
+	APlayerCharacter* Character = GetOwningCharacter();
 	if (!Character) return;
 
 	if (HealthBar)

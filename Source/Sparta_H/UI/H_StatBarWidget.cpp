@@ -4,9 +4,9 @@
 #include "H_StatBarWidget.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
-#include "../Sparta_HCharacter.h"
+#include "../Characters/PlayerCharacter.h"
 
-void UH_StatBarWidget::UpdateFromCharacter(ASparta_HCharacter* Character, bool bIsHealth)
+void UH_StatBarWidget::UpdateFromCharacter(APlayerCharacter* Character, bool bIsHealth)
 {
 	if (!Character) return;
 
@@ -18,7 +18,7 @@ void UH_StatBarWidget::UpdateFromCharacter(ASparta_HCharacter* Character, bool b
 	else
 	{
 		SetStatLabel(TEXT("Stamina"));
-		UpdateStat(100.0f, 100.0f); 
+		UpdateStat(Character->CurrentStamina, Character->MaxStamina);
 	}
 }
 void UH_StatBarWidget::UpdateStat(float CurrentValue, float MaxValue)

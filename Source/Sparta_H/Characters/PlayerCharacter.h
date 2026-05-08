@@ -96,6 +96,12 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats")
 	float MaxHealth = 100.0f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats")
+	float CurrentStamina = 100.0f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats")
+	float MaxStamina = 100.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Objective")
 	FString CurrentObjective = TEXT("기밀실로 잠입하여 서류를 획득하십시오.");

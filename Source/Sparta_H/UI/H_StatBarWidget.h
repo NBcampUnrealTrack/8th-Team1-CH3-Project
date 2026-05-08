@@ -12,7 +12,7 @@ class SPARTA_H_API UH_StatBarWidget : public UUserWidget
 public:
 	// 캐릭터 정보와 스탯 종류를 받아 스스로 업데이트
 	UFUNCTION(BlueprintCallable, Category = "UI|Stat")
-	void UpdateFromCharacter(class ASparta_HCharacter* Character, bool bIsHealth);
+	void UpdateFromCharacter(class APlayerCharacter* Character, bool bIsHealth);
 
 	// 수치 데이터를 받아 바와 텍스트를 업데이트하는 범용 함수
 	UFUNCTION(BlueprintCallable, Category = "UI|Stat")
