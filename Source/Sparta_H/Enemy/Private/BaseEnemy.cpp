@@ -5,38 +5,29 @@ ABaseEnemy::ABaseEnemy()
 	PrimaryActorTick.bCanEverTick = false;
 	CurrentAlertLevel = EAlertLevel::Idle;
 	bIsDead = false;
+	EnemyStatData = nullptr;
 }
 
 void ABaseEnemy::BeginPlay()
 {
 	Super::BeginPlay();
-
-	// 스폰 시 타입에 맞는 스탯으로 초기화
 	InitializeStats();
 }
 
 void ABaseEnemy::InitializeStats()
 {
-	switch (EnemyType)
+	if (!EnemyStatData)
 	{
-	case EEnemyType::Normal:
-		MaxHealth     = 100.f;
-		CurrentHealth = 100.f;
-		break;
-
-	case EEnemyType::Elite:
-		MaxHealth     = 150.f;
-		CurrentHealth = 150.f;
-		break;
-
-	default:
-		break;
+		UE_LOG(LogTemp, Warning, TEXT("[%s] EnemyStatData가 할당되지 않았습니다. 기본값을 사용합니다."), *GetName());
+		return;
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("[%s] InitializeStats - Type: %s / HP: %.0f"),
-		*GetName(),
-		EnemyType == EEnemyType::Elite ? TEXT("Elite") : TEXT("Normal"),
-		MaxHealth);
+	MaxHealth     = EnemyStatData->MaxHealth;
+	CurrentHealth = EnemyStatData->MaxHealth;
+	Damage        = EnemyStatData->Damage;
+
+	UE_LOG(LogTemp, Log, TEXT("[%s] InitializeStats - HP: %.0f / Damage: %.0f"),
+		*GetName(), MaxHealth, Damage);
 }
 
 void ABaseEnemy::OnAlertLevelChanged(EAlertLevel NewLevel)

@@ -60,14 +60,10 @@ void AEnemyCharacter::BeginPlay()
 // ---------------------------------------------------------------
 void AEnemyCharacter::InitializeStats()
 {
-    Super::InitializeStats();
+    Super::InitializeStats(); // EnemyStatData → MaxHealth, CurrentHealth, Damage 세팅
 
-    switch (EnemyType)
-    {
-    case EEnemyType::Normal: WeaponDamage = 15.0f; break;
-    case EEnemyType::Elite:  WeaponDamage = 20.0f; break;
-    default: break;
-    }
+    // BaseEnemy::Damage를 EnemyCharacter::WeaponDamage에 동기화
+    WeaponDamage = Damage;
 }
 
 // ---------------------------------------------------------------
