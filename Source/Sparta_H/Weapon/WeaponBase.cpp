@@ -113,7 +113,8 @@ void AWeaponBase::Fire()
 					const FVector AimStart = PC->PlayerCameraManager->GetCameraLocation();
 					const FVector AimDirection = PC->PlayerCameraManager->GetCameraRotation().Vector();
 					const ECombatWeaponType CombatType = ToCombatWeaponType(WeaponData->WeaponType);
-					CombatMgr->OnFire(AimStart, AimDirection, CombatType, WeaponData->Damage);
+					CombatMgr->OnFire(AimStart, AimDirection, CombatType, WeaponData->Damage,
+					                  WeaponData->bShouldTriggerAIAggro);
 				}
 			}
 		}

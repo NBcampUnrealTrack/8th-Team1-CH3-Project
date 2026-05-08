@@ -13,73 +13,66 @@ UCombatManager::UCombatManager()
 }
 
 void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection, ECombatWeaponType WeaponType,
-                            float BaseDamage, float BackAttackDamage)
+                            float BaseDamage, bool bTriggerAIAggro)
 {
-	// 칼은 별도 처리
+	// 칼은 별도 처리 (매니저 자체의 KnifeFront/KnifeBackDamage 사용)
 	if (WeaponType == ECombatWeaponType::Knife)
 	{
-		KnifeAttack(AimStart, AimDirection, BaseDamage, BackAttackDamage);
+		KnifeAttack(AimStart, AimDirection, bTriggerAIAggro);
 		return;
 	}
 
-	// 1. 발사 소음 (발사 위치)
-	EmitNoise(AimStart, GetFireNoiseRange(WeaponType));
-	FHitResult HitResult;
-	const bool bIsHit = HitDetector->PerformLineTrace(AimStart, AimDirection, TraceRange, HitResult);
-
-	if (!bIsHit)
+	// 1. 발사 소음 (발사 위치) — 어그로 무기만
+	if (bTriggerAIAggro)
 	{
-		return; // 아무것도 안 맞았으면 종료
+		EmitNoise(AimStart, GetFireNoiseRange(WeaponType));
 	}
 
-	// 2. 대미지 정보 구성
+	// 2. 트레이스
+	FHitResult HitResult;
+	if (!HitDetector->PerformLineTrace(AimStart, AimDirection, TraceRange, HitResult))
+	{
+		return;
+	}
+
+	AActor* HitActor = HitResult.GetActor();
+
+	// 3. 액터 무효 또는 적이 아님 → 환경 오브젝트로 간주, 피격 소음만
+	if (!IsValid(HitActor) || !HitActor->ActorHasTag("Enemy"))
+	{
+		if (bTriggerAIAggro)
+		{
+			EmitNoise(HitResult.ImpactPoint, GetHitNoiseRange(WeaponType));
+		}
+		return;
+	}
+
+	// 4. 적-vs-적 friendly fire 차단
+	if (GetOwner()->ActorHasTag("Enemy")) return;
+
+	// 5. 데미지 계산
 	FCombatDamageInfo DamageInfo;
 	DamageInfo.BaseDamage = BaseDamage;
 	DamageInfo.Distance = HitResult.Distance;
 	DamageInfo.HitBone = UHitDetector::IdentifyHitBone(HitResult.BoneName);
 	DamageInfo.WeaponType = WeaponType;
-
-	// 3. 최종 대미지 계산
 	const float FinalDamage = DamageProcessor->CalculateFinalDamage(DamageInfo);
 
-	// 4. 피격 대상에 대미지 전달
-	AActor* HitActor = HitResult.GetActor();
-
-	if (IsValid(HitActor))
+	// 6. 킬 피드백 등록
+	ABaseEnemy* Enemy = Cast<ABaseEnemy>(HitActor);
+	if (IsValid(Enemy) && !Enemy->IsDead())
 	{
-		if (HitActor->ActorHasTag("Enemy"))
-		{
-			// 공격자도 적이면 무효
-			if (GetOwner()->ActorHasTag("Enemy")) return;
-
-
-			ABaseEnemy* Enemy = Cast<ABaseEnemy>(HitActor);
-			if (IsValid(Enemy) && !Enemy->IsDead())
-			{
-				Enemy->OnDeath.AddUniqueDynamic(
-					FeedbackHandler, &UCombatFeedbackHandler::OnKill
-				);
-			}
-
-			// 적 → 대미지 전달
-			UGameplayStatics::ApplyDamage(
-				HitActor,
-				FinalDamage,
-				nullptr,
-				GetOwner(),
-				nullptr
-			);
-		}
-		else
-		{
-			// 환경 오브젝트 → 소음만 발생
-			EmitNoise(HitResult.ImpactPoint, GetHitNoiseRange(WeaponType));
-			return;
-		}
+		Enemy->OnDeath.AddUniqueDynamic(FeedbackHandler, &UCombatFeedbackHandler::OnKill);
 	}
 
-	// 5. 피격 소음 (피격 위치)
-	EmitNoise(HitResult.ImpactPoint, GetHitNoiseRange(WeaponType));
+	// 7. 데미지 전달
+	UGameplayStatics::ApplyDamage(HitActor, FinalDamage, nullptr, GetOwner(), nullptr);
+
+	// 8. 피격 소음 (적 피격 위치)
+	if (bTriggerAIAggro)
+	{
+		EmitNoise(HitResult.ImpactPoint, GetHitNoiseRange(WeaponType));
+	}
 }
 
 void UCombatManager::EmitNoise(const FVector& NoiseLocation, float NoiseRange)
@@ -119,40 +112,36 @@ float UCombatManager::GetHitNoiseRange(ECombatWeaponType WeaponType) const
 	}
 }
 
-void UCombatManager::KnifeAttack(const FVector& AimStart, const FVector& AimDirection, float FrontDamage,
-                                 float BackDamage)
+void UCombatManager::KnifeAttack(const FVector& AimStart, const FVector& AimDirection, bool bTriggerAIAggro)
 {
 	FHitResult HitResult;
-	const bool bIsHit = HitDetector->PerformLineTrace(AimStart, AimDirection, KnifeRange, HitResult);
-
-	if (!bIsHit) return;
+	if (!HitDetector->PerformLineTrace(AimStart, AimDirection, KnifeRange, HitResult)) return;
 
 	AActor* HitActor = HitResult.GetActor();
 	if (!IsValid(HitActor)) return;
-
-	// 적이 아니면 무시
 	if (!HitActor->ActorHasTag("Enemy")) return;
-	// 공격자도 적이면 무효
+
+	// 적-vs-적 friendly fire 차단
 	if (GetOwner()->ActorHasTag("Enemy")) return;
 
-	// 뒤에서 공격 여부 체크
+	// 백/정면 판정 — 적의 정면 벡터와 (공격자→적) 벡터의 dot이 양수면 등 뒤에서 공격
 	const FVector HitActorForward = HitActor->GetActorForwardVector();
 	const FVector ToTarget = (HitActor->GetActorLocation() - GetOwner()->GetActorLocation()).GetSafeNormal();
 	const float DotProduct = FVector::DotProduct(HitActorForward, ToTarget);
+	const float KnifeDamage = (DotProduct > 0.f) ? KnifeBackDamage : KnifeFrontDamage;
 
-	const float KnifeDamage = (DotProduct > 0.f) ? BackDamage : FrontDamage;
-
+	// 킬 피드백 등록
 	ABaseEnemy* Enemy = Cast<ABaseEnemy>(HitActor);
 	if (IsValid(Enemy) && !Enemy->IsDead())
 	{
-		Enemy->OnDeath.AddUniqueDynamic(
-			FeedbackHandler, &UCombatFeedbackHandler::OnKill
-		);
+		Enemy->OnDeath.AddUniqueDynamic(FeedbackHandler, &UCombatFeedbackHandler::OnKill);
 	}
 
-	UGameplayStatics::ApplyDamage(
-		HitActor, KnifeDamage, nullptr, GetOwner(), nullptr
-	);
+	UGameplayStatics::ApplyDamage(HitActor, KnifeDamage, nullptr, GetOwner(), nullptr);
 
-	EmitNoise(HitResult.ImpactPoint, GetHitNoiseRange(ECombatWeaponType::Knife));
+	// 칼은 GetHitNoiseRange가 0이라 어그로 거의 없지만, 플래그 일관성 유지
+	if (bTriggerAIAggro)
+	{
+		EmitNoise(HitResult.ImpactPoint, GetHitNoiseRange(ECombatWeaponType::Knife));
+	}
 }
