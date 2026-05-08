@@ -27,6 +27,10 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Ammo")
 	bool HasAmmo() const;
+	
+	// 탄창이 가득 차 있는지. Reload 호출 가드용
+	UFUNCTION(BlueprintCallable, Category = "Ammo")
+	bool IsFull() const;
 
 	UFUNCTION(BlueprintCallable, Category = "Ammo")
 	int32 GetCurrentAmmoCount() const;

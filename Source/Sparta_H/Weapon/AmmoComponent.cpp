@@ -34,6 +34,11 @@ bool UAmmoComponent::HasAmmo() const
 	return CurrentAmmoCount > 0;
 }
 
+bool UAmmoComponent::IsFull() const
+{
+	return CurrentAmmoCount >= MaxAmmoCount;
+}
+
 int32 UAmmoComponent::GetCurrentAmmoCount() const
 {
 	return CurrentAmmoCount;
