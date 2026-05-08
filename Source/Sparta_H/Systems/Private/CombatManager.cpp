@@ -70,6 +70,19 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 				nullptr
 			);
 		}
+		else if (HitActor->ActorHasTag("Player"))
+		{
+			// 공격자가 적일 때만 플레이어에게 데미지
+			if (!GetOwner()->ActorHasTag("Enemy")) return;
+
+			UGameplayStatics::ApplyDamage(
+				HitActor,
+				FinalDamage,
+				nullptr,
+				GetOwner(),
+				nullptr
+			);
+		}
 		else
 		{
 			// 환경 오브젝트 → 소음만 발생
