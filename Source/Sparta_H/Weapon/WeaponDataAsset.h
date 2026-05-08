@@ -10,6 +10,7 @@ class UAnimMontage;
 class USkeletalMesh;
 class UNiagaraSystem;
 class UTexture2D;
+class USoundBase;
 
 // 무기 한 종(개체가 아닌 종류)의 정적 스펙을 담는 DA.
 // 런타임 상태(현재 탄약, 상태 등)는 캐릭터/컴포넌트에서 관리
@@ -93,11 +94,21 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Animation")
 	TSoftObjectPtr<UAnimMontage> ReloadMontage1P;
 
+	// ───── 사운드 ─────
+
+	// 발사 시 재생할 사운드. 플레이어가 듣는 청각 피드백 — AI 어그로 노이즈(EmitNoise)와는 별개
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Audio")
+	TSoftObjectPtr<USoundBase> FireSound;
+
 	// ───── VFX ─────
 
 	// 발사 시 무기 메시의 MuzzleSocketName 위치에 스폰할 총구 화염 이펙트
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|VFX")
 	TSoftObjectPtr<UNiagaraSystem> MuzzleFlashEffect;
+
+	// 라인 트레이스 적중점에 스폰할 임팩트 이펙트 (피격 표면 스파크/데칼 등)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|VFX")
+	TSoftObjectPtr<UNiagaraSystem> ImpactVFX;
 
 	// 무기 스켈레탈 메시에 만들어 둔 총구 소켓 이름. 메시별로 다를 수 있어 DA에서 지정
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|VFX")
