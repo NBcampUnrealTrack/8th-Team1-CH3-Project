@@ -26,7 +26,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components")
 	UCameraComponent* Camera;
 
-
 protected:
 	float MoveSpeed;
 	float SprintSpeedMultiplier;
@@ -34,7 +33,6 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Equipment")
 	bool IsEquipped = false;
-
 
 public:
 	// Called when the game starts or when spawned

@@ -12,50 +12,49 @@ class UAISenseConfig_Hearing;
 UCLASS()
 class SPARTA_H_API AEnemyCharacter : public ABaseEnemy
 {
-    GENERATED_BODY()
+	GENERATED_BODY()
 
 public:
-    AEnemyCharacter();
+	AEnemyCharacter();
 
-    UFUNCTION(BlueprintCallable, Category = "AI|Combat")
-    bool CanShootTarget(AActor* TargetActor);
+	UFUNCTION(BlueprintCallable, Category = "AI|Combat")
+	bool CanShootTarget(AActor* TargetActor);
 
 protected:
-    virtual void BeginPlay() override;
+	virtual void BeginPlay() override;
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
-    UAIPerceptionComponent* AIPerceptionComp;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
+	UAIPerceptionComponent* AIPerceptionComp;
 
-    UPROPERTY()
-    UAISenseConfig_Sight* SightConfig;
+	UPROPERTY()
+	UAISenseConfig_Sight* SightConfig;
 
-    UPROPERTY()
-    UAISenseConfig_Hearing* HearingConfig;
+	UPROPERTY()
+	UAISenseConfig_Hearing* HearingConfig;
 
-    UFUNCTION()
-    void OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus);
+	UFUNCTION()
+	void OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus);
 
 private:
-  
-    UPROPERTY(EditDefaultsOnly, Category = "AI|Sight")
-    float VisualFOV = 90.0f;
+	UPROPERTY(EditDefaultsOnly, Category = "AI|Sight")
+	float VisualFOV = 90.0f;
 
-    UPROPERTY(EditDefaultsOnly, Category = "AI|Sight")
-    float SightRange = 1500.0f;
+	UPROPERTY(EditDefaultsOnly, Category = "AI|Sight")
+	float SightRange = 1500.0f;
 
-    UPROPERTY(EditDefaultsOnly, Category = "AI|Hearing")
-    float HearingRange = 150000.0f;
-    
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Combat", meta = (AllowPrivateAccess = "true"))
-    float FireRange = 1200.0f;
+	UPROPERTY(EditDefaultsOnly, Category = "AI|Hearing")
+	float HearingRange = 150000.0f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Combat", meta = (AllowPrivateAccess = "true"))
-    float FireAngleLimit = 30.0f;
-    
-    FTimerHandle DetectionTimerHandle;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Combat", meta = (AllowPrivateAccess = "true"))
+	float FireRange = 1200.0f;
 
-    UPROPERTY()
-    AActor* SuspectedTarget = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Combat", meta = (AllowPrivateAccess = "true"))
+	float FireAngleLimit = 30.0f;
 
-    void OnDetectionTimerExpired();
+	FTimerHandle DetectionTimerHandle;
+
+	UPROPERTY()
+	AActor* SuspectedTarget = nullptr;
+
+	void OnDetectionTimerExpired();
 };

@@ -17,10 +17,10 @@ UCLASS()
 class SPARTA_H_API AMyPlayerController : public APlayerController
 {
 	GENERATED_BODY()
-	
-	public:
+
+public:
 	AMyPlayerController();
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
 	UInputMappingContext* InputMappingContext;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
@@ -59,5 +59,4 @@ class SPARTA_H_API AMyPlayerController : public APlayerController
 
 protected:
 	virtual void BeginPlay() override;
-	
 };

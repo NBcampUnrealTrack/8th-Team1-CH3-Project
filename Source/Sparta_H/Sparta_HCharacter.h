@@ -70,6 +70,7 @@ class ASparta_HCharacter : public ACharacter
 	// 재장전 - Started 트리거(키 1회 입력). 무기 상태/탄창 가드는 Reload() 내부에서 처리
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInputAction> ReloadAction;
+
 public:
 	ASparta_HCharacter();
 
@@ -142,7 +143,7 @@ private:
 	void OnEquipPreviousPressed(const FInputActionValue& Value);
 	void OnFirePressed(const FInputActionValue& Value);
 	void OnReloadPressed(const FInputActionValue& Value);
-	
+
 	// BeginPlay에서 EquippedWeapons 각 DA로 무기 액터를 스폰해 GripPoint에 부착
 	void SpawnEquippedWeapons();
 

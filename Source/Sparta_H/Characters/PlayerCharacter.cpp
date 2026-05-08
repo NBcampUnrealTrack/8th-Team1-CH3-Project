@@ -72,32 +72,45 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	{
 		if (AMyPlayerController* PlayerController = Cast<AMyPlayerController>(GetController()))
 		{
-			EnhancedInputComponent->BindAction(PlayerController->MoveAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Move);
+			EnhancedInputComponent->BindAction(PlayerController->MoveAction, ETriggerEvent::Triggered, this,
+			                                   &APlayerCharacter::Move);
 
-			EnhancedInputComponent->BindAction(PlayerController->LookAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Look);
+			EnhancedInputComponent->BindAction(PlayerController->LookAction, ETriggerEvent::Triggered, this,
+			                                   &APlayerCharacter::Look);
 
-			EnhancedInputComponent->BindAction(PlayerController->JumpAction, ETriggerEvent::Started, this, &APlayerCharacter::Jump);
-			EnhancedInputComponent->BindAction(PlayerController->JumpAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopJump);
+			EnhancedInputComponent->BindAction(PlayerController->JumpAction, ETriggerEvent::Started, this,
+			                                   &APlayerCharacter::Jump);
+			EnhancedInputComponent->BindAction(PlayerController->JumpAction, ETriggerEvent::Completed, this,
+			                                   &APlayerCharacter::StopJump);
 
-			EnhancedInputComponent->BindAction(PlayerController->RunAction, ETriggerEvent::Started, this, &APlayerCharacter::StartRun);
-			EnhancedInputComponent->BindAction(PlayerController->RunAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopRun);
+			EnhancedInputComponent->BindAction(PlayerController->RunAction, ETriggerEvent::Started, this,
+			                                   &APlayerCharacter::StartRun);
+			EnhancedInputComponent->BindAction(PlayerController->RunAction, ETriggerEvent::Completed, this,
+			                                   &APlayerCharacter::StopRun);
 
-			EnhancedInputComponent->BindAction(PlayerController->HideAction, ETriggerEvent::Started, this, &APlayerCharacter::StartHide);
-			EnhancedInputComponent->BindAction(PlayerController->HideAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopHide);
+			EnhancedInputComponent->BindAction(PlayerController->HideAction, ETriggerEvent::Started, this,
+			                                   &APlayerCharacter::StartHide);
+			EnhancedInputComponent->BindAction(PlayerController->HideAction, ETriggerEvent::Completed, this,
+			                                   &APlayerCharacter::StopHide);
 
-			EnhancedInputComponent->BindAction(PlayerController->RollAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Roll);
+			EnhancedInputComponent->BindAction(PlayerController->RollAction, ETriggerEvent::Triggered, this,
+			                                   &APlayerCharacter::Roll);
 
-			EnhancedInputComponent->BindAction(PlayerController->LeanAction, ETriggerEvent::Started, this, &APlayerCharacter::StartLean);
-			EnhancedInputComponent->BindAction(PlayerController->LeanAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopLean);
+			EnhancedInputComponent->BindAction(PlayerController->LeanAction, ETriggerEvent::Started, this,
+			                                   &APlayerCharacter::StartLean);
+			EnhancedInputComponent->BindAction(PlayerController->LeanAction, ETriggerEvent::Completed, this,
+			                                   &APlayerCharacter::StopLean);
 
-			EnhancedInputComponent->BindAction(PlayerController->Interaction, ETriggerEvent::Triggered, this, &APlayerCharacter::Interaction);
+			EnhancedInputComponent->BindAction(PlayerController->Interaction, ETriggerEvent::Triggered, this,
+			                                   &APlayerCharacter::Interaction);
 
 			// 슬롯 장착은 Started에서 Value가 0으로 들어오는 이슈 때문에 Triggered로 바인딩하고 콜백에서 raw 값으로 가드
 			EnhancedInputComponent->BindAction(PlayerController->EquipSlotAction, ETriggerEvent::Triggered, this,
 			                                   &APlayerCharacter::OnEquipSlotPressed);
 			EnhancedInputComponent->BindAction(PlayerController->EquipNextWeaponAction, ETriggerEvent::Started, this,
 			                                   &APlayerCharacter::OnEquipNextPressed);
-			EnhancedInputComponent->BindAction(PlayerController->EquipPreviousWeaponAction, ETriggerEvent::Started, this,
+			EnhancedInputComponent->BindAction(PlayerController->EquipPreviousWeaponAction, ETriggerEvent::Started,
+			                                   this,
 			                                   &APlayerCharacter::OnEquipPreviousPressed);
 
 			// 발사 — Triggered로 바인딩하면 풀오토 무기까지 매 틱 호출되며, 무기 측 FireRate 쿨다운이 발사 간격을 가드
@@ -130,7 +143,6 @@ void APlayerCharacter::Move(const FInputActionValue& value)
 		AddMovementInput(RightDirection, MoveInput.Y);
 		AddMovementInput(ForwardDirection, MoveInput.X);
 	}
-
 }
 
 void APlayerCharacter::Look(const FInputActionValue& value)
@@ -172,32 +184,26 @@ void APlayerCharacter::StopRun(const FInputActionValue& value)
 
 void APlayerCharacter::StartHide(const FInputActionValue& value)
 {
-
 }
 
 void APlayerCharacter::StopHide(const FInputActionValue& value)
 {
-
 }
 
 void APlayerCharacter::Roll(const FInputActionValue& value)
 {
-
 }
 
 void APlayerCharacter::StartLean(const FInputActionValue& value)
 {
-
 }
 
 void APlayerCharacter::StopLean(const FInputActionValue& value)
 {
-
 }
 
 void APlayerCharacter::Interaction(const FInputActionValue& value)
 {
-
 }
 
 void APlayerCharacter::SpawnEquippedWeapons()

@@ -96,4 +96,3 @@ FText UH_HUDWidget::GetObjectiveText() const
 	}
 	return FText::GetEmpty();
 }
-

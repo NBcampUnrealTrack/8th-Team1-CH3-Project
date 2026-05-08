@@ -20,14 +20,14 @@ void ABaseEnemy::OnAlertLevelChanged(EAlertLevel NewLevel)
 }
 
 void ABaseEnemy::Die()
-{   
+{
 	if (bIsDead) return;
 	bIsDead = true;
 	OnDeath.Broadcast();
 }
 
 float ABaseEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
-	AController* EventInstigator, AActor* DamageCauser)
+                             AController* EventInstigator, AActor* DamageCauser)
 {
 	if (bIsDead) return 0.f;
 

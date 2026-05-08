@@ -154,16 +154,16 @@ void AWeaponBase::Reload()
 	{
 		return;
 	}
-	
+
 	// 이미 가득이거나 탄약 컴포넌트 없으면 무시
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().ClearTimer(FireCooldownTimerHandle);
 	}
-	
+
 	CurrentWeaponState = EWeaponState::Reloading;
 	bCanFire = false;
-	
+
 	// 재장전 몽타주 재생 — 풀바디 1인칭 구조라 ACharacter::GetMesh()를 사용
 	if (APlayerCharacter* Character = Cast<APlayerCharacter>(GetOwner()))
 	{
@@ -178,13 +178,13 @@ void AWeaponBase::Reload()
 			}
 		}
 	}
-	
+
 	// ReloadTime <= 0 이면 한 프레임만 차단 후 즉시 복귀
 	const float Duration = FMath::Max(WeaponData->ReloadTime, KINDA_SMALL_NUMBER);
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().SetTimer(ReloadTimerHandle, this, &AWeaponBase::OnReloadCompleted
-			, Duration, false);
+		                                  , Duration, false);
 	}
 }
 
@@ -205,7 +205,7 @@ void AWeaponBase::OnReloadCompleted()
 		AmmoComponent->ReloadAmmo();
 	}
 	bCanFire = true;
-	
+
 	// Reload도중 Swap이 들어왔으면 그 상태 보존 - Reloading 상태일 때만 Idel 복귀
 	if (CurrentWeaponState == EWeaponState::Reloading)
 	{

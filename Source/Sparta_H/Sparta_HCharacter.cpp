@@ -101,7 +101,7 @@ void ASparta_HCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		// 발사 — Triggered로 바인딩하면 풀오토 무기까지 매 틱 호출되며, 무기 측 FireRate 쿨다운이 발사 간격을 가드
 		EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Triggered, this,
 		                                   &ASparta_HCharacter::OnFirePressed);
-		
+
 		// 재장전 - Started로 R 1회 입력 처리.
 		EnhancedInputComponent->BindAction(ReloadAction, ETriggerEvent::Started, this,
 		                                   &ASparta_HCharacter::OnReloadPressed);

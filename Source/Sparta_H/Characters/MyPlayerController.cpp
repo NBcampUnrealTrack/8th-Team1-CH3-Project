@@ -3,6 +3,7 @@
 
 #include "MyPlayerController.h"
 #include "EnhancedInputSubsystems.h"
+
 AMyPlayerController::AMyPlayerController()
 {
 	InputMappingContext = nullptr; // 초기화 후 블루프린트에서 대입
@@ -24,10 +25,10 @@ AMyPlayerController::AMyPlayerController()
 void AMyPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
 	if (ULocalPlayer* LocalPlayer = GetLocalPlayer())
 	{
-		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = 
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem =
 			LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>())
 		{
 			if (InputMappingContext)

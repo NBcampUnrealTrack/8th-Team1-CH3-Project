@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "CombatTypes.generated.h"  
+#include "CombatTypes.generated.h"
 
 UENUM(BlueprintType)
 enum class EHitBone : uint8
@@ -19,7 +19,7 @@ enum class ECombatWeaponType : uint8
 	Rifle,
 	Pistol,
 	Knife,
-	Grenade, 
+	Grenade,
 	Rock,
 	None
 };
@@ -31,10 +31,10 @@ struct FCombatDamageInfo
 
 	UPROPERTY(EditAnywhere, Category = "Damage")
 	float BaseDamage = 50.0f;
-	
+
 	UPROPERTY(EditAnywhere, Category = "Damage")
 	float Distance = 0.0f;
-	
+
 	UPROPERTY(EditAnywhere, Category = "Damage")
 	ECombatWeaponType WeaponType = ECombatWeaponType::None;
 
