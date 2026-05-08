@@ -373,7 +373,7 @@ bool AEnemyCharacter::FireAtTarget(AActor* TargetActor)
 
     if (!CanShootTarget(TargetActor)) return false;
 
-    const float RandomRoll = FMath::FRandRange(0.f, 1.f);
+    const float RandomRoll = FMath::FRand();
     const bool bIsHit = RandomRoll <= HitAccuracy;
 
     if (!bIsHit) return false;
