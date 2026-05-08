@@ -17,6 +17,7 @@ struct FInputActionValue;
 
 class UWeaponDataAsset;
 class AWeaponBase;
+class UCombatManager;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
@@ -62,6 +63,13 @@ class ASparta_HCharacter : public ACharacter
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInputAction> EquipPreviousWeaponAction; // Bool (휠 업)
 
+	// 좌클릭 발사. 풀오토는 Triggered, 세미오토는 Started로 동작 — 무기 측 쿨다운으로 발사 간격 가드
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UInputAction> FireAction;
+
+	// 재장전 - Started 트리거(키 1회 입력). 무기 상태/탄창 가드는 Reload() 내부에서 처리
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UInputAction> ReloadAction;
 public:
 	ASparta_HCharacter();
 
@@ -83,6 +91,9 @@ public:
 	USkeletalMeshComponent* GetMesh1P() const { return Mesh1P; }
 	/** Returns FirstPersonCameraComponent subobject **/
 	UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
+
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	UCombatManager* GetCombatManager() const { return CombatManager; }
 
 	/** Weapon System **/
 	// 인덱스로 슬롯 무기 장착. 잘못된 인덱스/같은 무기/재장전·교체 중이면 무시
@@ -129,9 +140,14 @@ private:
 	void OnEquipSlotPressed(const FInputActionValue& Value);
 	void OnEquipNextPressed(const FInputActionValue& Value);
 	void OnEquipPreviousPressed(const FInputActionValue& Value);
-
+	void OnFirePressed(const FInputActionValue& Value);
+	void OnReloadPressed(const FInputActionValue& Value);
+	
 	// BeginPlay에서 EquippedWeapons 각 DA로 무기 액터를 스폰해 GripPoint에 부착
 	void SpawnEquippedWeapons();
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UCombatManager> CombatManager;
 
 	/** Weapon System **/
 	// 슬롯에 등록할 무기 DA. BP 디테일에서 인덱스 0~3에 직접 등록

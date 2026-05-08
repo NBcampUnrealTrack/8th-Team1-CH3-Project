@@ -1,7 +1,8 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Sparta_HCharacter.h"
-#include "Sparta_HProjectile.h"
+
+#include "CombatManager.h"
 #include "Animation/AnimInstance.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -40,6 +41,8 @@ ASparta_HCharacter::ASparta_HCharacter()
 
 	// BP에서 미지정 시 베이스 클래스로 폴백 (무기별 특수 로직이 없으면 그대로 사용)
 	WeaponBaseClass = AWeaponBase::StaticClass();
+
+	CombatManager = CreateDefaultSubobject<UCombatManager>(TEXT("CombatManager"));
 }
 
 //////////////////////////////////////////////////////////////////////////// Input
@@ -94,6 +97,14 @@ void ASparta_HCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		                                   &ASparta_HCharacter::OnEquipNextPressed);
 		EnhancedInputComponent->BindAction(EquipPreviousWeaponAction, ETriggerEvent::Started, this,
 		                                   &ASparta_HCharacter::OnEquipPreviousPressed);
+
+		// 발사 — Triggered로 바인딩하면 풀오토 무기까지 매 틱 호출되며, 무기 측 FireRate 쿨다운이 발사 간격을 가드
+		EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Triggered, this,
+		                                   &ASparta_HCharacter::OnFirePressed);
+		
+		// 재장전 - Started로 R 1회 입력 처리.
+		EnhancedInputComponent->BindAction(ReloadAction, ETriggerEvent::Started, this,
+		                                   &ASparta_HCharacter::OnReloadPressed);
 	}
 	else
 	{
@@ -231,6 +242,22 @@ void ASparta_HCharacter::OnEquipNextPressed(const FInputActionValue& /*Value*/)
 void ASparta_HCharacter::OnEquipPreviousPressed(const FInputActionValue& /*Value*/)
 {
 	EquipPreviousWeapon();
+}
+
+void ASparta_HCharacter::OnFirePressed(const FInputActionValue& /*Value*/)
+{
+	if (CurrentWeapon != nullptr)
+	{
+		CurrentWeapon->Fire();
+	}
+}
+
+void ASparta_HCharacter::OnReloadPressed(const FInputActionValue& Value)
+{
+	if (CurrentWeapon != nullptr)
+	{
+		CurrentWeapon->Reload();
+	}
 }
 
 UWeaponDataAsset* ASparta_HCharacter::GetCurrentWeaponData() const

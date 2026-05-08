@@ -9,7 +9,19 @@ public class Sparta_H : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "UMG", "Slate", "SlateCore" , "AIModule" });
+		PublicDependencyModuleNames.AddRange(new string[]
+		{
+			"Core",
+			"CoreUObject",
+			"Engine",
+			"InputCore",
+			"EnhancedInput", 
+			"UMG", 
+			"Slate", 
+			"SlateCore", 
+			"AIModule",
+			"Niagara"
+		});
 		PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "Systems/Public"));
 		PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "Systems/Private"));
 		PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "Enemy"));

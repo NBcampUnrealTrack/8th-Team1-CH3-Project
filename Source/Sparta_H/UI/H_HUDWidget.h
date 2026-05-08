@@ -5,7 +5,7 @@
 #include "../Weapon/WeaponTypes.h"
 #include "H_HUDWidget.generated.h"
 
-class ASparta_HCharacter;
+class APlayerCharacter;
 
 /**
  * WBP_MainHUD의 베이스가 되는 C++ 클래스입니다.
@@ -19,7 +19,7 @@ class SPARTA_H_API UH_HUDWidget : public UUserWidget
 public:
 	// 위젯에서 캐릭터 정보에 접근하기 위한 헬퍼 함수
 	UFUNCTION(BlueprintCallable, Category = "HUD")
-	ASparta_HCharacter* GetOwningCharacter() const;
+	APlayerCharacter* GetOwningCharacter() const;
 
 	/** 체력 및 스태미너 관련 **/
 	UFUNCTION(BlueprintCallable, Category = "HUD|Stats")
