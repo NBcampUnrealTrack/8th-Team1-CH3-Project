@@ -15,15 +15,20 @@ AMyPlayerController::AMyPlayerController()
 	LeanRightAction = nullptr;	
 	LeanLeftAction = nullptr;
 	Interaction = nullptr;
+	FireAction = nullptr;
+	ReloadAction = nullptr;
+	EquipSlotAction = nullptr;
+	EquipNextWeaponAction = nullptr;
+	EquipPreviousWeaponAction = nullptr;
 }
 
 void AMyPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
 	if (ULocalPlayer* LocalPlayer = GetLocalPlayer())
 	{
-		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = 
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem =
 			LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>())
 		{
 			if (InputMappingContext)

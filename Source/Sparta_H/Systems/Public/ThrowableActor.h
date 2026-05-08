@@ -10,8 +10,8 @@ UCLASS()
 class SPARTA_H_API AThrowableActor : public AActor
 {
 	GENERATED_BODY()
-	
-public:	
+
+public:
 	AThrowableActor();
 
 protected:
@@ -19,26 +19,24 @@ protected:
 
 	UFUNCTION()
 	void HandleOnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
-		UPrimitiveComponent* OtherComp, FVector NormalImpulse,
-		const FHitResult& Hit);
-	
+	                 UPrimitiveComponent* OtherComp, FVector NormalImpulse,
+	                 const FHitResult& Hit);
+
 public:
 	UPROPERTY(VisibleAnywhere)
 	UStaticMeshComponent* MeshComponent;
 
 	UPROPERTY(VisibleAnywhere)
 	UProjectileMovementComponent* ProjectileMovement;
-	
+
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	float ExplosionRadius = 600.f;
 
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	float ExplosionDamage = 150.f;
-	
+
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	ECombatWeaponType ThrowableType = ECombatWeaponType::Grenade;
-	
+
 	void Launch(const FVector& Direction);
-
-
 };

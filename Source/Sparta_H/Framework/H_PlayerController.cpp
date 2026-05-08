@@ -2,7 +2,6 @@
 #include "../UI/H_HUDWidget.h"
 #include "Blueprint/UserWidget.h"
 
-// Modified: ASparta_HPlayerController::BeginPlay에서 AH_PlayerController::BeginPlay로 변경
 void AH_PlayerController::BeginPlay()
 {
 	Super::BeginPlay();
