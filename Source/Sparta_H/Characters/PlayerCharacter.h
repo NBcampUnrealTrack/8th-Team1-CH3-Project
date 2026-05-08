@@ -8,6 +8,15 @@
 
 struct FInputActionValue;
 
+UENUM(BlueprintType)
+enum class EPlayerMovementState : uint8
+{
+	Idle,
+	Crouch,
+	Walk,
+	Sprint
+};
+
 UCLASS()
 class SPARTA_H_API APlayerCharacter : public ACharacter
 {
@@ -22,17 +31,27 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components")
 	class UCameraComponent* Camera;
 	
-
-protected:
 	float MoveSpeed;
 	float SprintSpeedMultiplier;
 	float SprintSpeed;
 	
+	// 총기 착용 여부
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Equipment")
-	bool IsEquipped = false;
+	bool bIsEquipped = false;
+	
+	// 구르기 관련 , 일회성 동작이므로 몽타주 사용
+	bool bIsRolling = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	UAnimMontage* DiveRollMontage;
+	UFUNCTION()
+	void OnRollMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+	
+	//기울이기 관련
+	UPROPERTY(BlueprintReadOnly, Category = "Movement")
+	float LeanAmount =0.f;
 	
 	
-public:	
+	
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 	
@@ -40,7 +59,7 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 	// Called to bind functionality to input
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	
 	UFUNCTION()
 	void Move(const FInputActionValue& value);
@@ -61,7 +80,9 @@ public:
 	UFUNCTION()
 	void Roll(const FInputActionValue& value);
 	UFUNCTION()
-	void StartLean(const FInputActionValue& value);
+	void StartLeanRight(const FInputActionValue& value);
+	UFUNCTION()
+	void StartLeanLeft(const FInputActionValue& value);
 	UFUNCTION()
 	void StopLean(const FInputActionValue& value);
 	UFUNCTION()

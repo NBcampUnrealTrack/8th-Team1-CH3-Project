@@ -12,7 +12,8 @@ AMyPlayerController::AMyPlayerController()
 	RunAction = nullptr;
 	HideAction = nullptr;
 	RollAction = nullptr;
-	LeanAction = nullptr;	
+	LeanRightAction = nullptr;	
+	LeanLeftAction = nullptr;
 	Interaction = nullptr;
 }
 
