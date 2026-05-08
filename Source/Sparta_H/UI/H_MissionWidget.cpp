@@ -1,9 +1,9 @@
 #include "H_MissionWidget.h"
 #include "Components/TextBlock.h"
 #include "Components/CheckBox.h"
-#include "../Sparta_HCharacter.h"
+#include "../Characters/PlayerCharacter.h"
 
-void UH_MissionWidget::UpdateFromCharacter(ASparta_HCharacter* Character)
+void UH_MissionWidget::UpdateFromCharacter(APlayerCharacter* Character)
 {
 	if (!Character) return;
 

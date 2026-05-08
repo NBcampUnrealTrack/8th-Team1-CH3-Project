@@ -1,12 +1,12 @@
 #include "H_WeaponWidget.h"
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
-#include "../Sparta_HCharacter.h"
+#include "../Characters/PlayerCharacter.h"
 #include "../Weapon/WeaponBase.h"
 #include "../Weapon/AmmoComponent.h"
 #include "../Weapon/WeaponDataAsset.h"
 
-void UH_WeaponWidget::UpdateFromCharacter(ASparta_HCharacter* Character)
+void UH_WeaponWidget::UpdateFromCharacter(APlayerCharacter* Character)
 {
 	if (!Character) return;
 

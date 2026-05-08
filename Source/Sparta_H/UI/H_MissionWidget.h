@@ -11,7 +11,7 @@ class SPARTA_H_API UH_MissionWidget : public UUserWidget
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "UI|Mission")
-	void UpdateFromCharacter(class ASparta_HCharacter* Character);
+	void UpdateFromCharacter(class APlayerCharacter* Character);
 
 	UFUNCTION(BlueprintCallable, Category = "UI|Mission")
 	void UpdateMissionGoal(const FString& GoalDescription, bool bIsCompleted);

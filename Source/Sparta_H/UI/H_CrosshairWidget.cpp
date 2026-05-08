@@ -1,9 +1,9 @@
 #include "H_CrosshairWidget.h"
-#include "../Sparta_HCharacter.h"
+#include "../Characters/PlayerCharacter.h"
 
 ECrosshairState UH_CrosshairWidget::GetCurrentCrosshairState() const
 {
-	if (ASparta_HCharacter* Character = Cast<ASparta_HCharacter>(GetOwningPlayerPawn()))
+	if (APlayerCharacter* Character = Cast<APlayerCharacter>(GetOwningPlayerPawn()))
 	{
 		return Character->CurrentCrosshairState;
 	}
@@ -12,7 +12,7 @@ ECrosshairState UH_CrosshairWidget::GetCurrentCrosshairState() const
 
 void UH_CrosshairWidget::SetCrosshairState(ECrosshairState NewState)
 {
-	if (ASparta_HCharacter* Character = Cast<ASparta_HCharacter>(GetOwningPlayerPawn()))
+	if (APlayerCharacter* Character = Cast<APlayerCharacter>(GetOwningPlayerPawn()))
 	{
 		Character->CurrentCrosshairState = NewState;
 	}
