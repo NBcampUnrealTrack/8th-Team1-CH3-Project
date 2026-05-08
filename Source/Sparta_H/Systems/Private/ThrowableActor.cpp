@@ -1,6 +1,7 @@
 #include "ThrowableActor.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/OverlapResult.h"
+#include "Perception/AISense_Hearing.h"
 
 AThrowableActor::AThrowableActor()
 {
@@ -8,7 +9,7 @@ AThrowableActor::AThrowableActor()
 
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
 	RootComponent = MeshComponent;
-	MeshComponent->SetNotifyRigidBodyCollision(true); 
+	MeshComponent->SetNotifyRigidBodyCollision(true);
 
 	ProjectileMovement = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovement"));
 	ProjectileMovement->InitialSpeed = 1500.f;
@@ -24,7 +25,7 @@ void AThrowableActor::BeginPlay()
 }
 
 void AThrowableActor::HandleOnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+                                  UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
 	if (ThrowableType == ECombatWeaponType::Grenade)
 	{
@@ -48,10 +49,10 @@ void AThrowableActor::HandleOnHit(UPrimitiveComponent* HitComponent, AActor* Oth
 			const float Distance = FVector::Dist(GetActorLocation(), Target->GetActorLocation()) / 100.f;
 
 			float Multiplier = 0.f;
-			if      (Distance <= 2.f) Multiplier = 1.0f;
+			if (Distance <= 2.f) Multiplier = 1.0f;
 			else if (Distance <= 4.f) Multiplier = 0.7f;
 			else if (Distance <= 6.f) Multiplier = 0.5f;
-			else                      Multiplier = 0.f;
+			else Multiplier = 0.f;
 
 			if (Multiplier <= 0.f) continue;
 
@@ -61,12 +62,21 @@ void AThrowableActor::HandleOnHit(UPrimitiveComponent* HitComponent, AActor* Oth
 	}
 	else if (ThrowableType == ECombatWeaponType::Rock)
 	{
-		if (IsValid(OtherActor))
+		if (IsValid(OtherActor) && OtherActor->ActorHasTag("Enemy"))
 		{
 			UGameplayStatics::ApplyDamage(
 				OtherActor, 1.f, nullptr, this, nullptr
 			);
 		}
+
+		UAISense_Hearing::ReportNoiseEvent(
+			GetWorld(),
+			GetActorLocation(),
+			1.f,
+			nullptr,
+			500.f, // 5m
+			FName("Rock")
+		);
 	}
 
 	Destroy();

@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Sparta_HPickUpComponent.h"
+#include "GameFramework/Character.h"
 
 USparta_HPickUpComponent::USparta_HPickUpComponent()
 {
@@ -16,11 +17,13 @@ void USparta_HPickUpComponent::BeginPlay()
 	OnComponentBeginOverlap.AddDynamic(this, &USparta_HPickUpComponent::OnSphereBeginOverlap);
 }
 
-void USparta_HPickUpComponent::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+void USparta_HPickUpComponent::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+                                                    UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
+                                                    bool bFromSweep, const FHitResult& SweepResult)
 {
-	// Checking if it is a First Person Character overlapping
-	ASparta_HCharacter* Character = Cast<ASparta_HCharacter>(OtherActor);
-	if(Character != nullptr)
+	// Checking if it is a Player Character overlapping
+	APlayerCharacter* Character = Cast<APlayerCharacter>(OtherActor);
+	if (Character != nullptr)
 	{
 		// Notify that the actor is being picked up
 		OnPickUp.Broadcast(Character);

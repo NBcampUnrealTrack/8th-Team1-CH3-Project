@@ -5,7 +5,7 @@
 #include "../Weapon/WeaponTypes.h"
 #include "H_HUDWidget.generated.h"
 
-class ASparta_HCharacter;
+class APlayerCharacter;
 
 UCLASS()
 class SPARTA_H_API UH_HUDWidget : public UUserWidget
@@ -31,7 +31,7 @@ protected:
 	class UH_MissionWidget* MissionUI;
 	
 	UFUNCTION(BlueprintCallable, Category = "HUD")
-	ASparta_HCharacter* GetOwningCharacter() const;
+	APlayerCharacter* GetOwningCharacter() const;
 
 
 };

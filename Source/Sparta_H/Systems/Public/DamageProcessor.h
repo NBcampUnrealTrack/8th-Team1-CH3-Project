@@ -12,7 +12,7 @@ UCLASS()
 class SPARTA_H_API UDamageProcessor : public UObject
 {
 	GENERATED_BODY()
-	
+
 public:
 	UPROPERTY(EditAnywhere, Category = "Damage")
 	float BoneHead = 3.0f;
@@ -26,12 +26,12 @@ public:
 	float CalculateFinalDamage(const FCombatDamageInfo& Info);
 	float GetDistanceMultiplier(float Distance, ECombatWeaponType WeaponType);
 	float GetBoneMultiplier(EHitBone Bone);
-	
+
 private:
-	static constexpr float GUN_RANGE_T1 = 5000.f;   // 50m
-	static constexpr float GUN_RANGE_T2 = 10000.f;  // 100m
-	static constexpr float GUN_RANGE_T3 = 15000.f;  // 150m
-	static constexpr float GUN_RANGE_T4 = 20000.f;  // 200m
+	static constexpr float GUN_RANGE_T1 = 5000.f; // 50m
+	static constexpr float GUN_RANGE_T2 = 10000.f; // 100m
+	static constexpr float GUN_RANGE_T3 = 15000.f; // 150m
+	static constexpr float GUN_RANGE_T4 = 20000.f; // 200m
 
 	static constexpr float GUN_MULT_T1 = 1.0f;
 	static constexpr float GUN_MULT_T2 = 0.7f;

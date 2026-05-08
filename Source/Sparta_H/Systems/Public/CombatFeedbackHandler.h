@@ -7,7 +7,7 @@
 // 처치 시 호출될 델리게이트
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnKillDelegate);
 
-UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
+UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class SPARTA_H_API UCombatFeedbackHandler : public UActorComponent
 {
 	GENERATED_BODY()

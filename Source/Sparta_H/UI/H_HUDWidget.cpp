@@ -4,9 +4,9 @@
 #include "H_WeaponWidget.h"
 #include "H_MissionWidget.h"
 
-ASparta_HCharacter* UH_HUDWidget::GetOwningCharacter() const
+APlayerCharacter* UH_HUDWidget::GetOwningCharacter() const
 {
-	return Cast<ASparta_HCharacter>(GetOwningPlayerPawn());
+	return Cast<APlayerCharacter>(GetOwningPlayerPawn());
 }
 
 void UH_HUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
