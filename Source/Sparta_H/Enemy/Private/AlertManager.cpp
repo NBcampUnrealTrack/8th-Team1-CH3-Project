@@ -12,6 +12,7 @@ AAlertManager::AAlertManager()
 void AAlertManager::BeginPlay()
 {
     Super::BeginPlay();
+    BombAlertRadius = 3000.f;
 
     UE_LOG(LogTemp, Log, TEXT("AlertManager 초기화 완료 - 현재 상태: Off (모든 적 Idle 스폰)"));
 }
@@ -39,16 +40,15 @@ AAlertManager* AAlertManager::GetInstance(UObject* WorldContextObject)
 // ---------------------------------------------------------------
 // 경보 활성화 (폭탄 설치 시 MissionSystem에서 호출)
 // ---------------------------------------------------------------
-void AAlertManager::ActivateAlert()
+void AAlertManager::ActivateAlert(FVector BombLocation)
 {
     if (bIsAlertActive) return;
 
     bIsAlertActive = true;
 
-    UE_LOG(LogTemp, Warning, TEXT("AlertManager: 경보 활성화! 전체 적을 Combat으로 강제 전환합니다."));
+    UE_LOG(LogTemp, Warning, TEXT("AlertManager: 경보 활성화!"));
 
-    // 현재 레벨의 모든 적을 즉시 Combat으로 전환
-    ForceAlertLevelToAllEnemies(EAlertLevel::Combat);
+    ForceAlertLevelToNearbyEnemies(EAlertLevel::Lost, BombLocation, BombAlertRadius);
 
     // UI / 사운드 연동 브로드캐스트
     OnAlertActivated.Broadcast();
@@ -65,9 +65,9 @@ EAlertLevel AAlertManager::GetSpawnAlertLevel() const
 }
 
 // ---------------------------------------------------------------
-// 월드 내 모든 적 강제 전환
+// 폭탄 설치 지점 기준 반경 내 적만 강제 전환
 // ---------------------------------------------------------------
-void AAlertManager::ForceAlertLevelToAllEnemies(EAlertLevel NewLevel)
+void AAlertManager::ForceAlertLevelToNearbyEnemies(EAlertLevel NewLevel, FVector Origin, float Radius)
 {
     UWorld* World = GetWorld();
     if (!World) return;
@@ -82,22 +82,24 @@ void AAlertManager::ForceAlertLevelToAllEnemies(EAlertLevel NewLevel)
         AEnemyCharacter* Enemy = Cast<AEnemyCharacter>(Actor);
         if (!Enemy || Enemy->IsDead()) continue;
 
+        // 거리 체크 - 반경 밖이면 스킵
+        float Distance = FVector::Dist(Origin, Enemy->GetActorLocation());
+        if (Distance > Radius) continue;
+
         Enemy->OnAlertLevelChanged(NewLevel);
 
-        // 블랙보드 TargetActor 없이 LastKnownLocation만 초기화
-        // (플레이어 위치는 각 적이 직접 탐지해야 함)
         if (AAIController* AIC = Cast<AAIController>(Enemy->GetController()))
         {
             if (UBlackboardComponent* BB = AIC->GetBlackboardComponent())
             {
                 BB->ClearValue(TEXT("TargetActor"));
-                BB->ClearValue(TEXT("LastKnownLocation"));
+                BB->SetValueAsVector(TEXT("LastKnownLocation"), Origin);
             }
         }
 
         Count++;
     }
 
-    UE_LOG(LogTemp, Warning, TEXT("AlertManager: %d명의 적을 AlertLevel %d로 강제 전환 완료"),
-        Count, static_cast<int32>(NewLevel));
+    UE_LOG(LogTemp, Warning, TEXT("AlertManager: 반경 %.0f 내 %d명의 적을 AlertLevel %d로 전환"),
+        Radius, Count, static_cast<int32>(NewLevel));
 }

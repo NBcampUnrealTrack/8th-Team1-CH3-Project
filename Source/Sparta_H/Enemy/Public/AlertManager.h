@@ -18,11 +18,11 @@ public:
 
 	// ---------------------------------------------------------------
 	// 폭탄 설치 / MissionSystem에서 호출
-	// 현재 레벨의 모든 적을 즉시 Combat으로 강제 전환
+	// 폭탄 설치 지점 기준 BOMB_ALERT_RADIUS 반경 내 적을 Lost로 강제 전환
 	// 이후 스폰되는 적은 Lost 상태로 시작
 	// ---------------------------------------------------------------
 	UFUNCTION(BlueprintCallable, Category = "Alert")
-	void ActivateAlert();
+	void ActivateAlert(FVector BombLocation);
 
 	// ---------------------------------------------------------------
 	// 스폰 시 초기 AlertLevel 반환
@@ -35,22 +35,27 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Alert")
 	bool IsAlertActive() const { return bIsAlertActive; }
 
+	// 월드에서 AlertManager 인스턴스 검색 (싱글턴 접근용)
+	UFUNCTION(BlueprintCallable, Category = "Alert", meta = (WorldContext = "WorldContextObject"))
+	static AAlertManager* GetInstance(UObject* WorldContextObject);
+	
 	// 경보 활성화 이벤트 (UI / 사운드 연동)
 	UPROPERTY(BlueprintAssignable, Category = "Alert")
 	FOnAlertActivatedDelegate OnAlertActivated;
 
-	// 월드에서 AlertManager 인스턴스 검색 (싱글턴 접근용)
-	UFUNCTION(BlueprintCallable, Category = "Alert", meta = (WorldContext = "WorldContextObject"))
-	static AAlertManager* GetInstance(UObject* WorldContextObject);
+	// 폭탄 설치 지점 기준 고정 반경 (추후 조정)
+	UPROPERTY(EditAnywhere,Category = "Alert")
+	float BombAlertRadius;
 
 protected:
 	virtual void BeginPlay() override;
 
 private:
+
 	// 경보 활성화 여부
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Alert", meta = (AllowPrivateAccess = "true"))
 	bool bIsAlertActive = false;
 
-	// 월드의 모든 적을 지정 AlertLevel로 강제 전환
-	void ForceAlertLevelToAllEnemies(EAlertLevel NewLevel);
+	// 폭탄 설치 지점 기준 반경 내 적만 강제 전환
+	void ForceAlertLevelToNearbyEnemies(EAlertLevel NewLevel, FVector Origin, float Radius);
 };

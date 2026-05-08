@@ -10,6 +10,7 @@
 #include "TimerManager.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/WidgetComponent.h"
+#include "BlackboardKeys.h"
 
 AEnemyCharacter::AEnemyCharacter()
 {
@@ -20,10 +21,10 @@ AEnemyCharacter::AEnemyCharacter()
 
     // 머리 위 아이콘 위젯 컴포넌트 생성
     AlertIconWidgetComp = CreateDefaultSubobject<UWidgetComponent>(TEXT("AlertIconWidget"));
-    AlertIconWidgetComp->SetupAttachment(GetMesh(), TEXT("head"));   // head 소켓에 부착
-    AlertIconWidgetComp->SetWidgetSpace(EWidgetSpace::Screen);        // 항상 카메라를 향하도록
+    AlertIconWidgetComp->SetupAttachment(GetMesh(), TEXT("head"));
+    AlertIconWidgetComp->SetWidgetSpace(EWidgetSpace::Screen);
     AlertIconWidgetComp->SetDrawSize(FVector2D(64.f, 64.f));
-    AlertIconWidgetComp->SetVisibility(false);                        // 초기엔 숨김
+    AlertIconWidgetComp->SetVisibility(false);
 
     if (SightConfig)
     {
@@ -61,13 +62,7 @@ void AEnemyCharacter::BeginPlay()
 void AEnemyCharacter::InitializeStats()
 {
     Super::InitializeStats();
-
-    switch (EnemyType)
-    {
-    case EEnemyType::Normal: WeaponDamage = 15.0f; break;
-    case EEnemyType::Elite:  WeaponDamage = 20.0f; break;
-    default: break;
-    }
+    WeaponDamage = Damage;
 }
 
 // ---------------------------------------------------------------
@@ -77,14 +72,17 @@ void AEnemyCharacter::UpdateAlertIcon(EAlertLevel NewLevel)
 {
     if (!AlertIconWidgetComp) return;
 
-    // Idle이면 아이콘 숨김
-    if (NewLevel == EAlertLevel::Idle || NewLevel == EAlertLevel::CCTV)
+    // Idle / CCTV / Lost : 즉시 숨김 + 타이머 취소
+    if (NewLevel == EAlertLevel::Idle   ||
+        NewLevel == EAlertLevel::CCTV   ||
+        NewLevel == EAlertLevel::Lost)
     {
+        GetWorldTimerManager().ClearTimer(IconHideTimerHandle);
         AlertIconWidgetComp->SetVisibility(false);
         return;
     }
 
-    // 위젯이 할당돼 있으면 상태 전달
+    // Suspicious(??) / Combat(!!) : 아이콘 표시 후 IconHideDelay초 뒤 숨김
     UEnemyAlertWidget* AlertWidget = Cast<UEnemyAlertWidget>(AlertIconWidgetComp->GetUserWidgetObject());
     if (AlertWidget)
     {
@@ -92,6 +90,20 @@ void AEnemyCharacter::UpdateAlertIcon(EAlertLevel NewLevel)
     }
 
     AlertIconWidgetComp->SetVisibility(true);
+
+    GetWorldTimerManager().SetTimer(
+        IconHideTimerHandle, this,
+        &AEnemyCharacter::HideAlertIcon,
+        IconHideDelay, false
+    );
+}
+
+void AEnemyCharacter::HideAlertIcon()
+{
+    if (AlertIconWidgetComp)
+    {
+        AlertIconWidgetComp->SetVisibility(false);
+    }
 }
 
 // ---------------------------------------------------------------
@@ -133,7 +145,6 @@ void AEnemyCharacter::OnAlertLevelChanged(EAlertLevel NewLevel)
 
     Super::OnAlertLevelChanged(NewLevel);
 
-    // Perception 수치 갱신
     switch (NewLevel)
     {
     case EAlertLevel::Idle:       ApplyPerceptionStats(IdleStats);       break;
@@ -143,16 +154,14 @@ void AEnemyCharacter::OnAlertLevelChanged(EAlertLevel NewLevel)
     default: break;
     }
 
-    // 머리 위 아이콘 갱신
     UpdateAlertIcon(NewLevel);
 
-    // 블랙보드 타겟 액터 참조
     AActor* TargetPlayer = nullptr;
     if (AAIController* AIC = Cast<AAIController>(GetController()))
     {
         if (UBlackboardComponent* BB = AIC->GetBlackboardComponent())
         {
-            TargetPlayer = Cast<AActor>(BB->GetValueAsObject(TEXT("TargetActor")));
+            TargetPlayer = Cast<AActor>(BB->GetValueAsObject(BBKeys::TARGET_ACTOR));
         }
     }
 
@@ -228,11 +237,11 @@ void AEnemyCharacter::AlertNearbyEnemies(AActor* TargetPlayer, float AlertRange,
         if (!BB) continue;
 
         NearbyEnemy->OnAlertLevelChanged(NewLevel);
-        BB->SetValueAsVector(TEXT("LastKnownLocation"), TargetPlayer->GetActorLocation());
+        BB->SetValueAsVector(BBKeys::LAST_KNOWN_LOCATION, TargetPlayer->GetActorLocation());
 
         if (NewLevel == EAlertLevel::Combat)
         {
-            BB->SetValueAsObject(TEXT("TargetActor"), TargetPlayer);
+            BB->SetValueAsObject(BBKeys::TARGET_ACTOR, TargetPlayer);
         }
     }
 }
@@ -250,8 +259,8 @@ void AEnemyCharacter::OnSuspiciousRevertTimerExpired()
     {
         if (UBlackboardComponent* BB = AIC->GetBlackboardComponent())
         {
-            BB->ClearValue(TEXT("LastKnownLocation"));
-            BB->ClearValue(TEXT("TargetActor"));
+            BB->ClearValue(BBKeys::LAST_KNOWN_LOCATION);
+            BB->ClearValue(BBKeys::TARGET_ACTOR);
         }
     }
 }
@@ -266,8 +275,8 @@ void AEnemyCharacter::OnLostRevertTimerExpired()
     {
         if (UBlackboardComponent* BB = AIC->GetBlackboardComponent())
         {
-            BB->ClearValue(TEXT("LastKnownLocation"));
-            BB->ClearValue(TEXT("TargetActor"));
+            BB->ClearValue(BBKeys::LAST_KNOWN_LOCATION);
+            BB->ClearValue(BBKeys::TARGET_ACTOR);
         }
     }
 }
@@ -296,7 +305,7 @@ void AEnemyCharacter::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
                     &AEnemyCharacter::OnDetectionTimerExpired,
                     1.0f, false
                 );
-                BB->SetValueAsVector(TEXT("LastKnownLocation"), Stimulus.StimulusLocation);
+                BB->SetValueAsVector(BBKeys::LAST_KNOWN_LOCATION, Stimulus.StimulusLocation);
             }
         }
         else
@@ -318,7 +327,7 @@ void AEnemyCharacter::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
         if (CurrentAlertLevel < EAlertLevel::Suspicious && Stimulus.WasSuccessfullySensed())
         {
             OnAlertLevelChanged(EAlertLevel::Suspicious);
-            BB->SetValueAsVector(TEXT("LastKnownLocation"), Stimulus.StimulusLocation);
+            BB->SetValueAsVector(BBKeys::LAST_KNOWN_LOCATION, Stimulus.StimulusLocation);
         }
     }
 }
@@ -333,7 +342,7 @@ void AEnemyCharacter::OnDetectionTimerExpired()
     if (!BB) return;
 
     OnAlertLevelChanged(EAlertLevel::Combat);
-    BB->SetValueAsObject(TEXT("TargetActor"), SuspectedTarget);
+    BB->SetValueAsObject(BBKeys::TARGET_ACTOR, SuspectedTarget);
     SuspectedTarget = nullptr;
 }
 
@@ -377,7 +386,7 @@ bool AEnemyCharacter::FireAtTarget(AActor* TargetActor)
 
     if (!CanShootTarget(TargetActor)) return false;
 
-    const float RandomRoll = FMath::FRandRange(0.f, 1.f);
+    const float RandomRoll = FMath::FRand();
     const bool bIsHit = RandomRoll <= HitAccuracy;
 
     if (!bIsHit) return false;

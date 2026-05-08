@@ -117,8 +117,17 @@ private:
     void AlertNearbyEnemies(AActor* TargetPlayer, float AlertRange, EAlertLevel NewLevel);
     void ApplyPerceptionStats(const FAlertLevelStats& Stats);
 
-    // 머리 위 아이콘 갱신
+    // ---------------------------------------------------------------
+    // 머리 위 아이콘
+    // ---------------------------------------------------------------
     void UpdateAlertIcon(EAlertLevel NewLevel);
+    void HideAlertIcon();
+
+    // ?? / !! 표시 후 자동 숨김 딜레이 (에디터에서 조정 가능)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|UI", meta = (AllowPrivateAccess = "true"))
+    float IconHideDelay = 3.0f;
+
+    FTimerHandle IconHideTimerHandle;
 
     // ---------------------------------------------------------------
     // 자동 복귀 타이머
