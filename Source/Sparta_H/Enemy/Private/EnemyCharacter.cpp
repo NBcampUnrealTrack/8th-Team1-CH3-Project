@@ -10,6 +10,7 @@
 #include "TimerManager.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/WidgetComponent.h"
+#include "BlackboardKeys.h"
 
 AEnemyCharacter::AEnemyCharacter()
 {
@@ -224,11 +225,11 @@ void AEnemyCharacter::AlertNearbyEnemies(AActor* TargetPlayer, float AlertRange,
         if (!BB) continue;
 
         NearbyEnemy->OnAlertLevelChanged(NewLevel);
-        BB->SetValueAsVector(TEXT("LastKnownLocation"), TargetPlayer->GetActorLocation());
+        BB->SetValueAsVector(BBKeys::LAST_KNOWN_LOCATION, TargetPlayer->GetActorLocation());
 
         if (NewLevel == EAlertLevel::Combat)
         {
-            BB->SetValueAsObject(TEXT("TargetActor"), TargetPlayer);
+            BB->SetValueAsObject(BBKeys::TARGET_ACTOR, TargetPlayer);
         }
     }
 }
@@ -246,8 +247,8 @@ void AEnemyCharacter::OnSuspiciousRevertTimerExpired()
     {
         if (UBlackboardComponent* BB = AIC->GetBlackboardComponent())
         {
-            BB->ClearValue(TEXT("LastKnownLocation"));
-            BB->ClearValue(TEXT("TargetActor"));
+            BB->ClearValue(BBKeys::LAST_KNOWN_LOCATION);
+            BB->ClearValue(BBKeys::TARGET_ACTOR);
         }
     }
 }
