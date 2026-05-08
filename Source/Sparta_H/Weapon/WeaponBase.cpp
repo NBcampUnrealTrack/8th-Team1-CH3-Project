@@ -154,13 +154,19 @@ void AWeaponBase::Reload()
 	{
 		return;
 	}
-
+	
 	// 이미 가득이거나 탄약 컴포넌트 없으면 무시
+	if (AmmoComponent == nullptr || AmmoComponent->IsFull())
+	{
+		return;
+	}
+	
+	// 발사 쿨다운 진행 중이면 정리하고 재장전 시작
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().ClearTimer(FireCooldownTimerHandle);
 	}
-
+	
 	CurrentWeaponState = EWeaponState::Reloading;
 	bCanFire = false;
 
@@ -200,7 +206,7 @@ void AWeaponBase::OnFireCooldownEnded()
 
 void AWeaponBase::OnReloadCompleted()
 {
-	if (AmmoComponent == nullptr)
+	if (AmmoComponent != nullptr)
 	{
 		AmmoComponent->ReloadAmmo();
 	}
