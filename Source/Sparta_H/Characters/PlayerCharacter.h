@@ -4,9 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Sparta_H/Weapon/WeaponTypes.h"
 #include "PlayerCharacter.generated.h"
 
 struct FInputActionValue;
+
 
 UCLASS()
 class SPARTA_H_API APlayerCharacter : public ACharacter
@@ -41,7 +43,6 @@ public:
 	//기울이기 관련
 	UPROPERTY(BlueprintReadOnly, Category = "Movement")
 	float LeanAmount =0.f;
-	
 	
 	
 	// Called when the game starts or when spawned

@@ -15,6 +15,7 @@ AMyPlayerController::AMyPlayerController()
 	LeanRightAction = nullptr;	
 	LeanLeftAction = nullptr;
 	Interaction = nullptr;
+	
 	FireAction = nullptr;
 	ReloadAction = nullptr;
 	EquipSlotAction = nullptr;

@@ -5,7 +5,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "EnhancedInputComponent.h"
-#include "MyPlayerController.h"
+#include "Sparta_H/Framework/H_PlayerController.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Engine/World.h"
 #include "../Systems/Public/CombatManager.h"
@@ -73,7 +73,7 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
 	{
-		if (AMyPlayerController* PlayerController = Cast<AMyPlayerController>(GetController()))
+		if (AH_PlayerController* PlayerController = Cast<AH_PlayerController>(GetController()))
 		{
 			EnhancedInputComponent->BindAction(PlayerController->MoveAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Move);
 			
@@ -101,21 +101,15 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 			EnhancedInputComponent->BindAction(PlayerController->Interaction, ETriggerEvent::Triggered, this, &APlayerCharacter::Interaction);
 			
 			// 슬롯 장착은 Started에서 Value가 0으로 들어오는 이슈 때문에 Triggered로 바인딩하고 콜백에서 raw 값으로 가드
-			EnhancedInputComponent->BindAction(PlayerController->EquipSlotAction, ETriggerEvent::Triggered, this,
-											   &APlayerCharacter::OnEquipSlotPressed);
-			EnhancedInputComponent->BindAction(PlayerController->EquipNextWeaponAction, ETriggerEvent::Started, this,
-											   &APlayerCharacter::OnEquipNextPressed);
-			EnhancedInputComponent->BindAction(PlayerController->EquipPreviousWeaponAction, ETriggerEvent::Started,
-											   this,
-											   &APlayerCharacter::OnEquipPreviousPressed);
+			EnhancedInputComponent->BindAction(PlayerController->EquipSlotAction, ETriggerEvent::Triggered, this,&APlayerCharacter::OnEquipSlotPressed);
+			EnhancedInputComponent->BindAction(PlayerController->EquipNextWeaponAction, ETriggerEvent::Started, this,&APlayerCharacter::OnEquipNextPressed);
+			EnhancedInputComponent->BindAction(PlayerController->EquipPreviousWeaponAction, ETriggerEvent::Started,this,&APlayerCharacter::OnEquipPreviousPressed);
 
 			// 발사 — Triggered로 바인딩하면 풀오토 무기까지 매 틱 호출되며, 무기 측 FireRate 쿨다운이 발사 간격을 가드
-			EnhancedInputComponent->BindAction(PlayerController->FireAction, ETriggerEvent::Triggered, this,
-											   &APlayerCharacter::OnFirePressed);
+			EnhancedInputComponent->BindAction(PlayerController->FireAction, ETriggerEvent::Triggered, this,&APlayerCharacter::OnFirePressed);
 
 			// 재장전 — Started로 R 1회 입력 처리. 무기 상태/탄창 가드는 Reload() 내부에서
-			EnhancedInputComponent->BindAction(PlayerController->ReloadAction, ETriggerEvent::Started, this,
-											   &APlayerCharacter::OnReloadPressed);
+			EnhancedInputComponent->BindAction(PlayerController->ReloadAction, ETriggerEvent::Started, this,&APlayerCharacter::OnReloadPressed);
 		}
 	}
 }
@@ -241,6 +235,7 @@ void APlayerCharacter::StopLean(const FInputActionValue& value)
 
 void APlayerCharacter::Interaction(const FInputActionValue& value)
 {
+	
 }
 
 void APlayerCharacter::SpawnEquippedWeapons()
