@@ -11,6 +11,7 @@ class USkeletalMesh;
 class UNiagaraSystem;
 class UTexture2D;
 class USoundBase;
+class AThrowableActor;
 
 // 무기 한 종(개체가 아닌 종류)의 정적 스펙을 담는 DA.
 // 런타임 상태(현재 탄약, 상태 등)는 캐릭터/컴포넌트에서 관리
@@ -73,6 +74,10 @@ public:
 	// 발사 시 AI 어그로를 끌어야 하는 무기인지 (소음무기 등은 false)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Behavior")
 	bool bShouldTriggerAIAggro = false;
+	
+	// 투척 무기 전용 - FireMode가 Throwble인 무기에서 스폰할 액터 클래스
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Behavior")
+	TSubclassOf<AThrowableActor> ThrowableClass;
 
 	// ───── 메시 ─────
 
