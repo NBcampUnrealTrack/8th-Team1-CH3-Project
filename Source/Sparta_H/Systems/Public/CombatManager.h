@@ -39,12 +39,24 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	float KnifeFrontDamage = 50.f;
+	
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	float BackAttackThreshold = 0.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Combat|Noise")
 	float HitNoiseRangePistol = 200.f; // 2m
 
 	UPROPERTY(EditAnywhere, Category = "Combat|Noise")
 	float HitNoiseRangeRock = 500.f; // 5m
+	
+	UPROPERTY(EditAnywhere, Category = "Combat|Noise")
+	float FireNoiseRangePistol = 30000.f; // 300m
+	
+	UPROPERTY(EditAnywhere, Category = "Combat|Noise")
+	float FireNoiseRangeRifle = 150000.f; // 1500m
+	
+	UPROPERTY(EditAnywhere, Category = "Combat|Noise")
+	float FireNoiseRangeKnife = 1000.f; // 10m
 
 	// 사격 처리 메인 함수. bTriggerAIAggro=false면 발사/피격 소음을 발생시키지 않음(소음 무기 등)
 	void OnFire(const FVector& AimStart, const FVector& AimDirection, ECombatWeaponType WeaponType,
@@ -59,4 +71,5 @@ private:
 
 	// 근접(칼) 처리 — 매니저 자체의 KnifeFrontDamage/KnifeBackDamage를 사용해 백/정면 데미지 차등
 	void KnifeAttack(const FVector& AimStart, const FVector& AimDirection, bool bTriggerAIAggro);
+	void RegisterKillFeedback(AActor* HitActor);
 };

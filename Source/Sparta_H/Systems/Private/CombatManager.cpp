@@ -68,11 +68,7 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 	const float FinalDamage = DamageProcessor->CalculateFinalDamage(DamageInfo);
 
 	// 6. 킬 피드백 등록
-	ABaseEnemy* Enemy = Cast<ABaseEnemy>(HitActor);
-	if (IsValid(Enemy) && !Enemy->IsDead())
-	{
-		Enemy->OnDeath.AddUniqueDynamic(FeedbackHandler, &UCombatFeedbackHandler::OnKill);
-	}
+	RegisterKillFeedback(HitActor);
 
 	// 7. 데미지 전달
 	UGameplayStatics::ApplyDamage(HitActor, FinalDamage, nullptr, GetOwner(), nullptr);
@@ -103,9 +99,9 @@ float UCombatManager::GetFireNoiseRange(ECombatWeaponType WeaponType) const
 {
 	switch (WeaponType)
 	{
-	case ECombatWeaponType::Pistol: return 30000.f; // 300m
-	case ECombatWeaponType::Rifle: return 150000.f; // 1500m
-	case ECombatWeaponType::Knife: return 1000.f; // 10m
+	case ECombatWeaponType::Pistol: return FireNoiseRangePistol;
+	case ECombatWeaponType::Rifle: return FireNoiseRangeRifle;
+	case ECombatWeaponType::Knife: return FireNoiseRangeKnife;
 	case ECombatWeaponType::Rock: return 0.f; // 0m
 	default: return 0.f;
 	}
@@ -137,14 +133,10 @@ void UCombatManager::KnifeAttack(const FVector& AimStart, const FVector& AimDire
 	const FVector HitActorForward = HitActor->GetActorForwardVector();
 	const FVector ToTarget = (HitActor->GetActorLocation() - GetOwner()->GetActorLocation()).GetSafeNormal();
 	const float DotProduct = FVector::DotProduct(HitActorForward, ToTarget);
-	const float KnifeDamage = (DotProduct > 0.f) ? KnifeBackDamage : KnifeFrontDamage;
+	const float KnifeDamage = (DotProduct > BackAttackThreshold) ? KnifeBackDamage : KnifeFrontDamage;
 
 	// 킬 피드백 등록
-	ABaseEnemy* Enemy = Cast<ABaseEnemy>(HitActor);
-	if (IsValid(Enemy) && !Enemy->IsDead())
-	{
-		Enemy->OnDeath.AddUniqueDynamic(FeedbackHandler, &UCombatFeedbackHandler::OnKill);
-	}
+	RegisterKillFeedback(HitActor);
 
 	UGameplayStatics::ApplyDamage(HitActor, KnifeDamage, nullptr, GetOwner(), nullptr);
 
@@ -152,5 +144,15 @@ void UCombatManager::KnifeAttack(const FVector& AimStart, const FVector& AimDire
 	if (bTriggerAIAggro)
 	{
 		EmitNoise(HitResult.ImpactPoint, GetHitNoiseRange(ECombatWeaponType::Knife));
+	}
+}
+
+// 킬 피드백 등록
+void UCombatManager::RegisterKillFeedback(AActor* HitActor)
+{
+	ABaseEnemy* Enemy = Cast<ABaseEnemy>(HitActor);
+	if (IsValid(Enemy) && !Enemy->IsDead())
+	{
+		Enemy->OnDeath.AddUniqueDynamic(FeedbackHandler, &UCombatFeedbackHandler::OnKill);
 	}
 }
