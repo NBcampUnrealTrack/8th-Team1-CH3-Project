@@ -2,6 +2,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Perception/AISense_Hearing.h"
 #include "BaseEnemy.h"
+#include "NiagaraFunctionLibrary.h"
 
 UCombatManager::UCombatManager()
 {
@@ -13,7 +14,7 @@ UCombatManager::UCombatManager()
 }
 
 void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection, ECombatWeaponType WeaponType,
-                            float BaseDamage, bool bTriggerAIAggro)
+                            float BaseDamage, bool bTriggerAIAggro, UNiagaraSystem* ImpactVFX)
 {
 	// 칼은 별도 처리 (매니저 자체의 KnifeFront/KnifeBackDamage 사용)
 	if (WeaponType == ECombatWeaponType::Knife)
@@ -35,6 +36,14 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 		return;
 	}
 
+	// ImpactVFX - 트레이스 성공 시 항상 표면 적중점에 스폰 (환경 / 적 무관)
+	if (ImpactVFX != nullptr)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			GetWorld(), ImpactVFX, HitResult.ImpactPoint,
+			HitResult.ImpactNormal.Rotation());
+	}
+	
 	AActor* HitActor = HitResult.GetActor();
 
 	// 3. 액터 무효 또는 적이 아님 → 환경 오브젝트로 간주, 피격 소음만

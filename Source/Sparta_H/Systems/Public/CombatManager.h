@@ -9,6 +9,7 @@
 #include "DamageProcessor.h"
 #include "CombatManager.generated.h"
 
+class UNiagaraSystem;
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class SPARTA_H_API UCombatManager : public UActorComponent
@@ -47,7 +48,7 @@ public:
 
 	// 사격 처리 메인 함수. bTriggerAIAggro=false면 발사/피격 소음을 발생시키지 않음(소음 무기 등)
 	void OnFire(const FVector& AimStart, const FVector& AimDirection, ECombatWeaponType WeaponType,
-	            float BaseDamage, bool bTriggerAIAggro);
+	            float BaseDamage, bool bTriggerAIAggro, UNiagaraSystem* ImpactVFX = nullptr);
 
 	// 소음 발생 함수
 	void EmitNoise(const FVector& NoiseLocation, float NoiseRange);

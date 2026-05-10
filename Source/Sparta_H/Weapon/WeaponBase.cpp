@@ -13,6 +13,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/World.h"
 #include "TimerManager.h"
+#include "Kismet/GameplayStatics.h"
 
 AWeaponBase::AWeaponBase()
 {
@@ -98,6 +99,9 @@ void AWeaponBase::Fire()
 				}
 			}
 		}
+		
+		// 리코일 틱 - 몽타주와 같은 프레임
+		Character->ApplyRecoil(WeaponData->RecoilData);
 	}
 
 	// 카메라 시점 기준 라인 트레이스 - 크로스헤어가 가리키는 정확한 지점에 명중하도록.
@@ -114,7 +118,8 @@ void AWeaponBase::Fire()
 					const FVector AimDirection = PC->PlayerCameraManager->GetCameraRotation().Vector();
 					const ECombatWeaponType CombatType = ToCombatWeaponType(WeaponData->WeaponType);
 					CombatMgr->OnFire(AimStart, AimDirection, CombatType, WeaponData->Damage,
-					                  WeaponData->bShouldTriggerAIAggro);
+					                  WeaponData->bShouldTriggerAIAggro,
+					                  WeaponData->ImpactVFX.LoadSynchronous());
 				}
 			}
 		}
@@ -134,6 +139,15 @@ void AWeaponBase::Fire()
 		);
 	}
 
+	// 발사 사운드 - 총구 소켓에 부착해 재생
+	if (USoundBase* Sound = WeaponData->FireSound.LoadSynchronous())
+	{
+		UGameplayStatics::SpawnSoundAttached(
+			Sound,
+			WeaponMeshComponent,
+			WeaponData->MuzzleSocketName);
+	}
+	
 	// FireRate <= 0 이면 한 프레임만 차단 후 즉시 복귀
 	const float Cooldown = FMath::Max(WeaponData->FireRate, KINDA_SMALL_NUMBER);
 	if (UWorld* World = GetWorld())
@@ -155,19 +169,19 @@ void AWeaponBase::Reload()
 	{
 		return;
 	}
-	
+
 	// 이미 가득이거나 탄약 컴포넌트 없으면 무시
 	if (AmmoComponent == nullptr || AmmoComponent->IsFull())
 	{
 		return;
 	}
-	
+
 	// 발사 쿨다운 진행 중이면 정리하고 재장전 시작
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().ClearTimer(FireCooldownTimerHandle);
 	}
-	
+
 	CurrentWeaponState = EWeaponState::Reloading;
 	bCanFire = false;
 
