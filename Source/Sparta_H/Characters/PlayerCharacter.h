@@ -9,6 +9,12 @@
 
 struct FInputActionValue;
 
+class UHealthComponent;
+class UStaminaComponent;
+class UInteractionComponent;
+class UNoiseComponent;
+class UVisibilityComponent;
+
 
 UCLASS()
 class SPARTA_H_API APlayerCharacter : public ACharacter
@@ -53,6 +59,13 @@ public:
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+	
+	// 다른 클래스에서 캐릭터의 컴포넌트를 참조하기 위한 게터함수
+	UHealthComponent* GetHealthComponent() const { return HealthComponent; } 
+	UStaminaComponent* GetStaminaComponent() const { return StaminaComponent; }
+	UInteractionComponent* GetInteractionComponent() const { return InteractionComponent;}
+	UNoiseComponent* GetNoiseComponent() const{ return NoiseComponent; }
+	UVisibilityComponent* GetVisibilityComponent() const { return VisibilityComponent;}
 	
 	UFUNCTION()
 	void Move(const FInputActionValue& value);
@@ -163,4 +176,20 @@ private:
 	float RecoilPitchAccum = 0.0f;
 	// 현재 장창 무기의 회복 속도
 	float RecoilRecoverySpeed = 0.0f;
+	
+	/** Character Components 추가 **/
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UHealthComponent> HealthComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UStaminaComponent> StaminaComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UInteractionComponent> InteractionComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UNoiseComponent> NoiseComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UVisibilityComponent> VisibilityComponent;
 };
