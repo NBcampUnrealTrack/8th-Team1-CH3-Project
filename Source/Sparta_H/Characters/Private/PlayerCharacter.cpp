@@ -12,6 +12,12 @@
 #include "MissionInteractableInterface.h"
 #include "Kismet/GameplayStatics.h"
 
+#include "HealthComponent.h"
+#include "InteractionComponent.h"
+#include "NoiseComponent.h"
+#include "StaminaComponent.h"
+#include "VisibilityComponent.h"
+
 // Sets default values
 APlayerCharacter::APlayerCharacter()
 {
@@ -22,6 +28,8 @@ APlayerCharacter::APlayerCharacter()
 	SpringArm->SetupAttachment(RootComponent);
 	SpringArm->TargetArmLength = 400.f;
 	SpringArm->bUsePawnControlRotation = true; // 핵심: 마우스 따라가기
+	SpringArm->bEnableCameraLag = true;
+	SpringArm->CameraLagSpeed = 10.0f;
 
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
@@ -31,6 +39,7 @@ APlayerCharacter::APlayerCharacter()
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
+	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = true;
 
 	// 3. 이동 시 회전 설정
 	GetCharacterMovement()->bOrientRotationToMovement = true; // 이동 방향으로 몸 틀기
@@ -47,6 +56,13 @@ APlayerCharacter::APlayerCharacter()
 
 	MaxNoise = 100.f;
 	CurrentNoise = 0.f;
+	
+	// 컴포넌트 추가
+	HealthComponent=CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComponent"));
+	StaminaComponent = CreateDefaultSubobject<UStaminaComponent>(TEXT("StaminaComponent"));
+	NoiseComponent = CreateDefaultSubobject<UNoiseComponent>(TEXT("NoiseComponent"));
+	InteractionComponent = CreateDefaultSubobject<UInteractionComponent>(TEXT("InteractionComponent"));
+	VisibilityComponent = CreateDefaultSubobject<UVisibilityComponent>(TEXT("VisibilityComponent"));
 }
 
 // Called when the game starts or when spawned
@@ -65,6 +81,7 @@ void APlayerCharacter::BeginPlay()
 	// 미션 데이터 초기화
 	CurrentMissionIndex = 0;
 	UpdateMissionObjective();
+	
 }
 
 // Called every frame
@@ -78,6 +95,12 @@ void APlayerCharacter::Tick(float DeltaTime)
 		const float RecoverPitch = FMath::Min(RecoilPitchAccum, RecoilRecoverySpeed * DeltaTime);
 		AddControllerPitchInput(RecoverPitch);
 		RecoilPitchAccum -= RecoverPitch;
+	}
+	
+	// 스테미나 고갈 시 달리기 멈추는 로직
+	if (StaminaComponent && !StaminaComponent->CanSprint())
+	{
+		StopRun(FInputActionValue()); // 스태미나 고갈 시 강제 정지
 	}
 
 	// 소음 수치 업데이트 (속도에 비례)
@@ -195,12 +218,20 @@ void APlayerCharacter::StopJump(const FInputActionValue& value)
 
 void APlayerCharacter::StartRun(const FInputActionValue& value)
 {
-	GetCharacterMovement()->MaxWalkSpeed = SprintSpeed;
+	if (StaminaComponent && StaminaComponent->CanSprint())
+	{
+		GetCharacterMovement()->MaxWalkSpeed = SprintSpeed;
+		StaminaComponent->SetSprinting(true);
+	}
 }
 
 void APlayerCharacter::StopRun(const FInputActionValue& value)
 {
 	GetCharacterMovement()->MaxWalkSpeed = MoveSpeed;
+	if (StaminaComponent)
+	{
+		StaminaComponent->SetSprinting(false);
+	}
 }
 
 void APlayerCharacter::StartHide(const FInputActionValue& value)

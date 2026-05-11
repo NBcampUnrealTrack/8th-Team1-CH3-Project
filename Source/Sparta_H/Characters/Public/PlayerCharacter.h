@@ -15,10 +15,17 @@ class UCombatManager;
 class UWeaponDataAsset;
 class AWeaponBase;
 class UMissionDataAsset;
+class UHealthComponent;
+class UStaminaComponent;
+class UInteractionComponent;
+class UNoiseComponent;
+class UVisibilityComponent;
 
 // 목표 변경 시 호출될 델리게이트
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnObjectiveChanged, const FString&, NewObjective);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMissionStateChanged);
+
+
 
 UCLASS()
 class SPARTA_H_API APlayerCharacter : public ACharacter
@@ -64,6 +71,13 @@ public:
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+	
+	// 다른 클래스에서 캐릭터의 컴포넌트를 참조하기 위한 게터함수
+	UHealthComponent* GetHealthComponent() const { return HealthComponent; } 
+	UStaminaComponent* GetStaminaComponent() const { return StaminaComponent; }
+	UInteractionComponent* GetInteractionComponent() const { return InteractionComponent;}
+	UNoiseComponent* GetNoiseComponent() const{ return NoiseComponent; }
+	UVisibilityComponent* GetVisibilityComponent() const { return VisibilityComponent;}
 	
 	UFUNCTION()
 	void Move(const FInputActionValue& value);
@@ -233,4 +247,20 @@ private:
 
 	// 미션 타이머 핸들
 	FTimerHandle MissionTimerHandle;
+	
+	/** Character Components 추가 **/
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UHealthComponent> HealthComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UStaminaComponent> StaminaComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UInteractionComponent> InteractionComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UNoiseComponent> NoiseComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UVisibilityComponent> VisibilityComponent;
 };
