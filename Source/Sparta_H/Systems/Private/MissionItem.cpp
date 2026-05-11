@@ -1,5 +1,5 @@
-#include "Systems/Public/MissionItem.h"
-#include "Characters/Public/PlayerCharacter.h"
+#include "MissionItem.h"
+#include "PlayerCharacter.h"
 #include "Components/StaticMeshComponent.h"
 
 AMissionItem::AMissionItem()

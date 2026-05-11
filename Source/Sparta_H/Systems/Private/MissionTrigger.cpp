@@ -1,6 +1,6 @@
-#include "Systems/Public/MissionTrigger.h"
+#include "MissionTrigger.h"
 #include "Components/BoxComponent.h"
-#include "Characters/Public/PlayerCharacter.h"
+#include "PlayerCharacter.h"
 #include "Kismet/GameplayStatics.h"
 
 AMissionTrigger::AMissionTrigger()

@@ -43,7 +43,7 @@ void UH_MissionWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime
 	}
 	MissionGoalText->SetText(FText::FromString(FinalText));
 
-	// 2. Waypoint 마커 화면 표시 로직 (심화)
+	// 2. Waypoint 마커 화면 표시 로직
 	if (WaypointMarker)
 	{
 		// 데이터에서 위치 가져오기

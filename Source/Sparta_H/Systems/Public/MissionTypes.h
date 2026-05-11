@@ -29,9 +29,9 @@ struct FMissionGoal
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mission")
 	TSoftObjectPtr<class UTexture2D> WaypointIcon;
 
-	// 목표 완료 시 재생할사운드
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mission")
-	class USoundBase* GoalCompletionSound;
+	// // 목표 완료 시 재생할사운드
+	// UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mission")
+	// class USoundBase* GoalCompletionSound;
 
 	// 목표 완료 여부
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mission")

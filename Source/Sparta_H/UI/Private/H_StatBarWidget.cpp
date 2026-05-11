@@ -24,10 +24,9 @@ void UH_StatBarWidget::UpdateFromCharacter(APlayerCharacter* Character, int32 St
 
 	// 수치 업데이트 후 색상 갱신
 	float Current = 0.f;
-	float Max = 1.f;
-	if (StatType == 0) { Current = Character->CurrentHealth; Max = Character->MaxHealth; }
-	else if (StatType == 1) { Current = Character->CurrentStamina; Max = Character->MaxStamina; }
-	else if (StatType == 2) { Current = Character->CurrentNoise; Max = Character->MaxNoise; }
+	if (StatType == 0) { Current = Character->CurrentHealth; }
+	else if (StatType == 1) { Current = Character->CurrentStamina; }
+	else if (StatType == 2) { Current = Character->CurrentNoise; }
 
 	UpdateBarColor(Current, StatType);
 }

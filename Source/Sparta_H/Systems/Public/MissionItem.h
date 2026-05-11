@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "Systems/Public/MissionInteractableInterface.h"
+#include "MissionInteractableInterface.h"
 #include "MissionItem.generated.h"
 
 /**
