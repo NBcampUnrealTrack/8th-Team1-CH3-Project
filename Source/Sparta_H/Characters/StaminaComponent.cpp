@@ -6,11 +6,8 @@
 // Sets default values for this component's properties
 UStaminaComponent::UStaminaComponent()
 {
-	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
-	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true;
-
-	// ...
+	CurrentStamina = MaxStamina;
 }
 
 
@@ -18,9 +15,6 @@ UStaminaComponent::UStaminaComponent()
 void UStaminaComponent::BeginPlay()
 {
 	Super::BeginPlay();
-
-	// ...
-	
 }
 
 
@@ -29,6 +23,23 @@ void UStaminaComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	// ...
+	float PreviousStamina = CurrentStamina;
+
+	if (bIsSprinting)
+	{
+		// 달리기 중일 때 소모
+		CurrentStamina = FMath::Clamp(CurrentStamina - (ConsumptionRate * DeltaTime), 0.f, MaxStamina);
+	}
+	else
+	{
+		// 아닐 때 회복
+		CurrentStamina = FMath::Clamp(CurrentStamina + (RecoveryRate * DeltaTime), 0.f, MaxStamina);
+	}
+
+	// 수치가 변했을 때만 델리게이트 호출
+	if (!FMath::IsNearlyEqual(PreviousStamina, CurrentStamina))
+	{
+		OnStaminaChanged.Broadcast(CurrentStamina, MaxStamina);
+	}
 }
 
