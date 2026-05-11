@@ -54,11 +54,8 @@ APlayerCharacter::APlayerCharacter()
 	// BP에서 미지정 시 베이스 클래스로 폴백 (무기별 특수 로직이 없으면 그대로 사용)
 	WeaponBaseClass = AWeaponBase::StaticClass();
 
-	MaxNoise = 100.f;
-	CurrentNoise = 0.f;
-	
 	// 컴포넌트 추가
-	HealthComponent=CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComponent"));
+	HealthComponent = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComponent"));
 	StaminaComponent = CreateDefaultSubobject<UStaminaComponent>(TEXT("StaminaComponent"));
 	NoiseComponent = CreateDefaultSubobject<UNoiseComponent>(TEXT("NoiseComponent"));
 	InteractionComponent = CreateDefaultSubobject<UInteractionComponent>(TEXT("InteractionComponent"));
@@ -81,7 +78,6 @@ void APlayerCharacter::BeginPlay()
 	// 미션 데이터 초기화
 	CurrentMissionIndex = 0;
 	UpdateMissionObjective();
-	
 }
 
 // Called every frame
@@ -96,26 +92,12 @@ void APlayerCharacter::Tick(float DeltaTime)
 		AddControllerPitchInput(RecoverPitch);
 		RecoilPitchAccum -= RecoverPitch;
 	}
-	
+
 	// 스테미나 고갈 시 달리기 멈추는 로직
 	if (StaminaComponent && !StaminaComponent->CanSprint())
 	{
 		StopRun(FInputActionValue()); // 스태미나 고갈 시 강제 정지
 	}
-
-	// 소음 수치 업데이트 (속도에 비례)
-	float TargetNoise = 0.0f;
-	if (GetCharacterMovement())
-	{
-		float VelocitySize = GetVelocity().Size();
-		float MaxSpeed = 600.f;
-		if (MaxSpeed > 0.0f)
-		{
-			TargetNoise = (VelocitySize / MaxSpeed) * 30.0f;
-		}
-	}
-	// 부드러운 변화를 위해 보간 사용
-	CurrentNoise = FMath::FInterpTo(CurrentNoise, TargetNoise, DeltaTime, 10.0f);
 }
 
 // 캐릭터 상호작용 
@@ -123,46 +105,65 @@ void APlayerCharacter::Tick(float DeltaTime)
 void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
-	
+
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
 	{
 		if (AH_PlayerController* PlayerController = Cast<AH_PlayerController>(GetController()))
 		{
-			EnhancedInputComponent->BindAction(PlayerController->MoveAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Move);
-			
-			EnhancedInputComponent->BindAction(PlayerController->LookAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Look);
-			
-			EnhancedInputComponent->BindAction(PlayerController->JumpAction, ETriggerEvent::Started, this, &APlayerCharacter::Jump);
-			EnhancedInputComponent->BindAction(PlayerController->JumpAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopJump);
-			
-			EnhancedInputComponent->BindAction(PlayerController->RunAction, ETriggerEvent::Started, this, &APlayerCharacter::StartRun);
-			EnhancedInputComponent->BindAction(PlayerController->RunAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopRun);
-			
-			EnhancedInputComponent->BindAction(PlayerController->HideAction, ETriggerEvent::Started, this, &APlayerCharacter::StartHide);
-			EnhancedInputComponent->BindAction(PlayerController->HideAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopHide);
-			
-			EnhancedInputComponent->BindAction(PlayerController->RollAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Roll);
-			
+			EnhancedInputComponent->BindAction(PlayerController->MoveAction, ETriggerEvent::Triggered, this,
+			                                   &APlayerCharacter::Move);
+
+			EnhancedInputComponent->BindAction(PlayerController->LookAction, ETriggerEvent::Triggered, this,
+			                                   &APlayerCharacter::Look);
+
+			EnhancedInputComponent->BindAction(PlayerController->JumpAction, ETriggerEvent::Started, this,
+			                                   &APlayerCharacter::Jump);
+			EnhancedInputComponent->BindAction(PlayerController->JumpAction, ETriggerEvent::Completed, this,
+			                                   &APlayerCharacter::StopJump);
+
+			EnhancedInputComponent->BindAction(PlayerController->RunAction, ETriggerEvent::Started, this,
+			                                   &APlayerCharacter::StartRun);
+			EnhancedInputComponent->BindAction(PlayerController->RunAction, ETriggerEvent::Completed, this,
+			                                   &APlayerCharacter::StopRun);
+
+			EnhancedInputComponent->BindAction(PlayerController->HideAction, ETriggerEvent::Started, this,
+			                                   &APlayerCharacter::StartHide);
+			EnhancedInputComponent->BindAction(PlayerController->HideAction, ETriggerEvent::Completed, this,
+			                                   &APlayerCharacter::StopHide);
+
+			EnhancedInputComponent->BindAction(PlayerController->RollAction, ETriggerEvent::Triggered, this,
+			                                   &APlayerCharacter::Roll);
+
 			// Left (Q)
-			EnhancedInputComponent->BindAction(PlayerController->LeanLeftAction, ETriggerEvent::Started, this, &APlayerCharacter::StartLeanLeft);
-			EnhancedInputComponent->BindAction(PlayerController->LeanLeftAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopLean);
+			EnhancedInputComponent->BindAction(PlayerController->LeanLeftAction, ETriggerEvent::Started, this,
+			                                   &APlayerCharacter::StartLeanLeft);
+			EnhancedInputComponent->BindAction(PlayerController->LeanLeftAction, ETriggerEvent::Completed, this,
+			                                   &APlayerCharacter::StopLean);
 
 			// Right (E)
-			EnhancedInputComponent->BindAction(PlayerController->LeanRightAction, ETriggerEvent::Started, this, &APlayerCharacter::StartLeanRight);
-			EnhancedInputComponent->BindAction(PlayerController->LeanRightAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopLean);
-			
-			EnhancedInputComponent->BindAction(PlayerController->Interaction, ETriggerEvent::Triggered, this, &APlayerCharacter::Interaction);
-			
+			EnhancedInputComponent->BindAction(PlayerController->LeanRightAction, ETriggerEvent::Started, this,
+			                                   &APlayerCharacter::StartLeanRight);
+			EnhancedInputComponent->BindAction(PlayerController->LeanRightAction, ETriggerEvent::Completed, this,
+			                                   &APlayerCharacter::StopLean);
+
+			EnhancedInputComponent->BindAction(PlayerController->Interaction, ETriggerEvent::Triggered, this,
+			                                   &APlayerCharacter::Interaction);
+
 			// 슬롯 장착은 Started에서 Value가 0으로 들어오는 이슈 때문에 Triggered로 바인딩하고 콜백에서 raw 값으로 가드
-			EnhancedInputComponent->BindAction(PlayerController->EquipSlotAction, ETriggerEvent::Triggered, this,&APlayerCharacter::OnEquipSlotPressed);
-			EnhancedInputComponent->BindAction(PlayerController->EquipNextWeaponAction, ETriggerEvent::Started, this,&APlayerCharacter::OnEquipNextPressed);
-			EnhancedInputComponent->BindAction(PlayerController->EquipPreviousWeaponAction, ETriggerEvent::Started,this,&APlayerCharacter::OnEquipPreviousPressed);
+			EnhancedInputComponent->BindAction(PlayerController->EquipSlotAction, ETriggerEvent::Triggered, this,
+			                                   &APlayerCharacter::OnEquipSlotPressed);
+			EnhancedInputComponent->BindAction(PlayerController->EquipNextWeaponAction, ETriggerEvent::Started, this,
+			                                   &APlayerCharacter::OnEquipNextPressed);
+			EnhancedInputComponent->BindAction(PlayerController->EquipPreviousWeaponAction, ETriggerEvent::Started,
+			                                   this, &APlayerCharacter::OnEquipPreviousPressed);
 
 			// 발사 — Triggered로 바인딩하면 풀오토 무기까지 매 틱 호출되며, 무기 측 FireRate 쿨다운이 발사 간격을 가드
-			EnhancedInputComponent->BindAction(PlayerController->FireAction, ETriggerEvent::Triggered, this,&APlayerCharacter::OnFirePressed);
+			EnhancedInputComponent->BindAction(PlayerController->FireAction, ETriggerEvent::Triggered, this,
+			                                   &APlayerCharacter::OnFirePressed);
 
 			// 재장전 — Started로 R 1회 입력 처리. 무기 상태/탄창 가드는 Reload() 내부에서
-			EnhancedInputComponent->BindAction(PlayerController->ReloadAction, ETriggerEvent::Started, this,&APlayerCharacter::OnReloadPressed);
+			EnhancedInputComponent->BindAction(PlayerController->ReloadAction, ETriggerEvent::Started, this,
+			                                   &APlayerCharacter::OnReloadPressed);
 		}
 	}
 }
@@ -186,7 +187,6 @@ void APlayerCharacter::Move(const FInputActionValue& value)
 		AddMovementInput(RightDirection, MoveInput.Y);
 		AddMovementInput(ForwardDirection, MoveInput.X);
 	}
-	
 }
 
 void APlayerCharacter::Look(const FInputActionValue& value)
@@ -244,18 +244,21 @@ void APlayerCharacter::StartHide(const FInputActionValue& value)
 
 void APlayerCharacter::StopHide(const FInputActionValue& value)
 {
-	UnCrouch(); 
+	UnCrouch();
 }
 
 void APlayerCharacter::Roll(const FInputActionValue& value)
 {
 	// 이미 구르고 있거나, 몽타주가 설정되지 않았다면 리턴
-	if (bIsRolling || !DiveRollMontage) return;
+	if (bIsRolling || !DiveRollMontage)
+	{
+		return;
+	}
 
 	// 몽타주 재생 명령
 	// PlayAnimMontage는 내부적으로 AnimInstance를 찾아 Montage_Play를 호출합니다.
 	float MontageLength = PlayAnimMontage(DiveRollMontage);
-	
+
 	if (MontageLength > 0.f)
 	{
 		bIsRolling = true;
@@ -285,10 +288,12 @@ void APlayerCharacter::StartLeanRight(const FInputActionValue& value)
 {
 	LeanAmount = 1.0f;
 }
+
 void APlayerCharacter::StartLeanLeft(const FInputActionValue& value)
 {
 	LeanAmount = -1.0f;
 }
+
 void APlayerCharacter::StopLean(const FInputActionValue& value)
 {
 	LeanAmount = 0.0f;
@@ -323,7 +328,10 @@ void APlayerCharacter::Jump()
 {
 	Super::Jump();
 
-	CurrentNoise = FMath::Clamp(CurrentNoise + 30.0f, 0.0f, MaxNoise);
+	if (NoiseComponent)
+	{
+		NoiseComponent->AddNoise(30.0f);
+	}
 }
 
 // 무기 관련
@@ -463,7 +471,10 @@ void APlayerCharacter::OnFirePressed(const FInputActionValue& /*Value*/)
 		CurrentWeapon->Fire();
 
 		// 사격 시 즉시 최대 소음 발생
-		CurrentNoise = MaxNoise;
+		if (NoiseComponent)
+		{
+			NoiseComponent->SetNoiseToMax();
+		}
 	}
 }
 
@@ -485,7 +496,7 @@ void APlayerCharacter::ApplyRecoil(const FRecoilData& Recoil)
 	// 음수 pitch = 카메라 위로(pitch축 기준)
 	AddControllerPitchInput(-Recoil.VerticalRecoil);
 	AddControllerYawInput(FMath::RandRange(-Recoil.HorizontalRecoil, Recoil.HorizontalRecoil));
-	
+
 	RecoilPitchAccum += Recoil.VerticalRecoil;
 	RecoilRecoverySpeed = Recoil.RecoverySpeed;
 }
@@ -506,11 +517,14 @@ void APlayerCharacter::SetObjective(const FString& NewObjective)
 
 void APlayerCharacter::CompleteCurrentObjective()
 {
-	if (!CurrentMissionData) return;
+	if (!CurrentMissionData)
+	{
+		return;
+	}
 
 	// 다음 목표로 이동
 	CurrentMissionIndex++;
-	
+
 	if (CurrentMissionIndex >= CurrentMissionData->MissionGoals.Num())
 	{
 		// 모든 미션 최종 성공 - 타이머 해제 및 이벤트 호출
@@ -526,11 +540,15 @@ void APlayerCharacter::CompleteCurrentObjective()
 
 bool APlayerCharacter::IsCurrentObjective(FName GoalID) const
 {
-	return CurrentMissionData && CurrentMissionData->MissionGoals.IsValidIndex(CurrentMissionIndex) && CurrentMissionData->MissionGoals[CurrentMissionIndex].GoalID == GoalID;
+	return CurrentMissionData && CurrentMissionData->MissionGoals.IsValidIndex(CurrentMissionIndex) &&
+		CurrentMissionData->MissionGoals[CurrentMissionIndex].GoalID == GoalID;
 }
+
 FName APlayerCharacter::GetCurrentObjectiveID() const
 {
-	return CurrentMissionData && CurrentMissionData->MissionGoals.IsValidIndex(CurrentMissionIndex) ? CurrentMissionData->MissionGoals[CurrentMissionIndex].GoalID : NAME_None;
+	return CurrentMissionData && CurrentMissionData->MissionGoals.IsValidIndex(CurrentMissionIndex)
+		       ? CurrentMissionData->MissionGoals[CurrentMissionIndex].GoalID
+		       : NAME_None;
 }
 
 void APlayerCharacter::FailMission()
@@ -555,7 +573,10 @@ float APlayerCharacter::GetDistanceToCurrentObjective() const
 
 void APlayerCharacter::UpdateMissionObjective()
 {
-	if (!CurrentMissionData) return;
+	if (!CurrentMissionData)
+	{
+		return;
+	}
 
 	// 기존 타이머 초기화
 	GetWorldTimerManager().ClearTimer(MissionTimerHandle);
@@ -563,15 +584,15 @@ void APlayerCharacter::UpdateMissionObjective()
 	if (CurrentMissionData->MissionGoals.IsValidIndex(CurrentMissionIndex))
 	{
 		const FMissionGoal& CurrentGoal = CurrentMissionData->MissionGoals[CurrentMissionIndex];
-		
+
 		// 시간 제한 설정
 		if (CurrentGoal.TimeLimit > 0.0f)
 		{
 			GetWorldTimerManager().SetTimer(
-				MissionTimerHandle, 
-				this, 
-				&APlayerCharacter::FailMission, 
-				CurrentGoal.TimeLimit, 
+				MissionTimerHandle,
+				this,
+				&APlayerCharacter::FailMission,
+				CurrentGoal.TimeLimit,
 				false
 			);
 		}

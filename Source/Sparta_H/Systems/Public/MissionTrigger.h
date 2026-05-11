@@ -13,8 +13,8 @@ UCLASS()
 class SPARTA_H_API AMissionTrigger : public AActor
 {
 	GENERATED_BODY()
-	
-public:	
+
+public:
 	AMissionTrigger();
 
 protected:
@@ -28,13 +28,13 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mission")
 	FName TargetGoalID;
 
-	// 트리거 활성화 시 재생할 사운드 (옵션)
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mission")
-	class USoundBase* CompletionSound;
+	// // 트리거 활성화 시 재생할 사운드
+	// UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mission")
+	// class USoundBase* CompletionSound;
 
 	UFUNCTION()
-	void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, 
-	                    UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, 
+	void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+	                    UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
 	                    bool bFromSweep, const FHitResult& SweepResult);
 
 private:

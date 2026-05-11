@@ -27,7 +27,6 @@ public class Sparta_H : ModuleRules
 		PublicIncludePaths.AddRange(new string[]
 		{
 			ModuleDirectory,
-			Path.Combine(ModuleDirectory, "AI/Public"),
 			Path.Combine(ModuleDirectory, "Characters/Public"),
 			Path.Combine(ModuleDirectory, "Enemy/Public"),
 			Path.Combine(ModuleDirectory, "Framework/Public"),
@@ -38,7 +37,6 @@ public class Sparta_H : ModuleRules
 
 		PrivateIncludePaths.AddRange(new string[]
 		{
-			Path.Combine(ModuleDirectory, "AI/Private"),
 			Path.Combine(ModuleDirectory, "Characters/Private"),
 			Path.Combine(ModuleDirectory, "Enemy/Private"),
 			Path.Combine(ModuleDirectory, "Framework/Private"),

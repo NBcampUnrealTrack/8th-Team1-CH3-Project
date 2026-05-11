@@ -34,6 +34,9 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Events")
 	FOnDeath OnDeath;
 
+	float GetCurrentHealth() const { return CurrentHealth; }
+	float GetMaxHealth() const { return MaxHealth; }
+
 private:
 	UPROPERTY(EditAnywhere, Category = "Health")
 	float MaxHealth = 100.f;

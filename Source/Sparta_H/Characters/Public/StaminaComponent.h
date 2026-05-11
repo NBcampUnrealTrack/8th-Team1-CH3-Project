@@ -31,6 +31,9 @@ public:
 	// 스태미나가 충분한지 확인
 	bool CanSprint() const { return CurrentStamina > 0.f; }
 
+	float GetCurrentStamina() const { return CurrentStamina; }
+	float GetMaxStamina() const { return MaxStamina; }
+
 	UPROPERTY(BlueprintAssignable, Category = "Events")
 	FOnStaminaChanged OnStaminaChanged;
 

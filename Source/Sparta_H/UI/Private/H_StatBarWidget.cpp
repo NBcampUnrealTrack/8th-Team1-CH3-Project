@@ -2,33 +2,79 @@
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "PlayerCharacter.h"
+#include "HealthComponent.h"
+#include "StaminaComponent.h"
+#include "NoiseComponent.h"
 
 void UH_StatBarWidget::UpdateFromCharacter(APlayerCharacter* Character, int32 StatType)
 {
 	if (!Character) return;
 
+	float Current = 0.f;
+	float Max = 1.0f;
+
 	switch (StatType)
 	{
 	case 0: // Health
-		UpdateStat(Character->CurrentHealth, Character->MaxHealth);
+		if (UHealthComponent* HealthComp = Character->GetHealthComponent())
+		{
+			Current = HealthComp->GetCurrentHealth();
+			Max = HealthComp->GetMaxHealth();
+		}
 		break;
 	case 1: // Stamina
-		UpdateStat(Character->CurrentStamina, Character->MaxStamina);
+		if (UStaminaComponent* StaminaComp = Character->GetStaminaComponent())
+		{
+			Current = StaminaComp->GetCurrentStamina();
+			Max = StaminaComp->GetMaxStamina();
+		}
 		break;
 	case 2: // Sound (Noise)
-		UpdateStat(Character->CurrentNoise, Character->MaxNoise);
+		if (UNoiseComponent* NoiseComp = Character->GetNoiseComponent())
+		{
+			Current = NoiseComp->GetCurrentNoise();
+			Max = NoiseComp->GetMaxNoise();
+		}
 		break;
 	default:
 		break;
 	}
 
-	// 수치 업데이트 후 색상 갱신
-	float Current = 0.f;
-	if (StatType == 0) { Current = Character->CurrentHealth; }
-	else if (StatType == 1) { Current = Character->CurrentStamina; }
-	else if (StatType == 2) { Current = Character->CurrentNoise; }
+	UpdateStat(Current, Max);
+	UpdateBarColor(Current, Max, StatType);
+}
 
-	UpdateBarColor(Current, StatType);
+void UH_StatBarWidget::UpdateFromHealthComponent(UHealthComponent* HealthComp)
+{
+	if (HealthComp)
+	{
+		float Current = HealthComp->GetCurrentHealth();
+		float Max = HealthComp->GetMaxHealth();
+		UpdateStat(Current, Max);
+		UpdateBarColor(Current, Max, 0);
+	}
+}
+
+void UH_StatBarWidget::UpdateFromStaminaComponent(UStaminaComponent* StaminaComp)
+{
+	if (StaminaComp)
+	{
+		float Current = StaminaComp->GetCurrentStamina();
+		float Max = StaminaComp->GetMaxStamina();
+		UpdateStat(Current, Max);
+		UpdateBarColor(Current, Max, 1);
+	}
+}
+
+void UH_StatBarWidget::UpdateFromNoiseComponent(UNoiseComponent* NoiseComp)
+{
+	if (NoiseComp)
+	{
+		float Current = NoiseComp->GetCurrentNoise();
+		float Max = NoiseComp->GetMaxNoise();
+		UpdateStat(Current, Max);
+		UpdateBarColor(Current, Max, 2);
+	}
 }
 
 void UH_StatBarWidget::UpdateStat(float CurrentValue, float MaxValue)
@@ -49,13 +95,15 @@ void UH_StatBarWidget::UpdateStat(float CurrentValue, float MaxValue)
 	// }
 }
 
-void UH_StatBarWidget::UpdateBarColor(float CurrentValue, int32 StatType)
+void UH_StatBarWidget::UpdateBarColor(float CurrentValue, float MaxValue, int32 StatType)
 {
+	if (MaxValue <= 0.0f) return;
+	
 	FLinearColor FinalColor = FLinearColor::White;
+	float Ratio = CurrentValue / MaxValue;
 
 	if (StatType == 0) // HP
 	{
-		float Ratio = CurrentValue / 1.f;
 		if (Ratio >= 0.7f) FinalColor = FLinearColor::Green;
 		else if (Ratio >= 0.3f) FinalColor = FLinearColor::Yellow;
 		else FinalColor = FLinearColor::Red;

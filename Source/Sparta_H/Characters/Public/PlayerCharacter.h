@@ -23,8 +23,8 @@ class UVisibilityComponent;
 
 // 목표 변경 시 호출될 델리게이트
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnObjectiveChanged, const FString&, NewObjective);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMissionStateChanged);
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMissionStateChanged);
 
 
 UCLASS()
@@ -41,26 +41,26 @@ public:
 	USpringArmComponent* SpringArm;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components")
 	UCameraComponent* Camera;
-	
+
 	float MoveSpeed;
 	float SprintSpeedMultiplier;
 	float SprintSpeed;
-	
+
 	// 총기 착용 여부
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Equipment")
 	bool bIsEquipped = false;
-	
+
 	// 구르기 관련 , 일회성 동작이므로 몽타주 사용
 	bool bIsRolling = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	UAnimMontage* DiveRollMontage;
 	UFUNCTION()
 	void OnRollMontageEnded(UAnimMontage* Montage, bool bInterrupted);
-	
+
 	//기울이기 관련
 	UPROPERTY(BlueprintReadOnly, Category = "Movement")
-	float LeanAmount =0.f;
-		
+	float LeanAmount = 0.f;
+
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
@@ -71,14 +71,14 @@ public:
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
-	
+
 	// 다른 클래스에서 캐릭터의 컴포넌트를 참조하기 위한 게터함수
-	UHealthComponent* GetHealthComponent() const { return HealthComponent; } 
+	UHealthComponent* GetHealthComponent() const { return HealthComponent; }
 	UStaminaComponent* GetStaminaComponent() const { return StaminaComponent; }
-	UInteractionComponent* GetInteractionComponent() const { return InteractionComponent;}
-	UNoiseComponent* GetNoiseComponent() const{ return NoiseComponent; }
-	UVisibilityComponent* GetVisibilityComponent() const { return VisibilityComponent;}
-	
+	UInteractionComponent* GetInteractionComponent() const { return InteractionComponent; }
+	UNoiseComponent* GetNoiseComponent() const { return NoiseComponent; }
+	UVisibilityComponent* GetVisibilityComponent() const { return VisibilityComponent; }
+
 	UFUNCTION()
 	void Move(const FInputActionValue& value);
 	UFUNCTION()
@@ -125,28 +125,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	UWeaponDataAsset* GetCurrentWeaponData() const;
-	
+
 	void ApplyRecoil(const FRecoilData& Recoil);
 	/** End of Weapon System **/
-
-	/** 플레이어 스탯 / 목표 — HUD 위젯이 직접 참조 **/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats")
-	float CurrentHealth = 100.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats")
-	float MaxHealth = 100.0f;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats")
-	float CurrentStamina = 100.0f;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats")
-	float MaxStamina = 100.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats")
-	float CurrentNoise = 0.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats")
-	float MaxNoise = 100.0f;
 
 	// --- 미션 시스템 추가 ---
 	// 데이터 에셋 기반 미션 정보
@@ -190,7 +171,7 @@ public:
 	// 현재 목표 지점까지의 거리 반환 (미터 단위)
 	UFUNCTION(BlueprintCallable, Category = "Objective")
 	float GetDistanceToCurrentObjective() const;
-	
+
 	// 목표를 유동적으로 변경하기 위한 함수 (기존 유지)
 	UFUNCTION(BlueprintCallable, Category = "Objective")
 	void SetObjective(const FString& NewObjective);
@@ -239,7 +220,7 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
 	int32 CurrentWeaponIndex = 0;
-	
+
 	// 회복이 남아있는 누적 pitch (양수 = 위로 튕긴 양)
 	float RecoilPitchAccum = 0.0f;
 	// 현재 장창 무기의 회복 속도
@@ -247,20 +228,20 @@ private:
 
 	// 미션 타이머 핸들
 	FTimerHandle MissionTimerHandle;
-	
+
 	/** Character Components 추가 **/
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UHealthComponent> HealthComponent;
-	
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UStaminaComponent> StaminaComponent;
-	
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInteractionComponent> InteractionComponent;
-	
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UNoiseComponent> NoiseComponent;
-	
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UVisibilityComponent> VisibilityComponent;
 };
