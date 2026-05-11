@@ -8,9 +8,17 @@
 #include "Sparta_H/Framework/H_PlayerController.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Engine/World.h"
+
 #include "../Systems/Public/CombatManager.h"
 #include "../Weapon/WeaponBase.h"
 #include "../Weapon/WeaponDataAsset.h"
+
+#include "HealthComponent.h"
+#include "InteractionComponent.h"
+#include "NoiseComponent.h"
+#include "StaminaComponent.h"
+#include "VisibilityComponent.h"
+#include "Misc/MapErrors.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -44,6 +52,13 @@ APlayerCharacter::APlayerCharacter()
 
 	// BP에서 미지정 시 베이스 클래스로 폴백 (무기별 특수 로직이 없으면 그대로 사용)
 	WeaponBaseClass = AWeaponBase::StaticClass();
+	
+	// 컴포넌트 추가
+	HealthComponent=CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComponent"));
+	StaminaComponent = CreateDefaultSubobject<UStaminaComponent>(TEXT("StaminaComponent"));
+	NoiseComponent = CreateDefaultSubobject<UNoiseComponent>(TEXT("NoiseComponent"));
+	InteractionComponent = CreateDefaultSubobject<UInteractionComponent>(TEXT("InteractionComponent"));
+	VisibilityComponent = CreateDefaultSubobject<UVisibilityComponent>(TEXT("VisibilityComponent"));
 }
 
 // Called when the game starts or when spawned
@@ -58,6 +73,8 @@ void APlayerCharacter::BeginPlay()
 	{
 		EquipWeaponByIndex(0);
 	}
+	
+	
 }
 
 // Called every frame
