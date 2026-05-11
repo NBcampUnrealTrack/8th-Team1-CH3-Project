@@ -9,7 +9,7 @@ AMissionTrigger::AMissionTrigger()
 
 	TriggerBox = CreateDefaultSubobject<UBoxComponent>(TEXT("TriggerBox"));
 	RootComponent = TriggerBox;
-	
+
 	// 충돌 설정 강화
 	TriggerBox->SetCollisionProfileName(TEXT("Trigger"));
 	TriggerBox->SetGenerateOverlapEvents(true);
@@ -18,19 +18,23 @@ AMissionTrigger::AMissionTrigger()
 void AMissionTrigger::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
 	TriggerBox->OnComponentBeginOverlap.AddDynamic(this, &AMissionTrigger::OnOverlapBegin);
 }
 
-void AMissionTrigger::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, 
-                                     UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, 
+void AMissionTrigger::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+                                     UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
                                      bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (bIsUsed) return;
+	if (bIsUsed)
+	{
+		return;
+	}
 
 	if (APlayerCharacter* Player = Cast<APlayerCharacter>(OtherActor))
 	{
-		UE_LOG(LogTemp, Log, TEXT("MissionTrigger: Player overlapped with trigger. TargetGoalID: %s"), *TargetGoalID.ToString());
+		UE_LOG(LogTemp, Log, TEXT("MissionTrigger: Player overlapped with trigger. TargetGoalID: %s"),
+		       *TargetGoalID.ToString());
 
 		// 플레이어에게 미션 데이터가 있는지 확인
 		if (!Player->CurrentMissionData)
@@ -45,19 +49,21 @@ void AMissionTrigger::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor
 			if (!Player->IsCurrentObjective(TargetGoalID))
 			{
 				FName CurrentGoalID = Player->GetCurrentObjectiveID();
-				UE_LOG(LogTemp, Warning, TEXT("MissionTrigger: GoalID mismatch. Expected: %s, Current: %s"), *TargetGoalID.ToString(), *CurrentGoalID.ToString());
+				UE_LOG(LogTemp, Warning, TEXT("MissionTrigger: GoalID mismatch. Expected: %s, Current: %s"),
+				       *TargetGoalID.ToString(), *CurrentGoalID.ToString());
 				return;
 			}
 		}
 
-		UE_LOG(LogTemp, Warning, TEXT("MissionTrigger: Successfully completing objective: %s"), *TargetGoalID.ToString());
+		UE_LOG(LogTemp, Warning, TEXT("MissionTrigger: Successfully completing objective: %s"),
+		       *TargetGoalID.ToString());
 		Player->CompleteCurrentObjective();
-		
-		if (CompletionSound)
-		{
-			UGameplayStatics::PlaySoundAtLocation(this, CompletionSound, GetActorLocation());
-		}
 
-		bIsUsed = true;
+		// if (CompletionSound)
+		// {
+		// 	UGameplayStatics::PlaySoundAtLocation(this, CompletionSound, GetActorLocation());
+		// }
+
+		// bIsUsed = true;
 	}
 }
