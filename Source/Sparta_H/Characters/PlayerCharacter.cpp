@@ -64,6 +64,14 @@ void APlayerCharacter::BeginPlay()
 void APlayerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	// 반동 회복 로직
+	if (RecoilPitchAccum > KINDA_SMALL_NUMBER)
+	{
+		const float RecoverPitch = FMath::Min(RecoilPitchAccum, RecoilRecoverySpeed * DeltaTime);
+		AddControllerPitchInput(RecoverPitch);
+		RecoilPitchAccum -= RecoverPitch;
+	}
 }
 
 // Called to bind functionality to input
@@ -386,6 +394,16 @@ void APlayerCharacter::OnReloadPressed(const FInputActionValue& /*Value*/)
 UWeaponDataAsset* APlayerCharacter::GetCurrentWeaponData() const
 {
 	return CurrentWeapon != nullptr ? CurrentWeapon->GetWeaponData() : nullptr;
+}
+
+void APlayerCharacter::ApplyRecoil(const FRecoilData& Recoil)
+{
+	// 음수 pitch = 카메라 위로(pitch축 기준)
+	AddControllerPitchInput(-Recoil.VerticalRecoil);
+	AddControllerYawInput(FMath::RandRange(-Recoil.HorizontalRecoil, Recoil.HorizontalRecoil));
+	
+	RecoilPitchAccum += Recoil.VerticalRecoil;
+	RecoilRecoverySpeed = Recoil.RecoverySpeed;
 }
 
 void APlayerCharacter::NotifyEnemyKilled()

@@ -4,14 +4,17 @@
 #include "CombatTypes.h"
 #include "WeaponTypes.generated.h"
 
-// 무기 종류. AnimBP State Machine 분기 및 DA 분류 키로 사용
+// 무기 종류. AnimBP State Machine 분기 및 DA 분류 키로 사용.
+// ECombatWeaponType과 동일 순서/값으로 미러링 — static_cast로 직접 변환 가능
 UENUM(BlueprintType)
 enum class EWeaponType : uint8
 {
-	Knife,
-	Pistol,
 	Rifle,
-	Rock
+	Pistol,
+	Knife,
+	Grenade,
+	Rock,
+	None
 };
 
 // 발사 방식. 트리거 입력 처리 로직(연사/단발/투척)을 결정
@@ -74,15 +77,9 @@ enum class ECrosshairState : uint8
 
 
 // 무기 시스템 enum -> 컴뱃 시스템 enum 매핑.
-// 두 enum은 별도라 변환이 필요 (통합 리팩터는 별도 작업)
+// 두 enum은 동일 순서/값으로 미러링되어 있어 static_cast로 변환 가능.
+// 한쪽 enum 값을 추가/제거할 경우 반드시 다른 쪽도 같은 순서로 맞출 것
 inline ECombatWeaponType ToCombatWeaponType(EWeaponType Type)
 {
-	switch (Type)
-	{
-	case EWeaponType::Knife: return ECombatWeaponType::Knife;
-	case EWeaponType::Pistol: return ECombatWeaponType::Pistol;
-	case EWeaponType::Rifle: return ECombatWeaponType::Rifle;
-	case EWeaponType::Rock: return ECombatWeaponType::Rock;
-	default: return ECombatWeaponType::None;
-	}
+	return static_cast<ECombatWeaponType>(Type);
 }
