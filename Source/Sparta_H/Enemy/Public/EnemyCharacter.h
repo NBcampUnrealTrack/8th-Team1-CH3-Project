@@ -22,13 +22,10 @@ struct FAlertLevelStats
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float FOVAngle = 100.0f;
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float SightRange = 1000.0f;
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float HearingRange = 500.0f;
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float MoveSpeed = 400.0f;
 };
@@ -45,6 +42,10 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "AI|Combat")
     bool CanShootTarget(AActor* TargetActor);
+
+    // 3점사 패턴 시작 함수 (Behavior Tree 등에서 호출)
+    UFUNCTION(BlueprintCallable, Category = "AI|Combat")
+    void StartFirePattern(AActor* TargetActor);
 
     UFUNCTION(BlueprintCallable, Category = "AI|Combat")
     bool FireAtTarget(AActor* TargetActor);
@@ -89,10 +90,10 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|AlertStats")
     FAlertLevelStats LostStats       = { 100.f, 2000.f, 1000.f, 800.f };
 
+    UPROPERTY(EditAnywhere, Category = "AI")
+    class UBehaviorTree* EnemyBT;
 private:
-    // ---------------------------------------------------------------
-    // 전투 수치
-    // ---------------------------------------------------------------
+    // --- 전투 수치 ---
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Combat", meta = (AllowPrivateAccess = "true"))
     float FireRange = 1200.0f;
 
@@ -105,9 +106,17 @@ private:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|Combat", meta = (AllowPrivateAccess = "true"))
     float WeaponDamage = 15.0f;
 
-    // ---------------------------------------------------------------
-    // AlertRange
-    // ---------------------------------------------------------------
+    // --- 기획 추가: 확률 기반 감지 (Level 2 -> 3) ---
+    float SpotProb = 0.7f;                // 초기값 0.7
+    FTimerHandle SpotCheckTimerHandle;    // 1초마다 반복될 핸들
+    void ProcessSpotCheck();              // 확률 계산 로직
+
+    // --- 기획 추가: 사격 패턴 (3회 사격 로직) ---
+    int32 CurrentShotCount = 0;           // 현재 발사 횟수
+    FTimerHandle FirePatternTimerHandle;  // 0.4초/0.8초 제어용
+    void ExecuteFireStep();               // 실제 한 발씩 쏘는 단계
+
+    // --- AlertRange & 동기화 ---
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Alert", meta = (AllowPrivateAccess = "true"))
     float CombatAlertRange = 2000.0f;
 
@@ -117,26 +126,21 @@ private:
     void AlertNearbyEnemies(AActor* TargetPlayer, float AlertRange, EAlertLevel NewLevel);
     void ApplyPerceptionStats(const FAlertLevelStats& Stats);
 
-    // ---------------------------------------------------------------
-    // 머리 위 아이콘
-    // ---------------------------------------------------------------
+    // --- 머리 위 아이콘 ---
     void UpdateAlertIcon(EAlertLevel NewLevel);
     void HideAlertIcon();
 
-    // ?? / !! 표시 후 자동 숨김 딜레이 (에디터에서 조정 가능)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|UI", meta = (AllowPrivateAccess = "true"))
     float IconHideDelay = 3.0f;
 
     FTimerHandle IconHideTimerHandle;
 
-    // ---------------------------------------------------------------
-    // 자동 복귀 타이머
-    // ---------------------------------------------------------------
+    // --- 자동 복귀 타이머 (기획: Lost는 20초) ---
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Alert", meta = (AllowPrivateAccess = "true"))
     float SuspiciousRevertDelay = 10.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Alert", meta = (AllowPrivateAccess = "true"))
-    float LostRevertDelay = 15.0f;
+    float LostRevertDelay = 20.0f; // 기획서에 맞춰 20초로 변경
 
     FTimerHandle SuspiciousRevertTimerHandle;
     FTimerHandle LostRevertTimerHandle;
@@ -144,13 +148,7 @@ private:
     void OnSuspiciousRevertTimerExpired();
     void OnLostRevertTimerExpired();
 
-    // ---------------------------------------------------------------
-    // 탐지 확정 타이머
-    // ---------------------------------------------------------------
-    FTimerHandle DetectionTimerHandle;
-
+    // --- 타겟 관리 ---
     UPROPERTY()
     AActor* SuspectedTarget = nullptr;
-
-    void OnDetectionTimerExpired();
 };
