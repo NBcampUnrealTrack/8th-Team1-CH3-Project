@@ -44,6 +44,8 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Movement")
 	float LeanAmount =0.f;
 	
+	float temp = 0;
+	
 	
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
