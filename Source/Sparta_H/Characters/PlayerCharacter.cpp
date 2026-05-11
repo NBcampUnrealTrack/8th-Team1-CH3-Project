@@ -30,6 +30,8 @@ APlayerCharacter::APlayerCharacter()
 	SpringArm->SetupAttachment(RootComponent);
 	SpringArm->TargetArmLength = 400.f;
 	SpringArm->bUsePawnControlRotation = true; // 핵심: 마우스 따라가기
+	SpringArm->bEnableCameraLag = true;
+	SpringArm->CameraLagSpeed = 10.0f;
 
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
@@ -39,6 +41,7 @@ APlayerCharacter::APlayerCharacter()
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
+	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = true;
 
 	// 3. 이동 시 회전 설정
 	GetCharacterMovement()->bOrientRotationToMovement = true; // 이동 방향으로 몸 틀기
@@ -74,7 +77,6 @@ void APlayerCharacter::BeginPlay()
 		EquipWeaponByIndex(0);
 	}
 	
-	
 }
 
 // Called every frame
@@ -88,6 +90,12 @@ void APlayerCharacter::Tick(float DeltaTime)
 		const float RecoverPitch = FMath::Min(RecoilPitchAccum, RecoilRecoverySpeed * DeltaTime);
 		AddControllerPitchInput(RecoverPitch);
 		RecoilPitchAccum -= RecoverPitch;
+	}
+	
+	// 스테미나 고갈 시 달리기 멈추는 로직
+	if (StaminaComponent && !StaminaComponent->CanSprint())
+	{
+		StopRun(FInputActionValue()); // 스태미나 고갈 시 강제 정지
 	}
 }
 
@@ -190,12 +198,20 @@ void APlayerCharacter::StopJump(const FInputActionValue& value)
 
 void APlayerCharacter::StartRun(const FInputActionValue& value)
 {
-	GetCharacterMovement()->MaxWalkSpeed = SprintSpeed;
+	if (StaminaComponent && StaminaComponent->CanSprint())
+	{
+		GetCharacterMovement()->MaxWalkSpeed = SprintSpeed;
+		StaminaComponent->SetSprinting(true);
+	}
 }
 
 void APlayerCharacter::StopRun(const FInputActionValue& value)
 {
 	GetCharacterMovement()->MaxWalkSpeed = MoveSpeed;
+	if (StaminaComponent)
+	{
+		StaminaComponent->SetSprinting(false);
+	}
 }
 
 void APlayerCharacter::StartHide(const FInputActionValue& value)
