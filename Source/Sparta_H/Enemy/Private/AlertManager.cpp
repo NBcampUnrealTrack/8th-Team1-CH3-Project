@@ -3,6 +3,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "AIController.h"
+#include "BlackboardKeys.h"
 
 AAlertManager::AAlertManager()
 {

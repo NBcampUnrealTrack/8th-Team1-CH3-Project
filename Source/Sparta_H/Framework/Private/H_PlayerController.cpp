@@ -1,5 +1,5 @@
-#include "../Framework/H_PlayerController.h"
-#include "../UI/H_HUDWidget.h"
+#include "H_PlayerController.h"
+#include "H_HUDWidget.h"
 #include "Blueprint/UserWidget.h"
 #include "EnhancedInputSubsystems.h"
 

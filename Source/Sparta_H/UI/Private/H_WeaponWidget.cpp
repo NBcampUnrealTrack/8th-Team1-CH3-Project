@@ -1,10 +1,10 @@
 #include "H_WeaponWidget.h"
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
-#include "../Characters/PlayerCharacter.h"
-#include "../Weapon/WeaponBase.h"
-#include "../Weapon/AmmoComponent.h"
-#include "../Weapon/WeaponDataAsset.h"
+#include "PlayerCharacter.h"
+#include "WeaponBase.h"
+#include "AmmoComponent.h"
+#include "WeaponDataAsset.h"
 
 void UH_WeaponWidget::UpdateFromCharacter(APlayerCharacter* Character)
 {

@@ -1,5 +1,6 @@
 #include "H_CrosshairWidget.h"
-#include "../Characters/PlayerCharacter.h"
+#include "PlayerCharacter.h"
+#include "WeaponTypes.h"
 
 ECrosshairState UH_CrosshairWidget::GetCurrentCrosshairState() const
 {

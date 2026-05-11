@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "../Weapon/WeaponTypes.h"
+#include "WeaponTypes.h"
 #include "Blueprint/UserWidget.h"
 #include "H_CrosshairWidget.generated.h"
 

@@ -1,16 +1,16 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "PlayerCharacter.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "EnhancedInputComponent.h"
-#include "Sparta_H/Framework/H_PlayerController.h"
+#include "H_PlayerController.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Engine/World.h"
-#include "../Systems/Public/CombatManager.h"
-#include "../Weapon/WeaponBase.h"
-#include "../Weapon/WeaponDataAsset.h"
+#include "CombatManager.h"
+#include "WeaponBase.h"
+#include "WeaponDataAsset.h"
+#include "MissionDataAsset.h"
+#include "MissionInteractableInterface.h"
+#include "Kismet/GameplayStatics.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -44,6 +44,9 @@ APlayerCharacter::APlayerCharacter()
 
 	// BP에서 미지정 시 베이스 클래스로 폴백 (무기별 특수 로직이 없으면 그대로 사용)
 	WeaponBaseClass = AWeaponBase::StaticClass();
+
+	MaxNoise = 100.f;
+	CurrentNoise = 0.f;
 }
 
 // Called when the game starts or when spawned
@@ -58,6 +61,10 @@ void APlayerCharacter::BeginPlay()
 	{
 		EquipWeaponByIndex(0);
 	}
+
+	// 미션 데이터 초기화
+	CurrentMissionIndex = 0;
+	UpdateMissionObjective();
 }
 
 // Called every frame
@@ -72,8 +79,23 @@ void APlayerCharacter::Tick(float DeltaTime)
 		AddControllerPitchInput(RecoverPitch);
 		RecoilPitchAccum -= RecoverPitch;
 	}
+
+	// 소음 수치 업데이트 (속도에 비례)
+	float TargetNoise = 0.0f;
+	if (GetCharacterMovement())
+	{
+		float VelocitySize = GetVelocity().Size();
+		float MaxSpeed = 600.f;
+		if (MaxSpeed > 0.0f)
+		{
+			TargetNoise = (VelocitySize / MaxSpeed) * 30.0f;
+		}
+	}
+	// 부드러운 변화를 위해 보간 사용
+	CurrentNoise = FMath::FInterpTo(CurrentNoise, TargetNoise, DeltaTime, 10.0f);
 }
 
+// 캐릭터 상호작용 
 // Called to bind functionality to input
 void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
@@ -243,9 +265,37 @@ void APlayerCharacter::StopLean(const FInputActionValue& value)
 
 void APlayerCharacter::Interaction(const FInputActionValue& value)
 {
-	
+	// 상호작용 라인 트레이스
+	FVector Start = Camera->GetComponentLocation();
+	FVector End = Start + (Camera->GetForwardVector() * 300.0f); // 3m 사거리
+
+	FHitResult HitResult;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+
+	if (GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, Params))
+	{
+		if (AActor* HitActor = HitResult.GetActor())
+		{
+			if (HitActor->GetClass()->ImplementsInterface(UMissionInteractableInterface::StaticClass()))
+			{
+				if (IMissionInteractableInterface::Execute_CanInteract(HitActor, this))
+				{
+					IMissionInteractableInterface::Execute_Interact(HitActor, this);
+				}
+			}
+		}
+	}
 }
 
+void APlayerCharacter::Jump()
+{
+	Super::Jump();
+
+	CurrentNoise = FMath::Clamp(CurrentNoise + 30.0f, 0.0f, MaxNoise);
+}
+
+// 무기 관련
 void APlayerCharacter::SpawnEquippedWeapons()
 {
 	UWorld* World = GetWorld();
@@ -380,6 +430,9 @@ void APlayerCharacter::OnFirePressed(const FInputActionValue& /*Value*/)
 	if (CurrentWeapon != nullptr)
 	{
 		CurrentWeapon->Fire();
+
+		// 사격 시 즉시 최대 소음 발생
+		CurrentNoise = MaxNoise;
 	}
 }
 
@@ -408,5 +461,82 @@ void APlayerCharacter::ApplyRecoil(const FRecoilData& Recoil)
 
 void APlayerCharacter::NotifyEnemyKilled()
 {
-	// 적 처치 시 호출되는 함수. 필요 시 이곳에 로직 추가
+	// 적 처치 시 호출되는 함수.
+	UE_LOG(LogTemp, Log, TEXT("Enemy Killed!"));
+}
+
+// 미션 관련
+
+void APlayerCharacter::SetObjective(const FString& NewObjective)
+{
+	CurrentObjective = NewObjective;
+	OnObjectiveChanged.Broadcast(CurrentObjective);
+}
+
+void APlayerCharacter::CompleteCurrentObjective()
+{
+	if (!CurrentMissionData) return;
+
+	// 다음 목표로 이동
+	CurrentMissionIndex++;
+	
+	if (CurrentMissionIndex >= CurrentMissionData->MissionGoals.Num())
+	{
+		// 모든 미션 최종 성공 - 타이머 해제 및 이벤트 호출
+		GetWorldTimerManager().ClearTimer(MissionTimerHandle);
+		OnMissionCompleted.Broadcast();
+		UpdateMissionObjective();
+	}
+	else
+	{
+		UpdateMissionObjective();
+	}
+}
+
+void APlayerCharacter::FailMission()
+{
+	UE_LOG(LogTemp, Error, TEXT("Mission Failed!"));
+	OnMissionFailed.Broadcast();
+}
+
+float APlayerCharacter::GetRemainingMissionTime() const
+{
+	if (GetWorldTimerManager().IsTimerActive(MissionTimerHandle))
+	{
+		return GetWorldTimerManager().GetTimerRemaining(MissionTimerHandle);
+	}
+	return 0.0f;
+}
+
+void APlayerCharacter::UpdateMissionObjective()
+{
+	if (!CurrentMissionData) return;
+
+	// 기존 타이머 초기화
+	GetWorldTimerManager().ClearTimer(MissionTimerHandle);
+
+	if (CurrentMissionData->MissionGoals.IsValidIndex(CurrentMissionIndex))
+	{
+		const FMissionGoal& CurrentGoal = CurrentMissionData->MissionGoals[CurrentMissionIndex];
+		
+		// 시간 제한 설정
+		if (CurrentGoal.TimeLimit > 0.0f)
+		{
+			GetWorldTimerManager().SetTimer(
+				MissionTimerHandle, 
+				this, 
+				&APlayerCharacter::FailMission, 
+				CurrentGoal.TimeLimit, 
+				false
+			);
+		}
+
+		FString DisplayText = CurrentGoal.Description;
+
+		SetObjective(DisplayText);
+	}
+	else if (CurrentMissionIndex >= CurrentMissionData->MissionGoals.Num())
+	{
+		SetObjective(TEXT("모든 목표 달성!"));
+	}
 }

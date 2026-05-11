@@ -4,11 +4,21 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "Sparta_H/Weapon/WeaponTypes.h"
+#include "WeaponTypes.h"
 #include "PlayerCharacter.generated.h"
 
 struct FInputActionValue;
+class USpringArmComponent;
+class UCameraComponent;
+class UAnimMontage;
+class UCombatManager;
+class UWeaponDataAsset;
+class AWeaponBase;
+class UMissionDataAsset;
 
+// 목표 변경 시 호출될 델리게이트
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnObjectiveChanged, const FString&, NewObjective);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMissionStateChanged);
 
 UCLASS()
 class SPARTA_H_API APlayerCharacter : public ACharacter
@@ -21,9 +31,9 @@ public:
 
 	// 1인칭 카메라 — 캡슐 상단에 부착, 컨트롤러 회전 적용
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components")
-	class USpringArmComponent* SpringArm;
+	USpringArmComponent* SpringArm;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components")
-	class UCameraComponent* Camera;
+	UCameraComponent* Camera;
 	
 	float MoveSpeed;
 	float SprintSpeedMultiplier;
@@ -43,13 +53,14 @@ public:
 	//기울이기 관련
 	UPROPERTY(BlueprintReadOnly, Category = "Movement")
 	float LeanAmount =0.f;
-	
-	
+		
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+
+	virtual void Jump() override;
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
@@ -117,8 +128,64 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats")
 	float MaxStamina = 100.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats")
+	float CurrentNoise = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|Stats")
+	float MaxNoise = 100.0f;
+
+	// --- 미션 시스템 추가 ---
+	// 데이터 에셋 기반 미션 정보
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Objective")
-	FString CurrentObjective = TEXT("기밀실로 잠입하여 서류를 획득하십시오.");
+	class UMissionDataAsset* CurrentMissionData;
+
+	// 현재 진행 중인 미션 인덱스
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Objective")
+	int32 CurrentMissionIndex = 0;
+
+	// 현재 목표를 완료하고 다음 목표로 진행
+	UFUNCTION(BlueprintCallable, Category = "Objective")
+	void CompleteCurrentObjective();
+
+	// 특정 ID의 목표가 현재 진행 중인지 확인
+	UFUNCTION(BlueprintCallable, Category = "Objective")
+	bool IsCurrentObjective(FName GoalID) const;
+
+	// 현재 진행 중인 목표의 ID 반환
+	UFUNCTION(BlueprintCallable, Category = "Objective")
+	FName GetCurrentObjectiveID() const;
+
+	// 미션 데이터로부터 현재 목표 텍스트 업데이트
+	void UpdateMissionObjective();
+
+	// 미션 성공/실패 이벤트
+	UPROPERTY(BlueprintAssignable, Category = "Objective")
+	FOnMissionStateChanged OnMissionCompleted;
+
+	UPROPERTY(BlueprintAssignable, Category = "Objective")
+	FOnMissionStateChanged OnMissionFailed;
+
+	// 미션 실패 처리
+	UFUNCTION(BlueprintCallable, Category = "Objective")
+	void FailMission();
+
+	// 현재 남은 미션 시간 반환
+	UFUNCTION(BlueprintCallable, Category = "Objective")
+	float GetRemainingMissionTime() const;
+
+	// 현재 목표 지점까지의 거리 반환 (미터 단위)
+	UFUNCTION(BlueprintCallable, Category = "Objective")
+	float GetDistanceToCurrentObjective() const;
+	
+	// 목표를 유동적으로 변경하기 위한 함수 (기존 유지)
+	UFUNCTION(BlueprintCallable, Category = "Objective")
+	void SetObjective(const FString& NewObjective);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Objective")
+	FString CurrentObjective = TEXT("테스트 문구.");
+
+	UPROPERTY(BlueprintAssignable, Category = "Objective")
+	FOnObjectiveChanged OnObjectiveChanged;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|UI")
 	ECrosshairState CurrentCrosshairState = ECrosshairState::Default;
@@ -163,4 +230,7 @@ private:
 	float RecoilPitchAccum = 0.0f;
 	// 현재 장창 무기의 회복 속도
 	float RecoilRecoverySpeed = 0.0f;
+
+	// 미션 타이머 핸들
+	FTimerHandle MissionTimerHandle;
 };

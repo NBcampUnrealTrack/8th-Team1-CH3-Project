@@ -11,6 +11,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/WidgetComponent.h"
 #include "BlackboardKeys.h"
+#include "CombatManager.h"
 
 AEnemyCharacter::AEnemyCharacter()
 {

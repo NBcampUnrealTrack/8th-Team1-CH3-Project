@@ -1,4 +1,1 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
-#include "CombatTypes.h"
+#include "Systems/Public/CombatTypes.h"

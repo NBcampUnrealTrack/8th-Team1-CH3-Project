@@ -1,8 +1,7 @@
 #include "WeaponBase.h"
-
 #include "AmmoComponent.h"
 #include "WeaponDataAsset.h"
-#include "../Characters/PlayerCharacter.h"
+#include "PlayerCharacter.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
 #include "NiagaraFunctionLibrary.h"

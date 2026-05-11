@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "../Weapon/WeaponTypes.h"
+#include "WeaponTypes.h"
 #include "H_HUDWidget.generated.h"
 
 class APlayerCharacter;
@@ -25,13 +25,22 @@ protected:
 	class UH_StatBarWidget* StaminaBar;
 
 	UPROPERTY(meta = (BindWidget))
+	class UH_StatBarWidget* NoiseBar;
+
+	UPROPERTY(meta = (BindWidget))
 	class UH_WeaponWidget* WeaponUI;
 
 	UPROPERTY(meta = (BindWidget))
 	class UH_MissionWidget* MissionUI;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	class UH_TimerWidget* TimerUI;
 	
 	UFUNCTION(BlueprintCallable, Category = "HUD")
 	APlayerCharacter* GetOwningCharacter() const;
 
+	// 미션 업데이트 알림 표시 (블루프린트에서 애니메이션 구현)
+	UFUNCTION(BlueprintImplementableEvent, Category = "HUD|Mission")
+	void ShowMissionNotification(const FString& Message);
 
 };

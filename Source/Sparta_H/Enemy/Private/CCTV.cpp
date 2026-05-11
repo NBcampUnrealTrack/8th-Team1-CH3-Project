@@ -9,6 +9,7 @@
 #include "Engine/OverlapResult.h"
 #include "Components/CapsuleComponent.h"
 #include "Engine/StaticMeshActor.h"
+#include "BlackboardKeys.h"
 
 ACCTV::ACCTV()
 {

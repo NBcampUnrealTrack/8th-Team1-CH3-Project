@@ -1,8 +1,12 @@
 #include "CombatManager.h"
+#include "HitDetector.h"
+#include "DamageProcessor.h"
+#include "CombatFeedbackHandler.h"
 #include "Kismet/GameplayStatics.h"
 #include "Perception/AISense_Hearing.h"
-#include "BaseEnemy.h"
+#include "Enemy/Public/BaseEnemy.h"
 #include "NiagaraFunctionLibrary.h"
+#include "GameFramework/Pawn.h"
 
 UCombatManager::UCombatManager()
 {
