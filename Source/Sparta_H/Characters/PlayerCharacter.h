@@ -113,6 +113,8 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	UWeaponDataAsset* GetCurrentWeaponData() const;
+	
+	void ApplyRecoil(const FRecoilData& Recoil);
 	/** End of Weapon System **/
 
 	/** 플레이어 스탯 / 목표 — HUD 위젯이 직접 참조 **/
@@ -169,6 +171,11 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
 	int32 CurrentWeaponIndex = 0;
+	
+	// 회복이 남아있는 누적 pitch (양수 = 위로 튕긴 양)
+	float RecoilPitchAccum = 0.0f;
+	// 현재 장창 무기의 회복 속도
+	float RecoilRecoverySpeed = 0.0f;
 	
 	/** Character Components 추가 **/
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))

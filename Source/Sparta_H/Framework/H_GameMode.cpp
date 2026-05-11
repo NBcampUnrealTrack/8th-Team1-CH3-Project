@@ -9,9 +9,7 @@
 AH_GameMode::AH_GameMode()
 	: Super()
 {
-	static ConstructorHelpers::FClassFinder<APawn> PlayerPawnClassFinder(
-		TEXT("/Game/FirstPerson/Blueprints/BP_FirstPersonCharacter"));
-	DefaultPawnClass = PlayerPawnClassFinder.Class;
+	DefaultPawnClass = APlayerCharacter::StaticClass();
 
 	PlayerControllerClass = AH_PlayerController::StaticClass();
 }

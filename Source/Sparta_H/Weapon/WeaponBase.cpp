@@ -10,9 +10,11 @@
 #include "Camera/PlayerCameraManager.h"
 #include "GameFramework/PlayerController.h"
 #include "CombatManager.h"
+#include "ThrowableActor.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/World.h"
 #include "TimerManager.h"
+#include "Kismet/GameplayStatics.h"
 
 AWeaponBase::AWeaponBase()
 {
@@ -98,22 +100,59 @@ void AWeaponBase::Fire()
 				}
 			}
 		}
+		
+		// 리코일 틱 - 몽타주와 같은 프레임
+		Character->ApplyRecoil(WeaponData->RecoilData);
 	}
 
-	// 카메라 시점 기준 라인 트레이스 - 크로스헤어가 가리키는 정확한 지점에 명중하도록.
-	// (총구 소켓 기준은 카메라와 어긋나서 정조준 시 빗나감)
-	if (APlayerCharacter* Character = Cast<APlayerCharacter>(GetOwner()))
+	if (WeaponData->FireMode == EWeaponFireMode::Throwable)
 	{
-		if (UCombatManager* CombatMgr = Character->GetCombatManager())
+		if (WeaponData->ThrowableClass == nullptr) return;
+
+		if (APlayerCharacter* Character = Cast<APlayerCharacter>(GetOwner()))
 		{
 			if (const APlayerController* PC = Cast<APlayerController>(Character->GetController()))
 			{
-				if (PC->PlayerCameraManager != nullptr)
+				if (PC->PlayerCameraManager == nullptr) return;
+				
+				const FVector LaunchDir = PC->PlayerCameraManager->GetCameraRotation().Vector();
+				// 캐릭터 캡슐 앞쪽에서 스폰 - 카메라 위치 그대로면 매시와 충돌 가능
+				const FVector SpawnLoc = PC->PlayerCameraManager->GetCameraLocation() + LaunchDir * 100.0f;
+				
+				FActorSpawnParameters Params;
+				Params.Owner = GetOwner();
+				Params.Instigator = Cast<APawn>(GetOwner());
+				
+				AThrowableActor* Throwable = GetWorld()->SpawnActor<AThrowableActor>(
+					WeaponData->ThrowableClass, SpawnLoc, FRotator::ZeroRotator, Params);
+
+				if (IsValid(Throwable))
 				{
-					const FVector AimStart = PC->PlayerCameraManager->GetCameraLocation();
-					const FVector AimDirection = PC->PlayerCameraManager->GetCameraRotation().Vector();
-					const ECombatWeaponType CombatType = ToCombatWeaponType(WeaponData->WeaponType);
-					CombatMgr->OnFire(AimStart, AimDirection, CombatType, WeaponData->Damage);
+					Throwable->ThrowableType = ToCombatWeaponType(WeaponData->WeaponType);
+					Throwable->Launch(LaunchDir);
+				}
+			}
+		}
+	}
+	else
+	{
+		// 카메라 시점 기준 라인 트레이스 - 크로스헤어가 가리키는 정확한 지점에 명중하도록.
+		// (총구 소켓 기준은 카메라와 어긋나서 정조준 시 빗나감)
+		if (APlayerCharacter* Character = Cast<APlayerCharacter>(GetOwner()))
+		{
+			if (UCombatManager* CombatMgr = Character->GetCombatManager())
+			{
+				if (const APlayerController* PC = Cast<APlayerController>(Character->GetController()))
+				{
+					if (PC->PlayerCameraManager != nullptr)
+					{
+						const FVector AimStart = PC->PlayerCameraManager->GetCameraLocation();
+						const FVector AimDirection = PC->PlayerCameraManager->GetCameraRotation().Vector();
+						const ECombatWeaponType CombatType = ToCombatWeaponType(WeaponData->WeaponType);
+						CombatMgr->OnFire(AimStart, AimDirection, CombatType, WeaponData->Damage,
+										  WeaponData->bShouldTriggerAIAggro,
+										  WeaponData->ImpactVFX.LoadSynchronous());
+					}
 				}
 			}
 		}
@@ -133,6 +172,15 @@ void AWeaponBase::Fire()
 		);
 	}
 
+	// 발사 사운드 - 총구 소켓에 부착해 재생
+	if (USoundBase* Sound = WeaponData->FireSound.LoadSynchronous())
+	{
+		UGameplayStatics::SpawnSoundAttached(
+			Sound,
+			WeaponMeshComponent,
+			WeaponData->MuzzleSocketName);
+	}
+	
 	// FireRate <= 0 이면 한 프레임만 차단 후 즉시 복귀
 	const float Cooldown = FMath::Max(WeaponData->FireRate, KINDA_SMALL_NUMBER);
 	if (UWorld* World = GetWorld())
@@ -156,6 +204,12 @@ void AWeaponBase::Reload()
 	}
 
 	// 이미 가득이거나 탄약 컴포넌트 없으면 무시
+	if (AmmoComponent == nullptr || AmmoComponent->IsFull())
+	{
+		return;
+	}
+
+	// 발사 쿨다운 진행 중이면 정리하고 재장전 시작
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().ClearTimer(FireCooldownTimerHandle);
@@ -200,7 +254,7 @@ void AWeaponBase::OnFireCooldownEnded()
 
 void AWeaponBase::OnReloadCompleted()
 {
-	if (AmmoComponent == nullptr)
+	if (AmmoComponent != nullptr)
 	{
 		AmmoComponent->ReloadAmmo();
 	}
