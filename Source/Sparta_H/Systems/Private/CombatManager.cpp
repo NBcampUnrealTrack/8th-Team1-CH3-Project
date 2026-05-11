@@ -76,7 +76,48 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 	// 8. 피격 소음 (적 피격 위치)
 	if (bTriggerAIAggro)
 	{
-		EmitNoise(HitResult.ImpactPoint, GetHitNoiseRange(WeaponType));
+		if (HitActor->ActorHasTag("Enemy"))
+		{
+			// 공격자도 적이면 무효
+			if (GetOwner()->ActorHasTag("Enemy")) return;
+
+
+			ABaseEnemy* Enemy = Cast<ABaseEnemy>(HitActor);
+			if (IsValid(Enemy) && !Enemy->IsDead())
+			{
+				Enemy->OnDeath.AddUniqueDynamic(
+					FeedbackHandler, &UCombatFeedbackHandler::OnKill
+				);
+			}
+
+			// 적 → 대미지 전달
+			UGameplayStatics::ApplyDamage(
+				HitActor,
+				FinalDamage,
+				nullptr,
+				GetOwner(),
+				nullptr
+			);
+		}
+		else if (HitActor->ActorHasTag("Player"))
+		{
+			// 공격자가 적일 때만 플레이어에게 데미지
+			if (!GetOwner()->ActorHasTag("Enemy")) return;
+
+			UGameplayStatics::ApplyDamage(
+				HitActor,
+				FinalDamage,
+				nullptr,
+				GetOwner(),
+				nullptr
+			);
+		}
+		else
+		{
+			// 환경 오브젝트 → 소음만 발생
+			EmitNoise(HitResult.ImpactPoint, GetHitNoiseRange(WeaponType));
+			return;
+		}
 	}
 }
 

@@ -3,6 +3,8 @@
 *.sln.DotSettings
 *.user
 Plugins/
+# 사용하지 않는 대형 에셋 폴더
+Content/Characters/Animations/FreeAnimationLibrary/*
 
 # Visual Studio 2015 user specific files
 .vs/

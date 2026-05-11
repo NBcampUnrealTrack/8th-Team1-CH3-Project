@@ -2,11 +2,10 @@
 
 
 #include "PlayerCharacter.h"
+#include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
-#include "Components/CapsuleComponent.h"
-#include "Components/SkeletalMeshComponent.h"
 #include "EnhancedInputComponent.h"
-#include "MyPlayerController.h"
+#include "Sparta_H/Framework/H_PlayerController.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Engine/World.h"
 #include "../Systems/Public/CombatManager.h"
@@ -18,19 +17,23 @@ APlayerCharacter::APlayerCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	// 1인칭 카메라 — 캡슐 상단(머리 근사 위치)에 직접 부착, 컨트롤러 회전 적용. SpringArm 없음
-	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
-	Camera->SetupAttachment(GetCapsuleComponent());
-	Camera->SetRelativeLocation(FVector(0.f, 0.f, 70.f)); // BP에서 미세조정
-	Camera->bUsePawnControlRotation = true;
+	// 1. 스프링암 설정: 컨트롤러(마우스) 회전 사용!
+	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
+	SpringArm->SetupAttachment(RootComponent);
+	SpringArm->TargetArmLength = 400.f;
+	SpringArm->bUsePawnControlRotation = true; // 핵심: 마우스 따라가기
 
-	// 1인칭 — 마우스 따라 몸이 같이 회전
-	bUseControllerRotationYaw = true;
+	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
+	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
+	Camera->bUsePawnControlRotation = false; // 암이 돌고 있으니 이건 false로
+
+	// 2. 캐릭터 본체 회전 설정: 마우스 따라 몸이 돌지 않게 분리
+	bUseControllerRotationYaw = false;
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
 
-	// 1인칭은 이동 방향 자동 회전 비활성. 컨트롤러 yaw가 몸을 끌고 다님
-	GetCharacterMovement()->bOrientRotationToMovement = false;
+	// 3. 이동 시 회전 설정
+	GetCharacterMovement()->bOrientRotationToMovement = true; // 이동 방향으로 몸 틀기
 	GetCharacterMovement()->RotationRate = FRotator(0.f, 540.f, 0.f);
 
 	MoveSpeed = 600.f;
@@ -75,59 +78,46 @@ void APlayerCharacter::Tick(float DeltaTime)
 void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
+	
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
 	{
-		if (AMyPlayerController* PlayerController = Cast<AMyPlayerController>(GetController()))
+		if (AH_PlayerController* PlayerController = Cast<AH_PlayerController>(GetController()))
 		{
-			EnhancedInputComponent->BindAction(PlayerController->MoveAction, ETriggerEvent::Triggered, this,
-			                                   &APlayerCharacter::Move);
+			EnhancedInputComponent->BindAction(PlayerController->MoveAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Move);
+			
+			EnhancedInputComponent->BindAction(PlayerController->LookAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Look);
+			
+			EnhancedInputComponent->BindAction(PlayerController->JumpAction, ETriggerEvent::Started, this, &APlayerCharacter::Jump);
+			EnhancedInputComponent->BindAction(PlayerController->JumpAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopJump);
+			
+			EnhancedInputComponent->BindAction(PlayerController->RunAction, ETriggerEvent::Started, this, &APlayerCharacter::StartRun);
+			EnhancedInputComponent->BindAction(PlayerController->RunAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopRun);
+			
+			EnhancedInputComponent->BindAction(PlayerController->HideAction, ETriggerEvent::Started, this, &APlayerCharacter::StartHide);
+			EnhancedInputComponent->BindAction(PlayerController->HideAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopHide);
+			
+			EnhancedInputComponent->BindAction(PlayerController->RollAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Roll);
+			
+			// Left (Q)
+			EnhancedInputComponent->BindAction(PlayerController->LeanLeftAction, ETriggerEvent::Started, this, &APlayerCharacter::StartLeanLeft);
+			EnhancedInputComponent->BindAction(PlayerController->LeanLeftAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopLean);
 
-			EnhancedInputComponent->BindAction(PlayerController->LookAction, ETriggerEvent::Triggered, this,
-			                                   &APlayerCharacter::Look);
-
-			EnhancedInputComponent->BindAction(PlayerController->JumpAction, ETriggerEvent::Started, this,
-			                                   &APlayerCharacter::Jump);
-			EnhancedInputComponent->BindAction(PlayerController->JumpAction, ETriggerEvent::Completed, this,
-			                                   &APlayerCharacter::StopJump);
-
-			EnhancedInputComponent->BindAction(PlayerController->RunAction, ETriggerEvent::Started, this,
-			                                   &APlayerCharacter::StartRun);
-			EnhancedInputComponent->BindAction(PlayerController->RunAction, ETriggerEvent::Completed, this,
-			                                   &APlayerCharacter::StopRun);
-
-			EnhancedInputComponent->BindAction(PlayerController->HideAction, ETriggerEvent::Started, this,
-			                                   &APlayerCharacter::StartHide);
-			EnhancedInputComponent->BindAction(PlayerController->HideAction, ETriggerEvent::Completed, this,
-			                                   &APlayerCharacter::StopHide);
-
-			EnhancedInputComponent->BindAction(PlayerController->RollAction, ETriggerEvent::Triggered, this,
-			                                   &APlayerCharacter::Roll);
-
-			EnhancedInputComponent->BindAction(PlayerController->LeanAction, ETriggerEvent::Started, this,
-			                                   &APlayerCharacter::StartLean);
-			EnhancedInputComponent->BindAction(PlayerController->LeanAction, ETriggerEvent::Completed, this,
-			                                   &APlayerCharacter::StopLean);
-
-			EnhancedInputComponent->BindAction(PlayerController->Interaction, ETriggerEvent::Triggered, this,
-			                                   &APlayerCharacter::Interaction);
-
+			// Right (E)
+			EnhancedInputComponent->BindAction(PlayerController->LeanRightAction, ETriggerEvent::Started, this, &APlayerCharacter::StartLeanRight);
+			EnhancedInputComponent->BindAction(PlayerController->LeanRightAction, ETriggerEvent::Completed, this, &APlayerCharacter::StopLean);
+			
+			EnhancedInputComponent->BindAction(PlayerController->Interaction, ETriggerEvent::Triggered, this, &APlayerCharacter::Interaction);
+			
 			// 슬롯 장착은 Started에서 Value가 0으로 들어오는 이슈 때문에 Triggered로 바인딩하고 콜백에서 raw 값으로 가드
-			EnhancedInputComponent->BindAction(PlayerController->EquipSlotAction, ETriggerEvent::Triggered, this,
-			                                   &APlayerCharacter::OnEquipSlotPressed);
-			EnhancedInputComponent->BindAction(PlayerController->EquipNextWeaponAction, ETriggerEvent::Started, this,
-			                                   &APlayerCharacter::OnEquipNextPressed);
-			EnhancedInputComponent->BindAction(PlayerController->EquipPreviousWeaponAction, ETriggerEvent::Started,
-			                                   this,
-			                                   &APlayerCharacter::OnEquipPreviousPressed);
+			EnhancedInputComponent->BindAction(PlayerController->EquipSlotAction, ETriggerEvent::Triggered, this,&APlayerCharacter::OnEquipSlotPressed);
+			EnhancedInputComponent->BindAction(PlayerController->EquipNextWeaponAction, ETriggerEvent::Started, this,&APlayerCharacter::OnEquipNextPressed);
+			EnhancedInputComponent->BindAction(PlayerController->EquipPreviousWeaponAction, ETriggerEvent::Started,this,&APlayerCharacter::OnEquipPreviousPressed);
 
 			// 발사 — Triggered로 바인딩하면 풀오토 무기까지 매 틱 호출되며, 무기 측 FireRate 쿨다운이 발사 간격을 가드
-			EnhancedInputComponent->BindAction(PlayerController->FireAction, ETriggerEvent::Triggered, this,
-			                                   &APlayerCharacter::OnFirePressed);
+			EnhancedInputComponent->BindAction(PlayerController->FireAction, ETriggerEvent::Triggered, this,&APlayerCharacter::OnFirePressed);
 
 			// 재장전 — Started로 R 1회 입력 처리. 무기 상태/탄창 가드는 Reload() 내부에서
-			EnhancedInputComponent->BindAction(PlayerController->ReloadAction, ETriggerEvent::Started, this,
-			                                   &APlayerCharacter::OnReloadPressed);
+			EnhancedInputComponent->BindAction(PlayerController->ReloadAction, ETriggerEvent::Started, this,&APlayerCharacter::OnReloadPressed);
 		}
 	}
 }
@@ -151,6 +141,7 @@ void APlayerCharacter::Move(const FInputActionValue& value)
 		AddMovementInput(RightDirection, MoveInput.Y);
 		AddMovementInput(ForwardDirection, MoveInput.X);
 	}
+	
 }
 
 void APlayerCharacter::Look(const FInputActionValue& value)
@@ -192,26 +183,67 @@ void APlayerCharacter::StopRun(const FInputActionValue& value)
 
 void APlayerCharacter::StartHide(const FInputActionValue& value)
 {
+	if (GetCharacterMovement() && !GetCharacterMovement()->IsFalling())
+	{
+		Crouch(); // 엔진 내장 함수 컴포넌트를 아래로 내려줌
+	}
 }
 
 void APlayerCharacter::StopHide(const FInputActionValue& value)
 {
+	UnCrouch(); 
 }
 
 void APlayerCharacter::Roll(const FInputActionValue& value)
 {
+	// 이미 구르고 있거나, 몽타주가 설정되지 않았다면 리턴
+	if (bIsRolling || !DiveRollMontage) return;
+
+	// 몽타주 재생 명령
+	// PlayAnimMontage는 내부적으로 AnimInstance를 찾아 Montage_Play를 호출합니다.
+	float MontageLength = PlayAnimMontage(DiveRollMontage);
+	
+	if (MontageLength > 0.f)
+	{
+		bIsRolling = true;
+
+		// 몽타주 종료 시점을 알기 위해 델리게이트 연결
+		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+		if (AnimInstance)
+		{
+			// 몽타주 종료 시 호출될 콜백 함수 연결
+			FOnMontageEnded EndDelegate;
+			EndDelegate.BindUObject(this, &APlayerCharacter::OnRollMontageEnded);
+			AnimInstance->Montage_SetEndDelegate(EndDelegate, DiveRollMontage);
+		}
+	}
 }
 
-void APlayerCharacter::StartLean(const FInputActionValue& value)
+void APlayerCharacter::OnRollMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 {
+	if (Montage == DiveRollMontage)
+	{
+		bIsRolling = false;
+		UE_LOG(LogTemp, Log, TEXT("구르기 종료 - 이제 다시 이동 가능"));
+	}
 }
 
+void APlayerCharacter::StartLeanRight(const FInputActionValue& value)
+{
+	LeanAmount = 1.0f;
+}
+void APlayerCharacter::StartLeanLeft(const FInputActionValue& value)
+{
+	LeanAmount = -1.0f;
+}
 void APlayerCharacter::StopLean(const FInputActionValue& value)
 {
+	LeanAmount = 0.0f;
 }
 
 void APlayerCharacter::Interaction(const FInputActionValue& value)
 {
+	
 }
 
 void APlayerCharacter::SpawnEquippedWeapons()

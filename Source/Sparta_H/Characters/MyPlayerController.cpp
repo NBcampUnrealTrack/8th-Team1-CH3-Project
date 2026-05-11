@@ -3,7 +3,6 @@
 
 #include "MyPlayerController.h"
 #include "EnhancedInputSubsystems.h"
-
 AMyPlayerController::AMyPlayerController()
 {
 	InputMappingContext = nullptr; // 초기화 후 블루프린트에서 대입
@@ -13,8 +12,10 @@ AMyPlayerController::AMyPlayerController()
 	RunAction = nullptr;
 	HideAction = nullptr;
 	RollAction = nullptr;
-	LeanAction = nullptr;
+	LeanRightAction = nullptr;	
+	LeanLeftAction = nullptr;
 	Interaction = nullptr;
+	
 	FireAction = nullptr;
 	ReloadAction = nullptr;
 	EquipSlotAction = nullptr;
