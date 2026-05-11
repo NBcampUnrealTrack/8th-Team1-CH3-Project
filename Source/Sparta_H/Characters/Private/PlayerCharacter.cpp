@@ -493,6 +493,15 @@ void APlayerCharacter::CompleteCurrentObjective()
 	}
 }
 
+bool APlayerCharacter::IsCurrentObjective(FName GoalID) const
+{
+	return CurrentMissionData && CurrentMissionData->MissionGoals.IsValidIndex(CurrentMissionIndex) && CurrentMissionData->MissionGoals[CurrentMissionIndex].GoalID == GoalID;
+}
+FName APlayerCharacter::GetCurrentObjectiveID() const
+{
+	return CurrentMissionData && CurrentMissionData->MissionGoals.IsValidIndex(CurrentMissionIndex) ? CurrentMissionData->MissionGoals[CurrentMissionIndex].GoalID : NAME_None;
+}
+
 void APlayerCharacter::FailMission()
 {
 	UE_LOG(LogTemp, Error, TEXT("Mission Failed!"));
@@ -506,6 +515,11 @@ float APlayerCharacter::GetRemainingMissionTime() const
 		return GetWorldTimerManager().GetTimerRemaining(MissionTimerHandle);
 	}
 	return 0.0f;
+}
+
+float APlayerCharacter::GetDistanceToCurrentObjective() const
+{
+	return 0.f;
 }
 
 void APlayerCharacter::UpdateMissionObjective()
