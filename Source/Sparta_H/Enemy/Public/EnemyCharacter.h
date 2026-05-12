@@ -11,6 +11,7 @@ class UAIPerceptionComponent;
 class UAISenseConfig_Sight;
 class UAISenseConfig_Hearing;
 class UWidgetComponent;
+class UAnimMontage;
 
 // ---------------------------------------------------------------
 // AlertLevel별 Perception + 이동 수치 묶음
@@ -53,6 +54,13 @@ public:
 protected:
     virtual void BeginPlay() override;
     virtual void InitializeStats() override;
+    virtual void Die() override;
+
+    UPROPERTY(EditDefaultsOnly, Category = "AI|Animation")
+    UAnimMontage* DeathMontage;
+
+    UPROPERTY(EditDefaultsOnly, Category = "AI|Animation")
+    UAnimMontage* FireMontage;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
     UAIPerceptionComponent* AIPerceptionComp;

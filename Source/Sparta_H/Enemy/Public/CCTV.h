@@ -7,6 +7,7 @@
 
 class UAIPerceptionComponent;
 class UAISenseConfig_Sight;
+class UStaticMeshComponent;
 
 UCLASS()
 class SPARTA_H_API ACCTV : public ABaseEnemy
@@ -15,6 +16,9 @@ class SPARTA_H_API ACCTV : public ABaseEnemy
 
 public:
 	ACCTV();
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CCTV|Mesh")
+	UStaticMeshComponent* CCTVMeshComp;
 
 protected:
 	virtual void BeginPlay() override;
