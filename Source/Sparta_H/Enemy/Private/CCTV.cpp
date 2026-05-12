@@ -69,10 +69,14 @@ void ACCTV::Die()
         UWorld* World = GetWorld();
         if (World)
         {
+            // 현재 회전에서 Pitch를 -90도로 설정 (아래를 보게)
+            FRotator BrokenRotation = GetActorRotation();
+            BrokenRotation.Pitch = -60.0f;
+
             AStaticMeshActor* BrokenActor = World->SpawnActor<AStaticMeshActor>(
                 AStaticMeshActor::StaticClass(),
                 GetActorLocation(),
-                GetActorRotation()
+                BrokenRotation
             );
 
             if (BrokenActor)
