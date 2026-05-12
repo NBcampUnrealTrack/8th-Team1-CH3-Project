@@ -78,7 +78,7 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 	FCombatDamageInfo DamageInfo;
 	DamageInfo.BaseDamage = BaseDamage;
 	DamageInfo.Distance   = HitResult.Distance;
-	DamageInfo.HitBone    = UHitDetector::IdentifyHitBone(HitResult.BoneName);
+	DamageInfo.HitBone    = bOwnerIsEnemy ? EHitBone::None : UHitDetector::IdentifyHitBone(HitResult.BoneName);
 	DamageInfo.WeaponType = WeaponType;
 	const float FinalDamage = DamageProcessor->CalculateFinalDamage(DamageInfo);
 
