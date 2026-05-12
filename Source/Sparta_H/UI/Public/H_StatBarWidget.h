@@ -2,6 +2,16 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+
+// Modified: 명칭 충돌 방지를 위해 EHStatType으로 변경 및 위치 이동
+UENUM(BlueprintType)
+enum class EHStatType : uint8
+{
+	Health,
+	Stamina,
+	Noise
+};
+
 #include "H_StatBarWidget.generated.h"
 
 UCLASS()
@@ -10,9 +20,9 @@ class SPARTA_H_API UH_StatBarWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	// 캐릭터 정보와 스탯 종류를 받아 스스로 업데이트 (0: Health, 1: Stamina, 2: Sound)
+	// Modified: EHStatType 사용
 	UFUNCTION(BlueprintCallable, Category = "UI|Stat")
-	void UpdateFromCharacter(class APlayerCharacter* Character, int32 StatType);
+	void UpdateFromCharacter(class APlayerCharacter* Character, EHStatType StatType);
 
 	// 컴포넌트를 직접 인자로 받아 업데이트하는 기능들
 	UFUNCTION(BlueprintCallable, Category = "UI|Stat")
@@ -33,8 +43,8 @@ public:
 	void SetBarColor(FLinearColor Color);
 
 protected:
-	// 수치 및 타입에 따라 색상을 업데이트하는 내부 함수
-	void UpdateBarColor(float CurrentValue, float MaxValue, int32 StatType);
+	// Modified: EHStatType 사용
+	void UpdateBarColor(float CurrentValue, float MaxValue, EHStatType StatType);
 
 	UPROPERTY(meta = (BindWidget))
 	class UProgressBar* StatProgressBar;
