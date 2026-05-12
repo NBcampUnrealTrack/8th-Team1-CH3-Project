@@ -46,7 +46,6 @@ float UDamageProcessor::GetBoneMultiplier(EHitBone Bone)
     case EHitBone::Torso: return BoneTorso;
     case EHitBone::Arm:   return BoneLimb;
     case EHitBone::Leg:   return BoneLimb;
-    case EHitBone::None:  return 1.0f;
     default:              return BoneTorso;
     }
 }

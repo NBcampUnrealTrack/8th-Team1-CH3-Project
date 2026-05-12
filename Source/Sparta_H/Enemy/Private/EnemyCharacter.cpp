@@ -6,10 +6,9 @@
 #include "AIController.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/WidgetComponent.h"
-#include "Components/CapsuleComponent.h"
-#include "Animation/AnimMontage.h"
-#include "BlackboardKeys.h"
-#include "CombatManager.h"
+#include "TimerManager.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "Engine/OverlapResult.h"
 
 AEnemyCharacter::AEnemyCharacter()
 {
@@ -49,11 +48,12 @@ void AEnemyCharacter::BeginPlay()
     Super::BeginPlay();
     AIPerceptionComp->OnTargetPerceptionUpdated.AddDynamic(this, &AEnemyCharacter::OnTargetPerceived);
     ApplyPerceptionStats(IdleStats);
-    
-    if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+    if (AAIController* AIC = Cast<AAIController>(GetController()))
     {
-        MoveComp->bUseRVOAvoidance = true;
-        MoveComp->AvoidanceConsiderationRadius = GetCapsuleComponent()->GetScaledCapsuleRadius() * 2.0f;
+        if (EnemyBT)
+        {
+            AIC->RunBehaviorTree(EnemyBT);
+        }
     }
 }
 
@@ -309,50 +309,6 @@ void AEnemyCharacter::AlertNearbyEnemies(AActor* TargetPlayer, float AlertRange,
 void AEnemyCharacter::OnSuspiciousRevertTimerExpired() { OnAlertLevelChanged(EAlertLevel::Idle); }
 void AEnemyCharacter::OnLostRevertTimerExpired() { OnAlertLevelChanged(EAlertLevel::Idle); }
 
-    AAIController* AIC = Cast<AAIController>(GetController());
-    if (!AIC) return;
-    UBlackboardComponent* BB = AIC->GetBlackboardComponent();
-    if (!BB) return;
-
-    OnAlertLevelChanged(EAlertLevel::Combat);
-    BB->SetValueAsObject(BBKeys::TARGET_ACTOR, SuspectedTarget);
-    SuspectedTarget = nullptr;
-}
-
-// ---------------------------------------------------------------
-// 사망 처리
-// ---------------------------------------------------------------
-void AEnemyCharacter::Die()
-{
-    Super::Die();
-
-    GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-    if (AAIController* AIC = Cast<AAIController>(GetController()))
-    {
-        AIC->StopMovement();
-        AIC->UnPossess();
-    }
-
-    if (DeathMontage)
-    {
-        const float MontageDuration = PlayAnimMontage(DeathMontage);
-        const float DestroyDelay = MontageDuration > 0.f ? MontageDuration : 2.f;
-        FTimerHandle DestroyTimerHandle;
-        GetWorldTimerManager().SetTimer(DestroyTimerHandle, [this]()
-        {
-            Destroy();
-        }, DestroyDelay, false);
-    }
-    else
-    {
-        Destroy();
-    }
-}
-
-// ---------------------------------------------------------------
-// 사격 관련
-// ---------------------------------------------------------------
 bool AEnemyCharacter::CanShootTarget(AActor* TargetActor)
 {
     if (!TargetActor) return false;
@@ -369,12 +325,10 @@ bool AEnemyCharacter::FireAtTarget(AActor* TargetActor)
 {
     if (!TargetActor || !CombatManagerComp) return false;
 
-    if (FireMontage)
-    {
-        PlayAnimMontage(FireMontage);
-    }
-
-    CombatManagerComp->OnFire(AimStart, AimDirection, ECombatWeaponType::Rifle, WeaponDamage, true);
+    bool bIsHit = FMath::FRand() <= HitAccuracy;
+    FVector MuzzleLoc = GetMesh()->GetSocketLocation(TEXT("MuzzleSocket"));
+    if (MuzzleLoc.IsZero()) MuzzleLoc = GetActorLocation() + FVector(0,0,70);
+    FVector FireDir = (TargetActor->GetActorLocation() - MuzzleLoc).GetSafeNormal();
 
     CombatManagerComp->OnFire(MuzzleLoc, FireDir, ECombatWeaponType::Rifle, WeaponDamage, 0.f);
     return bIsHit;

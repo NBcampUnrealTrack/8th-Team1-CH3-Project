@@ -26,11 +26,6 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 		KnifeAttack(AimStart, AimDirection, bTriggerAIAggro);
 		return;
 	}
-	
-	if (WeaponType == ECombatWeaponType::Grenade || WeaponType == ECombatWeaponType::Rock)
-	{
-		return;
-	}
 
 	// 1. 발사 소음 (발사 위치) — 어그로 무기만
 	if (bTriggerAIAggro)
@@ -54,14 +49,9 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 	}
 	
 	AActor* HitActor = HitResult.GetActor();
-	if (!IsValid(HitActor)) return;
 
-	const bool bHitEnemy    = HitActor->ActorHasTag("Enemy");
-	const bool bHitPlayer   = HitActor->ActorHasTag("Player");
-	const bool bOwnerIsEnemy = GetOwner()->ActorHasTag("Enemy");
-
-	// 3. 환경 오브젝트 → 피격 소음만
-	if (!bHitEnemy && !bHitPlayer)
+	// 3. 액터 무효 또는 적이 아님 → 환경 오브젝트로 간주, 피격 소음만
+	if (!IsValid(HitActor) || !HitActor->ActorHasTag("Enemy"))
 	{
 		if (bTriggerAIAggro)
 		{
@@ -70,31 +60,68 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 		return;
 	}
 
-	// 4. Friendly fire 차단: 적→적, 플레이어→플레이어
-	if (bOwnerIsEnemy && bHitEnemy) return;
-	if (!bOwnerIsEnemy && bHitPlayer) return;
+	// 4. 적-vs-적 friendly fire 차단
+	if (GetOwner()->ActorHasTag("Enemy")) return;
 
 	// 5. 데미지 계산
 	FCombatDamageInfo DamageInfo;
 	DamageInfo.BaseDamage = BaseDamage;
-	DamageInfo.Distance   = HitResult.Distance;
-	DamageInfo.HitBone    = bOwnerIsEnemy ? EHitBone::None : UHitDetector::IdentifyHitBone(HitResult.BoneName);
+	DamageInfo.Distance = HitResult.Distance;
+	DamageInfo.HitBone = UHitDetector::IdentifyHitBone(HitResult.BoneName);
 	DamageInfo.WeaponType = WeaponType;
 	const float FinalDamage = DamageProcessor->CalculateFinalDamage(DamageInfo);
 
-	// 6. 킬 피드백 등록 (적 피격 시에만)
-	if (bHitEnemy)
-	{
-		RegisterKillFeedback(HitActor);
-	}
+	// 6. 킬 피드백 등록
+	RegisterKillFeedback(HitActor);
 
-	// 7. 데미지 전달 (1회)
+	// 7. 데미지 전달
 	UGameplayStatics::ApplyDamage(HitActor, FinalDamage, nullptr, GetOwner(), nullptr);
 
-	// 8. 피격 소음 (적 피격 시에만)
-	if (bTriggerAIAggro && bHitEnemy)
+	// 8. 피격 소음 (적 피격 위치)
+	if (bTriggerAIAggro)
 	{
-		EmitNoise(HitResult.ImpactPoint, GetHitNoiseRange(WeaponType));
+		if (HitActor->ActorHasTag("Enemy"))
+		{
+			// 공격자도 적이면 무효
+			if (GetOwner()->ActorHasTag("Enemy")) return;
+
+
+			ABaseEnemy* Enemy = Cast<ABaseEnemy>(HitActor);
+			if (IsValid(Enemy) && !Enemy->IsDead())
+			{
+				Enemy->OnDeath.AddUniqueDynamic(
+					FeedbackHandler, &UCombatFeedbackHandler::OnKill
+				);
+			}
+
+			// 적 → 대미지 전달
+			UGameplayStatics::ApplyDamage(
+				HitActor,
+				FinalDamage,
+				nullptr,
+				GetOwner(),
+				nullptr
+			);
+		}
+		else if (HitActor->ActorHasTag("Player"))
+		{
+			// 공격자가 적일 때만 플레이어에게 데미지
+			if (!GetOwner()->ActorHasTag("Enemy")) return;
+
+			UGameplayStatics::ApplyDamage(
+				HitActor,
+				FinalDamage,
+				nullptr,
+				GetOwner(),
+				nullptr
+			);
+		}
+		else
+		{
+			// 환경 오브젝트 → 소음만 발생
+			EmitNoise(HitResult.ImpactPoint, GetHitNoiseRange(WeaponType));
+			return;
+		}
 	}
 }
 
