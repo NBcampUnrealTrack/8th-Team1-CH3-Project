@@ -57,6 +57,12 @@ void AEnemyCharacter::BeginPlay()
     Super::BeginPlay();
     AIPerceptionComp->OnTargetPerceptionUpdated.AddDynamic(this, &AEnemyCharacter::OnTargetPerceived);
     ApplyPerceptionStats(IdleStats);
+    
+    if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+    {
+        MoveComp->bUseRVOAvoidance = true;
+        MoveComp->AvoidanceConsiderationRadius = GetCapsuleComponent()->GetScaledCapsuleRadius() * 2.0f;
+    }
 }
 
 // ---------------------------------------------------------------
