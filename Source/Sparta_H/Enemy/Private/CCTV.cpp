@@ -8,6 +8,7 @@
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Engine/OverlapResult.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMeshActor.h"
 #include "BlackboardKeys.h"
 
@@ -15,6 +16,18 @@ ACCTV::ACCTV()
 {
     CurrentAlertLevel = EAlertLevel::CCTV;
     BrokenCCTVMesh = nullptr;
+
+    // 스켈레탈 메쉬 숨김 처리
+    if (GetMesh())
+    {
+        GetMesh()->SetVisibility(false);
+        GetMesh()->DestroyPhysicsState();
+        GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    }
+
+    // 스태틱 메쉬 컴포넌트 추가
+    CCTVMeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("CCTVMeshComp"));
+    CCTVMeshComp->SetupAttachment(GetRootComponent());
 
     AIPerceptionComp = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("PerceptionComp"));
     SightConfig = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("SightConfig"));
@@ -56,10 +69,14 @@ void ACCTV::Die()
         UWorld* World = GetWorld();
         if (World)
         {
+            // 현재 회전에서 Pitch를 -90도로 설정 (아래를 보게)
+            FRotator BrokenRotation = GetActorRotation();
+            BrokenRotation.Pitch = -60.0f;
+
             AStaticMeshActor* BrokenActor = World->SpawnActor<AStaticMeshActor>(
                 AStaticMeshActor::StaticClass(),
                 GetActorLocation(),
-                GetActorRotation()
+                BrokenRotation
             );
 
             if (BrokenActor)
