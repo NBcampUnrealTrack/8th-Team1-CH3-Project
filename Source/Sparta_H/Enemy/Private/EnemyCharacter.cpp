@@ -438,6 +438,11 @@ bool AEnemyCharacter::FireAtTarget(AActor* TargetActor)
     }
     const FVector AimDirection = (TargetActor->GetActorLocation() - AimStart).GetSafeNormal();
 
+    if (FireMontage)
+    {
+        PlayAnimMontage(FireMontage);
+    }
+
     CombatManagerComp->OnFire(AimStart, AimDirection, ECombatWeaponType::Rifle, WeaponDamage, true);
 
     return true;

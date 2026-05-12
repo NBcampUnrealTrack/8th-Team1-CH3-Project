@@ -58,6 +58,9 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category = "AI|Animation")
     UAnimMontage* DeathMontage;
 
+    UPROPERTY(EditDefaultsOnly, Category = "AI|Animation")
+    UAnimMontage* FireMontage;
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
     UAIPerceptionComponent* AIPerceptionComp;
 
