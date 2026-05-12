@@ -8,7 +8,7 @@
 #include "Components/WidgetComponent.h"
 #include "TimerManager.h"
 #include "Kismet/KismetMathLibrary.h"
-#include "Engine/OverlapResult.h" // ◀ 에러 해결: FOverlapResult를 위해 반드시 필요
+#include "Engine/OverlapResult.h"
 
 AEnemyCharacter::AEnemyCharacter()
 {
@@ -70,8 +70,8 @@ void AEnemyCharacter::ProcessSpotCheck()
         return;
     }
 
-    float PlayerVisibility = 1.0f; 
-    float FinalChance = PlayerVisibility * SpotProb;
+    // 플레이어를 보고 있는 동안 확률이 더 빨리 올라가도록 보정
+    float FinalChance = SpotProb;
     float RandomValue = FMath::FRand();
 
     if (FinalChance >= RandomValue)
@@ -82,7 +82,8 @@ void AEnemyCharacter::ProcessSpotCheck()
     }
     else
     {
-        SpotProb += 0.1f; // 실패 시 확률 누적 증가
+        // 1초마다 0.15씩 증가 (약 2~3초 안에 확정 발견되도록)
+        SpotProb += 0.15f; 
     }
 }
 
@@ -133,6 +134,8 @@ void AEnemyCharacter::StartFirePattern(AActor* TargetActor)
     if (CurrentShotCount == 0 && !GetWorldTimerManager().IsTimerActive(FirePatternTimerHandle))
     {
         SuspectedTarget = TargetActor;
+        UE_LOG(LogTemp, Warning, TEXT("[%s] 사격 패턴 시작! 타겟: %s"), *GetName(), *TargetActor->GetName());
+        
         ExecuteFireStep();
     }
 }
@@ -172,6 +175,10 @@ void AEnemyCharacter::OnAlertLevelChanged(EAlertLevel NewLevel)
 {
     if (bIsDead) return;
 
+    // 상태 전환 로그 출력 (어떤 상태에서 어떤 상태로 바뀌는지 확인 가능)
+    FString EnumName = StaticEnum<EAlertLevel>()->GetNameStringByValue((int64)NewLevel);
+    UE_LOG(LogTemp, Warning, TEXT("[%s] 경계 레벨 변경: %s"), *GetName(), *EnumName);
+
     GetWorldTimerManager().ClearTimer(SuspiciousRevertTimerHandle);
     GetWorldTimerManager().ClearTimer(LostRevertTimerHandle);
 
@@ -179,50 +186,94 @@ void AEnemyCharacter::OnAlertLevelChanged(EAlertLevel NewLevel)
 
     switch (NewLevel)
     {
-        case EAlertLevel::Idle:       ApplyPerceptionStats(IdleStats);       break;
-        case EAlertLevel::Suspicious: ApplyPerceptionStats(SuspiciousStats); break;
-        case EAlertLevel::Combat:     ApplyPerceptionStats(CombatStats);     break;
-        case EAlertLevel::Lost:       ApplyPerceptionStats(LostStats);       break;
-        default: break;
+    case EAlertLevel::Idle:
+        ApplyPerceptionStats(IdleStats);
+        // IDLE 진입 전용 로그
+        UE_LOG(LogTemp, Log, TEXT("[%s] 상태: IDLE (대기 상태로 복귀)"), *GetName());
+        break;
+
+    case EAlertLevel::Suspicious: 
+        ApplyPerceptionStats(SuspiciousStats); 
+        break;
+
+    case EAlertLevel::Combat:     
+        ApplyPerceptionStats(CombatStats);     
+        break;
+
+    case EAlertLevel::Lost:
+        ApplyPerceptionStats(LostStats);
+        // LOST 진입 전용 로그
+        UE_LOG(LogTemp, Error, TEXT("[%s] 상태: LOST (타겟을 놓침)"), *GetName());
+        break;
+    default: break;
     }
 
     UpdateAlertIcon(NewLevel);
 
     switch (NewLevel)
     {
-        case EAlertLevel::Suspicious:
-            GetWorldTimerManager().SetTimer(SuspiciousRevertTimerHandle, this, &AEnemyCharacter::OnSuspiciousRevertTimerExpired, SuspiciousRevertDelay, false);
-            break;
+    case EAlertLevel::Suspicious:
+        GetWorldTimerManager().SetTimer(SuspiciousRevertTimerHandle, this, &AEnemyCharacter::OnSuspiciousRevertTimerExpired, SuspiciousRevertDelay, false);
+        break;
 
-        case EAlertLevel::Combat:
-            if (SuspectedTarget) StartFirePattern(SuspectedTarget);
-            AlertNearbyEnemies(SuspectedTarget, CombatAlertRange, EAlertLevel::Combat);
-            break;
+    case EAlertLevel::Combat:
+        if (SuspectedTarget) StartFirePattern(SuspectedTarget);
+        AlertNearbyEnemies(SuspectedTarget, CombatAlertRange, EAlertLevel::Combat);
+        break;
 
-        case EAlertLevel::Lost:
-            AlertNearbyEnemies(SuspectedTarget, LostAlertRange, EAlertLevel::Suspicious);
-            GetWorldTimerManager().SetTimer(LostRevertTimerHandle, this, &AEnemyCharacter::OnLostRevertTimerExpired, LostRevertDelay, false);
-            break;
-        default: break;
+    case EAlertLevel::Lost:
+        AlertNearbyEnemies(SuspectedTarget, LostAlertRange, EAlertLevel::Suspicious);
+        // --- TEST용: Lost 대기 시간 없이 즉시 Idle로 복귀 ---
+        //            GetWorldTimerManager().SetTimer(LostRevertTimerHandle, this, &AEnemyCharacter::OnLostRevertTimerExpired, LostRevertDelay, false);
+        OnLostRevertTimerExpired(); 
+        break;
+    default: break;
     }
 }
 
 void AEnemyCharacter::ApplyPerceptionStats(const FAlertLevelStats& Stats)
 {
-    if (SightConfig)
+    // --- 포커스 제어 로직 추가 ---
+    if (AAIController* AIC = Cast<AAIController>(GetController()))
+    {
+        if (CurrentAlertLevel == EAlertLevel::Combat && SuspectedTarget)
+        {
+            // 전투 중일 때는 타겟을 고정해서 바라봄 (시야각 확보)
+            AIC->SetFocus(SuspectedTarget);
+        }
+        else
+        {
+            // 평시나 타겟을 놓쳤을 때는 시선 고정 해제
+            AIC->ClearFocus(EAIFocusPriority::Gameplay);
+        }
+    }
+    
+    if (SightConfig && AIPerceptionComp)
     {
         SightConfig->SightRadius = Stats.SightRange;
-        SightConfig->LoseSightRadius = Stats.SightRange + 300.f;
-        SightConfig->PeripheralVisionAngleDegrees = Stats.FOVAngle / 2.f;
+        SightConfig->LoseSightRadius = Stats.SightRange + 50.f; // 여유 거리를 더 늘림
+        
+        // 언리얼 Perception FOV는 절반 값입니다. 
+        // 입력받은 FOVAngle이 90이면 좌우 45도씩 총 90도를 봅니다.
+        SightConfig->PeripheralVisionAngleDegrees = Stats.FOVAngle / 2.0f;
+        
+        // 중요: 변경된 설정을 재등록
         AIPerceptionComp->ConfigureSense(*SightConfig);
     }
-    if (HearingConfig)
+
+    if (HearingConfig && AIPerceptionComp)
     {
         HearingConfig->HearingRange = Stats.HearingRange;
         AIPerceptionComp->ConfigureSense(*HearingConfig);
     }
+
+    // 런타임에 Perception 시스템에 변경 사항 알림
     AIPerceptionComp->RequestStimuliListenerUpdate();
-    if (GetCharacterMovement()) GetCharacterMovement()->MaxWalkSpeed = Stats.MoveSpeed;
+
+    if (GetCharacterMovement())
+    {
+        GetCharacterMovement()->MaxWalkSpeed = Stats.MoveSpeed;
+    }
 }
 
 void AEnemyCharacter::UpdateAlertIcon(EAlertLevel NewLevel)

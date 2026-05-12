@@ -82,10 +82,10 @@ protected:
     FAlertLevelStats IdleStats       = { 100.f, 1000.f,  500.f, 400.f };
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|AlertStats")
-    FAlertLevelStats SuspiciousStats = { 100.f, 1500.f,  800.f, 600.f };
+    FAlertLevelStats SuspiciousStats = { 180.f, 1500.f,  800.f, 600.f };
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|AlertStats")
-    FAlertLevelStats CombatStats     = { 100.f, 2000.f, 1000.f, 800.f };
+    FAlertLevelStats CombatStats     = { 180.f, 2000.f, 1000.f, 800.f };
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|AlertStats")
     FAlertLevelStats LostStats       = { 100.f, 2000.f, 1000.f, 800.f };
