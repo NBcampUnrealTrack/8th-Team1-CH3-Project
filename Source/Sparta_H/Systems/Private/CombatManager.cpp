@@ -26,6 +26,11 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 		KnifeAttack(AimStart, AimDirection, bTriggerAIAggro);
 		return;
 	}
+	
+	if (WeaponType == ECombatWeaponType::Grenade || WeaponType == ECombatWeaponType::Rock)
+	{
+		return;
+	}
 
 	// 1. 발사 소음 (발사 위치) — 어그로 무기만
 	if (bTriggerAIAggro)

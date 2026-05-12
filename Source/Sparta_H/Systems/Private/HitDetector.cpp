@@ -1,4 +1,5 @@
 #include "HitDetector.h"
+#include "DrawDebugHelpers.h"
 
 UHitDetector::UHitDetector()
 {
@@ -12,7 +13,17 @@ bool UHitDetector::PerformLineTrace(const FVector& StartLocation, const FVector&
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(GetOwner());
 
-	return GetWorld()->LineTraceSingleByChannel(OutHitResult, StartLocation, EndLocation, ECC_Visibility, Params);
+	bool bHit = GetWorld()->LineTraceSingleByChannel(OutHitResult, StartLocation, EndLocation, ECC_Visibility, Params);
+
+	const FVector DebugEnd = bHit ? OutHitResult.ImpactPoint : EndLocation;
+	const FColor LineColor = bHit ? FColor::Red : FColor::Green;
+	DrawDebugLine(GetWorld(), StartLocation, DebugEnd, LineColor, false, 1.0f, 0, 1.0f);
+	if (bHit)
+	{
+		DrawDebugSphere(GetWorld(), OutHitResult.ImpactPoint, 5.0f, 8, FColor::Red, false, 1.0f);
+	}
+
+	return bHit;
 }
 
 EHitBone UHitDetector::IdentifyHitBone(FName BoneName)

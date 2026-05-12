@@ -10,6 +10,8 @@
 #include "TimerManager.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/WidgetComponent.h"
+#include "Components/CapsuleComponent.h"
+#include "Animation/AnimMontage.h"
 #include "BlackboardKeys.h"
 #include "CombatManager.h"
 
@@ -345,6 +347,37 @@ void AEnemyCharacter::OnDetectionTimerExpired()
     OnAlertLevelChanged(EAlertLevel::Combat);
     BB->SetValueAsObject(BBKeys::TARGET_ACTOR, SuspectedTarget);
     SuspectedTarget = nullptr;
+}
+
+// ---------------------------------------------------------------
+// 사망 처리
+// ---------------------------------------------------------------
+void AEnemyCharacter::Die()
+{
+    Super::Die();
+
+    GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+    if (AAIController* AIC = Cast<AAIController>(GetController()))
+    {
+        AIC->StopMovement();
+        AIC->UnPossess();
+    }
+
+    if (DeathMontage)
+    {
+        const float MontageDuration = PlayAnimMontage(DeathMontage);
+        const float DestroyDelay = MontageDuration > 0.f ? MontageDuration : 2.f;
+        FTimerHandle DestroyTimerHandle;
+        GetWorldTimerManager().SetTimer(DestroyTimerHandle, [this]()
+        {
+            Destroy();
+        }, DestroyDelay, false);
+    }
+    else
+    {
+        Destroy();
+    }
 }
 
 // ---------------------------------------------------------------
