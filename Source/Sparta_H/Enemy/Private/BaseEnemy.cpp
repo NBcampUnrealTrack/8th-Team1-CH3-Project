@@ -1,5 +1,8 @@
 #include "BaseEnemy.h"
 
+#include "AIController.h"
+#include "BehaviorTree/BlackboardComponent.h"
+
 ABaseEnemy::ABaseEnemy()
 {
 	PrimaryActorTick.bCanEverTick = false;
@@ -34,6 +37,14 @@ void ABaseEnemy::OnAlertLevelChanged(EAlertLevel NewLevel)
 {
 	if (bIsDead) return;
 	CurrentAlertLevel = NewLevel;
+    
+    if (AAIController* AIC = Cast<AAIController>(GetController()))
+    {
+		if (UBlackboardComponent* BB = AIC->GetBlackboardComponent())
+        {
+			BB->SetValueAsEnum(TEXT("AlertLevel"), static_cast<uint8>(NewLevel));
+        }
+    }
 }
 
 void ABaseEnemy::Die()

@@ -15,21 +15,24 @@ void UH_HUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	Super::NativeTick(MyGeometry, InDeltaTime);
 
 	APlayerCharacter* Character = GetOwningCharacter();
-	if (!Character) return;
+	if (!Character)
+	{
+		return;
+	}
 
 	if (HealthBar)
 	{
-		HealthBar->UpdateFromCharacter(Character, 0);
+		HealthBar->UpdateFromCharacter(Character, EHStatType::Health);
 	}
 
 	if (StaminaBar)
 	{
-		StaminaBar->UpdateFromCharacter(Character, 1);
+		StaminaBar->UpdateFromCharacter(Character, EHStatType::Stamina);
 	}
 
 	if (NoiseBar)
 	{
-		NoiseBar->UpdateFromCharacter(Character, 2);
+		NoiseBar->UpdateFromCharacter(Character, EHStatType::Noise);
 	}
 
 	if (WeaponUI)
