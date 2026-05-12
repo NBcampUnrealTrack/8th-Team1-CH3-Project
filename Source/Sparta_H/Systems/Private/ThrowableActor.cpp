@@ -2,6 +2,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "Engine/OverlapResult.h"
 #include "Perception/AISense_Hearing.h"
+#include "GameFramework/ProjectileMovementComponent.h"
+#include "Components/StaticMeshComponent.h"
 
 AThrowableActor::AThrowableActor()
 {

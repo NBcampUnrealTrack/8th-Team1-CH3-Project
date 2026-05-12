@@ -1,14 +1,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "CombatFeedbackHandler.h"
 #include "Components/ActorComponent.h"
-#include "HitDetector.h"
 #include "CombatTypes.h"
-#include "GameFramework/Pawn.h"
-#include "DamageProcessor.h"
 #include "CombatManager.generated.h"
 
+class UHitDetector;
+class UDamageProcessor;
+class UCombatFeedbackHandler;
 class UNiagaraSystem;
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))

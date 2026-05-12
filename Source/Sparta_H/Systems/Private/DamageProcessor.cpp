@@ -1,5 +1,5 @@
-
 #include "DamageProcessor.h"
+#include "DamageDataAsset.h"
 
 float UDamageProcessor::CalculateFinalDamage(const FCombatDamageInfo& Info)
 {
