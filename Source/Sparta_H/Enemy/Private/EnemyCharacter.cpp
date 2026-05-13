@@ -4,12 +4,11 @@
 #include "Perception/AISenseConfig_Hearing.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "AIController.h"
-#include "Engine/World.h"
-#include "Engine/OverlapResult.h"
-#include "CollisionQueryParams.h"
-#include "TimerManager.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/WidgetComponent.h"
+#include "TimerManager.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "Engine/OverlapResult.h"
 #include "Components/CapsuleComponent.h"
 #include "Animation/AnimMontage.h"
 #include "BlackboardKeys.h"
@@ -31,9 +30,7 @@ AEnemyCharacter::AEnemyCharacter()
 
     if (SightConfig)
     {
-        SightConfig->SightRadius = IdleStats.SightRange;
-        SightConfig->LoseSightRadius = IdleStats.SightRange + 300.0f;
-        SightConfig->PeripheralVisionAngleDegrees = IdleStats.FOVAngle / 2.0f;
+       
         SightConfig->DetectionByAffiliation.bDetectEnemies    = true;
         SightConfig->DetectionByAffiliation.bDetectFriendlies = true;
         SightConfig->DetectionByAffiliation.bDetectNeutrals   = true;
@@ -57,11 +54,13 @@ void AEnemyCharacter::BeginPlay()
     Super::BeginPlay();
     AIPerceptionComp->OnTargetPerceptionUpdated.AddDynamic(this, &AEnemyCharacter::OnTargetPerceived);
     ApplyPerceptionStats(IdleStats);
-    
-    if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+    if (AAIController* AIC = Cast<AAIController>(GetController()))
     {
-        MoveComp->bUseRVOAvoidance = true;
-        MoveComp->AvoidanceConsiderationRadius = GetCapsuleComponent()->GetScaledCapsuleRadius() * 2.0f;
+        // 에디터에서 선택한 BT 에셋이 있다면 실행합니다.
+        if (EnemyBT)
+        {
+            AIC->RunBehaviorTree(EnemyBT);
+        }
     }
 }
 
@@ -72,6 +71,32 @@ void AEnemyCharacter::InitializeStats()
 {
     Super::InitializeStats();
     WeaponDamage = Damage;
+}
+
+// 1초마다 확률 검사 (기획: Visibility * SpotProb >= Rand)
+void AEnemyCharacter::ProcessSpotCheck()
+{
+    if (!SuspectedTarget)
+    {
+        GetWorldTimerManager().ClearTimer(SpotCheckTimerHandle);
+        return;
+    }
+
+    // 플레이어를 보고 있는 동안 확률이 더 빨리 올라가도록 보정
+    float FinalChance = SpotProb;
+    float RandomValue = FMath::FRand();
+
+    if (FinalChance >= RandomValue)
+    {
+        OnAlertLevelChanged(EAlertLevel::Combat);
+        GetWorldTimerManager().ClearTimer(SpotCheckTimerHandle);
+        UE_LOG(LogTemp, Warning, TEXT("[%s] 플레이어 발각 확정!"), *GetName());
+    }
+    else
+    {
+        // 1초마다 0.15씩 증가 (약 2~3초 안에 확정 발견되도록)
+        SpotProb += 0.15f; 
+    }
 }
 
 // ---------------------------------------------------------------
@@ -120,25 +145,46 @@ void AEnemyCharacter::HideAlertIcon()
 // ---------------------------------------------------------------
 void AEnemyCharacter::ApplyPerceptionStats(const FAlertLevelStats& Stats)
 {
-    if (SightConfig)
+    // --- 포커스 제어 로직 추가 ---
+    if (AAIController* AIC = Cast<AAIController>(GetController()))
+    {
+        if (CurrentAlertLevel == EAlertLevel::Combat && SuspectedTarget)
+        {
+            // 전투 중일 때는 타겟을 고정해서 바라봄 (시야각 확보)
+            AIC->SetFocus(SuspectedTarget);
+        }
+        else
+        {
+            // 평시나 타겟을 놓쳤을 때는 시선 고정 해제
+            AIC->ClearFocus(EAIFocusPriority::Gameplay);
+        }
+    }
+    
+    if (SightConfig && AIPerceptionComp)
     {
         SightConfig->SightRadius = Stats.SightRange;
-        SightConfig->LoseSightRadius = Stats.SightRange + 300.0f;
+        SightConfig->LoseSightRadius = Stats.SightRange + 50.f; // 여유 거리를 더 늘림
+        
+        // 언리얼 Perception FOV는 절반 값입니다. 
+        // 입력받은 FOVAngle이 90이면 좌우 45도씩 총 90도를 봅니다.
         SightConfig->PeripheralVisionAngleDegrees = Stats.FOVAngle / 2.0f;
+        
+        // 중요: 변경된 설정을 재등록
         AIPerceptionComp->ConfigureSense(*SightConfig);
     }
 
-    if (HearingConfig)
+    if (HearingConfig && AIPerceptionComp)
     {
         HearingConfig->HearingRange = Stats.HearingRange;
         AIPerceptionComp->ConfigureSense(*HearingConfig);
     }
 
+    // 런타임에 Perception 시스템에 변경 사항 알림
     AIPerceptionComp->RequestStimuliListenerUpdate();
 
-    if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+    if (GetCharacterMovement())
     {
-        MoveComp->MaxWalkSpeed = Stats.MoveSpeed;
+        GetCharacterMovement()->MaxWalkSpeed = Stats.MoveSpeed;
     }
 }
 
@@ -295,8 +341,7 @@ void AEnemyCharacter::OnLostRevertTimerExpired()
 // ---------------------------------------------------------------
 void AEnemyCharacter::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
 {
-    if (bIsDead) return;
-
+    if (bIsDead || !Actor) return; // Actor가 유효한지 확인
     AAIController* AIC = Cast<AAIController>(GetController());
     if (!AIC) return;
     UBlackboardComponent* BB = AIC->GetBlackboardComponent();
@@ -306,29 +351,22 @@ void AEnemyCharacter::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
     {
         if (Stimulus.WasSuccessfullySensed())
         {
-            if (!GetWorldTimerManager().IsTimerActive(DetectionTimerHandle) && CurrentAlertLevel < EAlertLevel::Combat)
-            {
-                SuspectedTarget = Actor;
-                GetWorldTimerManager().SetTimer(
-                    DetectionTimerHandle, this,
-                    &AEnemyCharacter::OnDetectionTimerExpired,
-                    1.0f, false
-                );
-                BB->SetValueAsVector(BBKeys::LAST_KNOWN_LOCATION, Stimulus.StimulusLocation);
-            }
-        }
-        else
-        {
-            if (GetWorldTimerManager().IsTimerActive(DetectionTimerHandle))
-            {
-                GetWorldTimerManager().ClearTimer(DetectionTimerHandle);
-                SuspectedTarget = nullptr;
-            }
+            GetWorldTimerManager().ClearTimer(LostRevertTimerHandle);
+            SuspectedTarget = Actor;
 
-            if (CurrentAlertLevel == EAlertLevel::Combat)
+            if (CurrentAlertLevel < EAlertLevel::Combat && !GetWorldTimerManager().IsTimerActive(SpotCheckTimerHandle))
             {
-                OnAlertLevelChanged(EAlertLevel::Lost);
+                if (CurrentAlertLevel == EAlertLevel::Idle) OnAlertLevelChanged(EAlertLevel::Suspicious);
+                
+                SpotProb = 0.7f;
+                GetWorldTimerManager().SetTimer(SpotCheckTimerHandle, this, &AEnemyCharacter::ProcessSpotCheck, 1.0f, true);
             }
+            BB->SetValueAsVector(TEXT("LastKnownLocation"), Stimulus.StimulusLocation);
+        }
+        else 
+        {
+            GetWorldTimerManager().ClearTimer(SpotCheckTimerHandle);
+            if (CurrentAlertLevel == EAlertLevel::Combat) OnAlertLevelChanged(EAlertLevel::Lost);
         }
     }
     else if (Stimulus.Type == UAISense::GetSenseID<UAISense_Hearing>())
@@ -336,8 +374,49 @@ void AEnemyCharacter::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
         if (CurrentAlertLevel < EAlertLevel::Suspicious && Stimulus.WasSuccessfullySensed())
         {
             OnAlertLevelChanged(EAlertLevel::Suspicious);
-            BB->SetValueAsVector(BBKeys::LAST_KNOWN_LOCATION, Stimulus.StimulusLocation);
+            BB->SetValueAsVector(TEXT("LastKnownLocation"), Stimulus.StimulusLocation);
         }
+    }
+}
+
+void AEnemyCharacter::StartFirePattern(AActor* TargetActor)
+{
+    if (bIsDead || !TargetActor) return;
+
+    if (CurrentShotCount == 0 && !GetWorldTimerManager().IsTimerActive(FirePatternTimerHandle))
+    {
+        SuspectedTarget = TargetActor;
+        UE_LOG(LogTemp, Warning, TEXT("[%s] 사격 패턴 시작! 타겟: %s"), *GetName(), *TargetActor->GetName());
+        
+        ExecuteFireStep();
+    }
+}
+
+void AEnemyCharacter::ExecuteFireStep()
+{
+    if (bIsDead || CurrentAlertLevel != EAlertLevel::Combat || !SuspectedTarget)
+    {
+        CurrentShotCount = 0;
+        return;
+    }
+
+    if (CurrentShotCount < 3)
+    {
+        if (CanShootTarget(SuspectedTarget))
+        {
+            FireAtTarget(SuspectedTarget);
+            CurrentShotCount++;
+            GetWorldTimerManager().SetTimer(FirePatternTimerHandle, this, &AEnemyCharacter::ExecuteFireStep, 0.4f, false);
+        }
+        else
+        {
+            CurrentShotCount = 0;
+        }
+    }
+    else
+    {
+        CurrentShotCount = 0;
+        GetWorldTimerManager().SetTimer(FirePatternTimerHandle, 0.8f, false);
     }
 }
 
