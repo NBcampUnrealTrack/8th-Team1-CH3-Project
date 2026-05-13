@@ -10,11 +10,8 @@
 #include "TimerManager.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/WidgetComponent.h"
-<<<<<<< HEAD
 #include "Components/CapsuleComponent.h"
 #include "Animation/AnimMontage.h"
-=======
->>>>>>> parent of 4e1af5e (Merge branch 'aiTest' into Dev)
 #include "BlackboardKeys.h"
 #include "CombatManager.h"
 
@@ -60,15 +57,12 @@ void AEnemyCharacter::BeginPlay()
     Super::BeginPlay();
     AIPerceptionComp->OnTargetPerceptionUpdated.AddDynamic(this, &AEnemyCharacter::OnTargetPerceived);
     ApplyPerceptionStats(IdleStats);
-<<<<<<< HEAD
     
     if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
     {
         MoveComp->bUseRVOAvoidance = true;
         MoveComp->AvoidanceConsiderationRadius = GetCapsuleComponent()->GetScaledCapsuleRadius() * 2.0f;
     }
-=======
->>>>>>> parent of 4e1af5e (Merge branch 'aiTest' into Dev)
 }
 
 // ---------------------------------------------------------------
@@ -268,8 +262,6 @@ void AEnemyCharacter::OnSuspiciousRevertTimerExpired()
 {
     if (CurrentAlertLevel != EAlertLevel::Suspicious) return;
 
-<<<<<<< HEAD
-=======
     OnAlertLevelChanged(EAlertLevel::Idle);
 
     if (AAIController* AIC = Cast<AAIController>(GetController()))
@@ -353,7 +345,6 @@ void AEnemyCharacter::OnDetectionTimerExpired()
 {
     if (bIsDead || !SuspectedTarget) return;
 
->>>>>>> parent of 4e1af5e (Merge branch 'aiTest' into Dev)
     AAIController* AIC = Cast<AAIController>(GetController());
     if (!AIC) return;
     UBlackboardComponent* BB = AIC->GetBlackboardComponent();
@@ -365,7 +356,6 @@ void AEnemyCharacter::OnDetectionTimerExpired()
 }
 
 // ---------------------------------------------------------------
-<<<<<<< HEAD
 // 사망 처리
 // ---------------------------------------------------------------
 void AEnemyCharacter::Die()
@@ -397,8 +387,6 @@ void AEnemyCharacter::Die()
 }
 
 // ---------------------------------------------------------------
-=======
->>>>>>> parent of 4e1af5e (Merge branch 'aiTest' into Dev)
 // 사격 관련
 // ---------------------------------------------------------------
 bool AEnemyCharacter::CanShootTarget(AActor* TargetActor)
@@ -436,16 +424,7 @@ bool AEnemyCharacter::FireAtTarget(AActor* TargetActor)
 {
     if (bIsDead || !TargetActor || !CombatManagerComp) return false;
 
-<<<<<<< HEAD
-    if (FireMontage)
-    {
-        PlayAnimMontage(FireMontage);
-    }
-
-    CombatManagerComp->OnFire(AimStart, AimDirection, ECombatWeaponType::Rifle, WeaponDamage, true);
-=======
     if (!CanShootTarget(TargetActor)) return false;
->>>>>>> parent of 4e1af5e (Merge branch 'aiTest' into Dev)
 
     const float RandomRoll = FMath::FRand();
     const bool bIsHit = RandomRoll <= HitAccuracy;
@@ -459,7 +438,12 @@ bool AEnemyCharacter::FireAtTarget(AActor* TargetActor)
     }
     const FVector AimDirection = (TargetActor->GetActorLocation() - AimStart).GetSafeNormal();
 
-    CombatManagerComp->OnFire(AimStart, AimDirection, ECombatWeaponType::Rifle, WeaponDamage, 0.f);
+    if (FireMontage)
+    {
+        PlayAnimMontage(FireMontage);
+    }
+
+    CombatManagerComp->OnFire(AimStart, AimDirection, ECombatWeaponType::Rifle, WeaponDamage, true);
 
     return true;
 }
