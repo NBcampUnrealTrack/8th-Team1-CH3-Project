@@ -56,11 +56,14 @@ void AEnemyCharacter::BeginPlay()
     ApplyPerceptionStats(IdleStats);
     if (AAIController* AIC = Cast<AAIController>(GetController()))
     {
-        // 에디터에서 선택한 BT 에셋이 있다면 실행합니다.
         if (EnemyBT)
         {
             AIC->RunBehaviorTree(EnemyBT);
         }
+    }
+    if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+    {
+        MoveComp->bUseRVOAvoidance = true;
     }
 }
 
@@ -145,47 +148,22 @@ void AEnemyCharacter::HideAlertIcon()
 // ---------------------------------------------------------------
 void AEnemyCharacter::ApplyPerceptionStats(const FAlertLevelStats& Stats)
 {
-    // --- 포커스 제어 로직 추가 ---
     if (AAIController* AIC = Cast<AAIController>(GetController()))
     {
-        if (CurrentAlertLevel == EAlertLevel::Combat && SuspectedTarget)
-        {
-            // 전투 중일 때는 타겟을 고정해서 바라봄 (시야각 확보)
-            AIC->SetFocus(SuspectedTarget);
-        }
-        else
-        {
-            // 평시나 타겟을 놓쳤을 때는 시선 고정 해제
-            AIC->ClearFocus(EAIFocusPriority::Gameplay);
-        }
+        if (CurrentAlertLevel == EAlertLevel::Combat && SuspectedTarget) AIC->SetFocus(SuspectedTarget);
+        else AIC->ClearFocus(EAIFocusPriority::Gameplay);
     }
     
-    if (SightConfig && AIPerceptionComp)
+    if (SightConfig)
     {
         SightConfig->SightRadius = Stats.SightRange;
-        SightConfig->LoseSightRadius = Stats.SightRange + 50.f; // 여유 거리를 더 늘림
-        
-        // 언리얼 Perception FOV는 절반 값입니다. 
-        // 입력받은 FOVAngle이 90이면 좌우 45도씩 총 90도를 봅니다.
+        SightConfig->LoseSightRadius = Stats.SightRange + 50.f;
         SightConfig->PeripheralVisionAngleDegrees = Stats.FOVAngle / 2.0f;
-        
-        // 중요: 변경된 설정을 재등록
         AIPerceptionComp->ConfigureSense(*SightConfig);
     }
 
-    if (HearingConfig && AIPerceptionComp)
-    {
-        HearingConfig->HearingRange = Stats.HearingRange;
-        AIPerceptionComp->ConfigureSense(*HearingConfig);
-    }
-
-    // 런타임에 Perception 시스템에 변경 사항 알림
+    if (GetCharacterMovement()) GetCharacterMovement()->MaxWalkSpeed = Stats.MoveSpeed;
     AIPerceptionComp->RequestStimuliListenerUpdate();
-
-    if (GetCharacterMovement())
-    {
-        GetCharacterMovement()->MaxWalkSpeed = Stats.MoveSpeed;
-    }
 }
 
 // ---------------------------------------------------------------
@@ -195,62 +173,61 @@ void AEnemyCharacter::OnAlertLevelChanged(EAlertLevel NewLevel)
 {
     if (bIsDead) return;
 
+    // 1. C++ 내부 변수 업데이트
+    CurrentAlertLevel = NewLevel;
+
+    // 2. 블랙보드에 실시간 기록 (이게 없으면 BT가 작동 안 함)
+    if (AAIController* AIC = Cast<AAIController>(GetController()))
+    {
+        if (UBlackboardComponent* BB = AIC->GetBlackboardComponent())
+        {
+            // BBKeys::ALERT_LEVEL을 사용하여 비헤이비어 트리에 신호 전송
+            BB->SetValueAsEnum(BBKeys::ALERT_LEVEL, (uint8)NewLevel);
+        }
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("[%s] 경계 레벨 변경: %d"), *GetName(), (int32)NewLevel);
+    
+    // 타이머 초기화
     GetWorldTimerManager().ClearTimer(SuspiciousRevertTimerHandle);
     GetWorldTimerManager().ClearTimer(LostRevertTimerHandle);
 
     Super::OnAlertLevelChanged(NewLevel);
 
+    // 상태별 스탯/아이콘 적용
     switch (NewLevel)
     {
-    case EAlertLevel::Idle:       ApplyPerceptionStats(IdleStats);       break;
-    case EAlertLevel::Suspicious: ApplyPerceptionStats(SuspiciousStats); break;
-    case EAlertLevel::Combat:     ApplyPerceptionStats(CombatStats);     break;
-    case EAlertLevel::Lost:       ApplyPerceptionStats(LostStats);       break;
-    default: break;
+        case EAlertLevel::Idle:       ApplyPerceptionStats(IdleStats);       break;
+        case EAlertLevel::Suspicious: ApplyPerceptionStats(SuspiciousStats); break;
+        case EAlertLevel::Combat:     ApplyPerceptionStats(CombatStats);     break;
+        case EAlertLevel::Lost:       ApplyPerceptionStats(LostStats);       break;
+        default: break;
     }
 
     UpdateAlertIcon(NewLevel);
 
+    // 타겟 정보 가져오기
     AActor* TargetPlayer = nullptr;
     if (AAIController* AIC = Cast<AAIController>(GetController()))
     {
         if (UBlackboardComponent* BB = AIC->GetBlackboardComponent())
-        {
             TargetPlayer = Cast<AActor>(BB->GetValueAsObject(BBKeys::TARGET_ACTOR));
-        }
     }
 
+    // 상태별 타이머 및 알람 전파
     switch (NewLevel)
     {
     case EAlertLevel::Suspicious:
-        GetWorldTimerManager().SetTimer(
-            SuspiciousRevertTimerHandle, this,
-            &AEnemyCharacter::OnSuspiciousRevertTimerExpired,
-            SuspiciousRevertDelay, false
-        );
+        GetWorldTimerManager().SetTimer(SuspiciousRevertTimerHandle, this, &AEnemyCharacter::OnSuspiciousRevertTimerExpired, SuspiciousRevertDelay, false);
         break;
-
     case EAlertLevel::Combat:
-        if (TargetPlayer)
-        {
-            AlertNearbyEnemies(TargetPlayer, CombatAlertRange, EAlertLevel::Combat);
-        }
+        if (TargetPlayer) AlertNearbyEnemies(TargetPlayer, CombatAlertRange, EAlertLevel::Combat);
         break;
-
     case EAlertLevel::Lost:
-        if (TargetPlayer)
-        {
-            AlertNearbyEnemies(TargetPlayer, LostAlertRange, EAlertLevel::Suspicious);
-        }
-        GetWorldTimerManager().SetTimer(
-            LostRevertTimerHandle, this,
-            &AEnemyCharacter::OnLostRevertTimerExpired,
-            LostRevertDelay, false
-        );
+        if (TargetPlayer) AlertNearbyEnemies(TargetPlayer, LostAlertRange, EAlertLevel::Suspicious);
+        GetWorldTimerManager().SetTimer(LostRevertTimerHandle, this, &AEnemyCharacter::OnLostRevertTimerExpired, LostRevertDelay, false);
         break;
-
-    default:
-        break;
+    default: break;
     }
 }
 
@@ -341,40 +318,24 @@ void AEnemyCharacter::OnLostRevertTimerExpired()
 // ---------------------------------------------------------------
 void AEnemyCharacter::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
 {
-    if (bIsDead || !Actor) return; // Actor가 유효한지 확인
-    AAIController* AIC = Cast<AAIController>(GetController());
-    if (!AIC) return;
-    UBlackboardComponent* BB = AIC->GetBlackboardComponent();
-    if (!BB) return;
+    if (bIsDead || !Actor || Actor == this) return;
 
     if (Stimulus.Type == UAISense::GetSenseID<UAISense_Sight>())
     {
         if (Stimulus.WasSuccessfullySensed())
         {
-            GetWorldTimerManager().ClearTimer(LostRevertTimerHandle);
             SuspectedTarget = Actor;
-
             if (CurrentAlertLevel < EAlertLevel::Combat && !GetWorldTimerManager().IsTimerActive(SpotCheckTimerHandle))
             {
                 if (CurrentAlertLevel == EAlertLevel::Idle) OnAlertLevelChanged(EAlertLevel::Suspicious);
-                
                 SpotProb = 0.7f;
                 GetWorldTimerManager().SetTimer(SpotCheckTimerHandle, this, &AEnemyCharacter::ProcessSpotCheck, 1.0f, true);
             }
-            BB->SetValueAsVector(TEXT("LastKnownLocation"), Stimulus.StimulusLocation);
         }
-        else 
+        else
         {
             GetWorldTimerManager().ClearTimer(SpotCheckTimerHandle);
             if (CurrentAlertLevel == EAlertLevel::Combat) OnAlertLevelChanged(EAlertLevel::Lost);
-        }
-    }
-    else if (Stimulus.Type == UAISense::GetSenseID<UAISense_Hearing>())
-    {
-        if (CurrentAlertLevel < EAlertLevel::Suspicious && Stimulus.WasSuccessfullySensed())
-        {
-            OnAlertLevelChanged(EAlertLevel::Suspicious);
-            BB->SetValueAsVector(TEXT("LastKnownLocation"), Stimulus.StimulusLocation);
         }
     }
 }
