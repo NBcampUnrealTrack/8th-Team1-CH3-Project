@@ -588,6 +588,15 @@ float APlayerCharacter::GetRemainingMissionTime() const
 
 float APlayerCharacter::GetDistanceToCurrentObjective() const
 {
+	// Modified: FVector 간의 거리를 계산하기 위해 FVector::Dist 사용
+	if (CurrentMissionData && CurrentMissionData->MissionGoals.IsValidIndex(CurrentMissionIndex))
+	{
+		FVector TargetLoc = CurrentMissionData->MissionGoals[CurrentMissionIndex].TargetLocation;
+		if (!TargetLoc.IsZero())
+		{
+			return FVector::Dist(GetActorLocation(), TargetLoc) / 100.0f;
+		}
+	}
 	return 0.f;
 }
 
