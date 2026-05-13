@@ -47,6 +47,10 @@ public:
     UFUNCTION(BlueprintCallable, Category = "AI|Combat")
     bool CanShootTarget(AActor* TargetActor);
 
+    // 3점사 패턴 시작 함수 (Behavior Tree 등에서 호출)
+    UFUNCTION(BlueprintCallable, Category = "AI|Combat")
+    void StartFirePattern(AActor* TargetActor);
+
     UFUNCTION(BlueprintCallable, Category = "AI|Combat")
     bool FireAtTarget(AActor* TargetActor);
 
@@ -89,14 +93,16 @@ protected:
     FAlertLevelStats IdleStats       = { 100.f, 1000.f,  500.f, 400.f };
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|AlertStats")
-    FAlertLevelStats SuspiciousStats = { 100.f, 1500.f,  800.f, 600.f };
+    FAlertLevelStats SuspiciousStats = { 180.f, 1500.f,  800.f, 600.f };
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|AlertStats")
-    FAlertLevelStats CombatStats     = { 100.f, 2000.f, 1000.f, 800.f };
+    FAlertLevelStats CombatStats     = { 180.f, 2000.f, 1000.f, 800.f };
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|AlertStats")
     FAlertLevelStats LostStats       = { 100.f, 2000.f, 1000.f, 800.f };
 
+    UPROPERTY(EditAnywhere, Category = "AI")
+    class UBehaviorTree* EnemyBT;
 private:
     // ---------------------------------------------------------------
     // 전투 수치
@@ -113,6 +119,16 @@ private:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|Combat", meta = (AllowPrivateAccess = "true"))
     float WeaponDamage = 15.0f;
 
+    // --- 기획 추가: 확률 기반 감지 (Level 2 -> 3) ---
+    float SpotProb = 0.7f;                // 초기값 0.7
+    FTimerHandle SpotCheckTimerHandle;    // 1초마다 반복될 핸들
+    void ProcessSpotCheck();              // 확률 계산 로직
+
+    // --- 기획 추가: 사격 패턴 (3회 사격 로직) ---
+    int32 CurrentShotCount = 0;           // 현재 발사 횟수
+    FTimerHandle FirePatternTimerHandle;  // 0.4초/0.8초 제어용
+    void ExecuteFireStep();               // 실제 한 발씩 쏘는 단계
+    
     // ---------------------------------------------------------------
     // AlertRange
     // ---------------------------------------------------------------
@@ -157,6 +173,7 @@ private:
     // ---------------------------------------------------------------
     FTimerHandle DetectionTimerHandle;
 
+    // --- 타겟 관리 ---
     UPROPERTY()
     AActor* SuspectedTarget = nullptr;
 
