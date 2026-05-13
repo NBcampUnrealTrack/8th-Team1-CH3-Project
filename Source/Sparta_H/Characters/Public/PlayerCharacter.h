@@ -35,10 +35,11 @@ class SPARTA_H_API APlayerCharacter : public ACharacter
 public:
 	// Sets default values for this character's properties
 	APlayerCharacter();
-
-	// 1인칭 카메라 — 캡슐 상단에 부착, 컨트롤러 회전 적용
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components")
 	USpringArmComponent* SpringArm;
+
+	// 1인칭 카메라 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components")
 	UCameraComponent* Camera;
 
