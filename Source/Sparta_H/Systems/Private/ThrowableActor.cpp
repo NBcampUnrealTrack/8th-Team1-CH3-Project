@@ -84,7 +84,18 @@ void AThrowableActor::HandleOnHit(UPrimitiveComponent* HitComponent, AActor* Oth
 	Destroy();
 }
 
-void AThrowableActor::Launch(const FVector& Direction)
+void AThrowableActor::Launch(const FVector& Direction, float Speed)
 {
-	ProjectileMovement->Velocity = Direction * ProjectileMovement->InitialSpeed;
+	if (ProjectileMovement == nullptr)
+	{
+		return;
+	}
+
+	// Speed <= 0 이면 DA 차징 미사용 호출로 간주하고 컴포넌트 기본 속도 사용
+	const float EffectiveSpeed = Speed > 0.0f ? Speed : ProjectileMovement->InitialSpeed;
+
+	// 궤적 예측 결과와 일치시키기 위해 InitialSpeed/MaxSpeed 도 동기화
+	ProjectileMovement->InitialSpeed = EffectiveSpeed;
+	ProjectileMovement->MaxSpeed = EffectiveSpeed;
+	ProjectileMovement->Velocity = Direction * EffectiveSpeed;
 }

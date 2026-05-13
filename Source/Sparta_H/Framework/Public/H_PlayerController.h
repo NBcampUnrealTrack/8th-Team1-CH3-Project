@@ -44,7 +44,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input|Weapon")
 	UInputAction* ReloadAction;
 
-	// 1~4 키로 슬롯 직접 선택 (Axis1D, Scalar Modifier 1~4)
+	// 1~3 키로 슬롯 직접 선택 (Axis1D, Scalar Modifier 1~3)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input|Weapon")
 	UInputAction* EquipSlotAction;
 
@@ -53,6 +53,10 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input|Weapon")
 	UInputAction* EquipPreviousWeaponAction;
+
+	// G 키 — 투척물(수류탄/돌맹이) 장착 토글
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input|Weapon")
+	UInputAction* ThrowableAction;
 	
 	// 에디터에서 지정할 위젯 클래스
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")

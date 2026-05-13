@@ -78,6 +78,32 @@ public:
 	// 투척 무기 전용 - FireMode가 Throwble인 무기에서 스폰할 액터 클래스
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Behavior")
 	TSubclassOf<AThrowableActor> ThrowableClass;
+	
+	// ───── Throwable 전용 ─────
+	
+	// -1 이면 무한 (돌맹이용), 0 이상이면 제한된 보유 수
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Weapon|Throwable", meta=(ClampMin = -1))
+	int32 MaxStockCount = 3;
+	
+	// 던지고 다음 던지기까지(초)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Weapon|Throwable")
+	float ThrowCooldown = 1.0f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Weapon|Throwable")
+	float MinThrowSpeed = 800.0f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Weapon|Throwable")
+	float MaxThrowSpeed = 2200.0f;
+	
+	// 0 ~ 100 차징 시간
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Weapon|Throwable")
+	float ChargeDuration = 1.0f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Weapon|Throwable")
+	float TrajectorySimTime = 3.0f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Weapon|Throwable")
+	float TrajectoryProjectileRadius = 5.0f;
 
 	// ───── 메시 ─────
 
