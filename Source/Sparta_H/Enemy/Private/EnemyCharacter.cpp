@@ -318,24 +318,44 @@ void AEnemyCharacter::OnLostRevertTimerExpired()
 // ---------------------------------------------------------------
 void AEnemyCharacter::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
 {
-    if (bIsDead || !Actor || Actor == this) return;
+    if (bIsDead || !Actor || Actor == this || !Actor->ActorHasTag(TEXT("Player"))) return;
+    
+    AAIController* AIC = Cast<AAIController>(GetController());
+    if (!AIC) return;
+    UBlackboardComponent* BB = Cast<AAIController>(GetController())->GetBlackboardComponent();
+    if (!BB) return;
 
     if (Stimulus.Type == UAISense::GetSenseID<UAISense_Sight>())
     {
-        if (Stimulus.WasSuccessfullySensed())
+        if (Stimulus.WasSuccessfullySensed()) // 플레이어를 보았을 때
         {
             SuspectedTarget = Actor;
-            if (CurrentAlertLevel < EAlertLevel::Combat && !GetWorldTimerManager().IsTimerActive(SpotCheckTimerHandle))
+            BB->SetValueAsObject(BBKeys::TARGET_ACTOR, Actor);
+            BB->SetValueAsVector(BBKeys::LAST_KNOWN_LOCATION, Actor->GetActorLocation());
+
+            // 2. 경계 레벨 올리기
+            if (CurrentAlertLevel < EAlertLevel::Combat)
             {
-                if (CurrentAlertLevel == EAlertLevel::Idle) OnAlertLevelChanged(EAlertLevel::Suspicious);
-                SpotProb = 0.7f;
-                GetWorldTimerManager().SetTimer(SpotCheckTimerHandle, this, &AEnemyCharacter::ProcessSpotCheck, 1.0f, true);
+                OnAlertLevelChanged(EAlertLevel::Suspicious);
+                if (!GetWorldTimerManager().IsTimerActive(SpotCheckTimerHandle))
+                {
+                    SpotProb = 0.7f;
+                    GetWorldTimerManager().SetTimer(SpotCheckTimerHandle, this, &AEnemyCharacter::ProcessSpotCheck, 1.0f, true);
+                }
             }
         }
         else
         {
+            //-------------------------------------------
+            // ClearValue시 바로 lost되는 문제 발생가능 
+            //-------------------------------------------
+            
             GetWorldTimerManager().ClearTimer(SpotCheckTimerHandle);
-            if (CurrentAlertLevel == EAlertLevel::Combat) OnAlertLevelChanged(EAlertLevel::Lost);
+            
+            if (CurrentAlertLevel == EAlertLevel::Combat)
+            {
+                OnAlertLevelChanged(EAlertLevel::Lost);
+            }
         }
     }
 }
