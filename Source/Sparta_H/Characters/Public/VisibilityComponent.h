@@ -15,14 +15,24 @@ class SPARTA_H_API UVisibilityComponent : public UActorComponent
 public:	
 	// Sets default values for this component's properties
 	UVisibilityComponent();
+	
+	UFUNCTION(BlueprintCallable, Category = "Visibility")
+	float GetVisibilityScore() const;
 
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
+	
+private:
+	// 자세에 따른 가시성 보정값
+	UPROPERTY(EditAnywhere, Category = "Settings")
+	float StandingMultiplier = 1.0f;
 
-public:	
-	// Called every frame
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+	UPROPERTY(EditAnywhere, Category = "Settings")
+	float CrouchingMultiplier = 0.5f; // 웅크리면 발각 확률 절반
+
+	// 조명 상태에 따른 보정 (간단한 구현용)
+	static float CalculateLightFactor();
 
 		
 };

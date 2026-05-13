@@ -188,7 +188,28 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Player|UI")
 	void NotifyEnemyKilled();
 	/** End of 플레이어 스탯 / 목표 **/
+	
+	/** 사망 시 호출될 함수 **/
+	UFUNCTION(BlueprintCallable)
+	void OnDeath();
 
+	/** 사망 상태를 확인하는 플래그 (중복 사망 처리 방지) **/
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Status")
+	bool bIsDead = false;
+
+	/** 사망 애니메이션 몽타주 (에디터에서 할당) **/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	UAnimMontage* DeathMontage;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+	TObjectPtr<class USoundBase> MoveSound;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+	TObjectPtr<class USoundBase> RunSound;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+	TObjectPtr<class USoundBase> JumpSound;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+	TObjectPtr<class USoundBase> RollSound;
+	
 private:
 	/** Weapon Input Callbacks **/
 	void OnEquipSlotPressed(const FInputActionValue& Value);
