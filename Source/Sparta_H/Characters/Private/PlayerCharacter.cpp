@@ -17,6 +17,7 @@
 #include "NoiseComponent.h"
 #include "StaminaComponent.h"
 #include "VisibilityComponent.h"
+#include "Components/CapsuleComponent.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -60,6 +61,12 @@ APlayerCharacter::APlayerCharacter()
 	NoiseComponent = CreateDefaultSubobject<UNoiseComponent>(TEXT("NoiseComponent"));
 	InteractionComponent = CreateDefaultSubobject<UInteractionComponent>(TEXT("InteractionComponent"));
 	VisibilityComponent = CreateDefaultSubobject<UVisibilityComponent>(TEXT("VisibilityComponent"));
+	
+	//그림자 제거
+	if (GetMesh())
+	{
+		GetMesh()->SetCastShadow(false);
+	}
 }
 
 // Called when the game starts or when spawned
@@ -73,6 +80,13 @@ void APlayerCharacter::BeginPlay()
 	if (!SpawnedWeapons.IsEmpty())
 	{
 		EquipWeaponByIndex(0);
+	}
+	
+	// 플렝이어가 죽었을 때의 델리게이트에 함수 등록
+	if (HealthComponent)
+	{
+		// "죽었을 때(OnDeath), 나(this)의 OnDeath 함수를 실행해줘"라고 등록
+		HealthComponent->OnDeath.AddDynamic(this, &APlayerCharacter::OnDeath);
 	}
 
 	// 미션 데이터 초기화
@@ -186,6 +200,12 @@ void APlayerCharacter::Move(const FInputActionValue& value)
 
 		AddMovementInput(RightDirection, MoveInput.Y);
 		AddMovementInput(ForwardDirection, MoveInput.X);
+		
+		if (MoveSound)
+		{
+			// 캐릭터 위치에서 점프 소리 재생
+			UGameplayStatics::PlaySoundAtLocation(this, MoveSound, GetActorLocation());
+		}
 	}
 }
 
@@ -205,6 +225,12 @@ void APlayerCharacter::StartJump(const FInputActionValue& value)
 	if (value.Get<bool>())
 	{
 		Jump();
+		
+		if (JumpSound)
+		{
+			// 캐릭터 위치에서 점프 소리 재생
+			UGameplayStatics::PlaySoundAtLocation(this, JumpSound, GetActorLocation());
+		}
 	}
 }
 
@@ -222,6 +248,12 @@ void APlayerCharacter::StartRun(const FInputActionValue& value)
 	{
 		GetCharacterMovement()->MaxWalkSpeed = SprintSpeed;
 		StaminaComponent->SetSprinting(true);
+		
+		if (RunSound)
+		{
+			// 캐릭터 위치에서 점프 소리 재생
+			UGameplayStatics::PlaySoundAtLocation(this, RunSound, GetActorLocation());
+		}
 	}
 }
 
@@ -238,7 +270,7 @@ void APlayerCharacter::StartHide(const FInputActionValue& value)
 {
 	if (GetCharacterMovement() && !GetCharacterMovement()->IsFalling())
 	{
-		Crouch(); // 엔진 내장 함수 컴포넌트를 아래로 내려줌
+		Crouch(); // 엔진 내장 함수 루트 컴포넌트를 아래로 내려줌
 	}
 }
 
@@ -250,7 +282,7 @@ void APlayerCharacter::StopHide(const FInputActionValue& value)
 void APlayerCharacter::Roll(const FInputActionValue& value)
 {
 	// 이미 구르고 있거나, 몽타주가 설정되지 않았다면 리턴
-	if (bIsRolling || !DiveRollMontage)
+	if (bIsRolling || !DiveRollMontage || GetCharacterMovement()->IsFalling())
 	{
 		return;
 	}
@@ -262,6 +294,12 @@ void APlayerCharacter::Roll(const FInputActionValue& value)
 	if (MontageLength > 0.f)
 	{
 		bIsRolling = true;
+		
+		if (RollSound)
+		{
+			// 캐릭터 위치에서 점프 소리 재생
+			UGameplayStatics::PlaySoundAtLocation(this, RollSound, GetActorLocation());
+		}
 
 		// 몽타주 종료 시점을 알기 위해 델리게이트 연결
 		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
@@ -280,7 +318,6 @@ void APlayerCharacter::OnRollMontageEnded(UAnimMontage* Montage, bool bInterrupt
 	if (Montage == DiveRollMontage)
 	{
 		bIsRolling = false;
-		UE_LOG(LogTemp, Log, TEXT("구르기 종료 - 이제 다시 이동 가능"));
 	}
 }
 
@@ -301,26 +338,9 @@ void APlayerCharacter::StopLean(const FInputActionValue& value)
 
 void APlayerCharacter::Interaction(const FInputActionValue& value)
 {
-	// 상호작용 라인 트레이스
-	FVector Start = Camera->GetComponentLocation();
-	FVector End = Start + (Camera->GetForwardVector() * 300.0f); // 3m 사거리
-
-	FHitResult HitResult;
-	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(this);
-
-	if (GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, Params))
+	if (InteractionComponent)
 	{
-		if (AActor* HitActor = HitResult.GetActor())
-		{
-			if (HitActor->GetClass()->ImplementsInterface(UMissionInteractableInterface::StaticClass()))
-			{
-				if (IMissionInteractableInterface::Execute_CanInteract(HitActor, this))
-				{
-					IMissionInteractableInterface::Execute_Interact(HitActor, this);
-				}
-			}
-		}
+		InteractionComponent->PerformInteraction(Camera);
 	}
 }
 
@@ -604,5 +624,39 @@ void APlayerCharacter::UpdateMissionObjective()
 	else if (CurrentMissionIndex >= CurrentMissionData->MissionGoals.Num())
 	{
 		SetObjective(TEXT("모든 목표 달성!"));
+	}
+}
+
+void APlayerCharacter::OnDeath()
+{
+	if (bIsDead) return; // 이미 죽었다면 무시
+
+	bIsDead = true;
+	UE_LOG(LogTemp, Warning, TEXT("플레이어 사망: 모든 기능을 중지합니다."));
+
+	// 1. 입력 기능 마비
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC)
+	{
+		DisableInput(PC);
+	}
+
+	// 2. 이동 중지 및 가속도 초기화
+	GetCharacterMovement()->StopMovementImmediately();
+	GetCharacterMovement()->DisableMovement();
+
+	// 3. 충돌 설정 변경 (시체 위를 지나갈 수 있게 하거나 무시)
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	// 4. 사망 애니메이션 재생
+	if (DeathMontage)
+	{
+		PlayAnimMontage(DeathMontage);
+	}
+	else
+	{
+		// 몽타주가 없을 경우 물리 시뮬레이션(Ragdoll) 활성화
+		GetMesh()->SetSimulatePhysics(true);
+		GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
 	}
 }
