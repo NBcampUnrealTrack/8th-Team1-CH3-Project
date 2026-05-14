@@ -24,9 +24,25 @@ void UInteractionComponent::PerformInteraction(UCameraComponent* Camera)
 {
 	if (!Camera || !GetWorld()) return;
 	
-	FVector Start = Camera->GetComponentLocation();
-	FVector End = Start + (Camera->GetForwardVector() * TraceDistance);
+	float SpringArmLength = 0.f;
+	if (AActor* Owner = GetOwner())
+	{
+		// 캐릭터 클래스에서 SpringArm을 찾아 현재 길이를 참조
+		if (APlayerCharacter* Player = Cast<APlayerCharacter>(Owner))
+		{
+			if (Player->SpringArm)
+			{
+				SpringArmLength = Player->SpringArm->TargetArmLength;
+			}
+		}
+	}
+
+	// 1. 트레이스 시작/끝 지점 계산float TotalDistance = SpringArmLength + TraceDistance; 
+	float TotalDistance = SpringArmLength + TraceDistance;
 	
+	FVector Start = Camera->GetComponentLocation();
+	FVector End = Start + (Camera->GetForwardVector() * TotalDistance);
+
 	FHitResult HitResult;
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(GetOwner()); // 컴포넌트 소유자(플레이어) 무시
