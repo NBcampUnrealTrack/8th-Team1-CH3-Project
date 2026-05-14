@@ -92,6 +92,18 @@ void APlayerCharacter::BeginPlay()
 		// "죽었을 때(OnDeath), 나(this)의 OnDeath 함수를 실행해줘"라고 등록
 		HealthComponent->OnDeath.AddDynamic(this, &APlayerCharacter::OnDeath);
 	}
+	
+	//카메라 회전 각도 설정
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		if (PC->PlayerCameraManager)
+		{
+			// 위로 볼 수 있는 최대 각도 (예: 60도)
+			PC->PlayerCameraManager->ViewPitchMax = 60.0f;
+			// 아래로 볼 수 있는 최소 각도 (예: -60도)
+			PC->PlayerCameraManager->ViewPitchMin = -45.0f;
+		}
+	}
 
 	// 처치 피드백 델리게이트 등록
 	if (CombatManager && CombatManager->FeedbackHandler)
