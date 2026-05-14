@@ -29,6 +29,8 @@ void UH_FailWidget::SetFailReasonText(const FText& FailReason)
 void UH_FailWidget::HandleOnRestartClicked()
 {
 	// 현재 레벨을 다시 시작 (리스폰 볼륨 시스템과 연동)
+	// bIsDead = false;
+	// Character->SetHealth(100.f);
 }
 
 void UH_FailWidget::HandleOnMainMenuClicked()

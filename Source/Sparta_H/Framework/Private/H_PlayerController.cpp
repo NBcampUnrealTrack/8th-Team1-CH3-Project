@@ -60,7 +60,7 @@ void AH_PlayerController::ShowFailMenu(const FText& Reason)
 		if (FailWidget)
 		{
 			FailWidget->SetFailReasonText(Reason);
-			FailWidget->AddToViewport(10); // HUD보다 위에 표시되도록 Z-Order 설정
+			FailWidget->AddToViewport();
 
 			// 마우스 커서 표시 및 입력 모드 변경
 			FInputModeUIOnly InputMode;
@@ -73,4 +73,5 @@ void AH_PlayerController::ShowFailMenu(const FText& Reason)
 			UGameplayStatics::SetGamePaused(GetWorld(), true);
 		}
 	}
+
 }

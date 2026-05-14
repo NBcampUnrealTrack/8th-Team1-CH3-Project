@@ -90,6 +90,7 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 
 	// 7. 데미지 전달 (1회)
 	UGameplayStatics::ApplyDamage(HitActor, FinalDamage, nullptr, GetOwner(), nullptr);
+	UE_LOG(LogTemp, Warning, TEXT("FinalDamage: %f"), FinalDamage);
 
 	// 8. 피격 소음 (적 피격 시에만)
 	if (bTriggerAIAggro && bHitEnemy)

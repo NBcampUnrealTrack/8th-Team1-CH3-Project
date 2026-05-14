@@ -228,7 +228,7 @@ public:
 	void OnDeath();
 
 	/** 사망 상태를 확인하는 플래그 (중복 사망 처리 방지) **/
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Status")
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Status")
 	bool bIsDead = false;
 
 	/** 사망 애니메이션 몽타주 (에디터에서 할당) **/

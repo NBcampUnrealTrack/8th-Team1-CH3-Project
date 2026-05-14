@@ -38,3 +38,9 @@ void UHealthComponent::HandleTakeAnyDamage(AActor* DamagedActor, float Damage, c
 		OnDeath.Broadcast();
 	}
 }
+
+float UHealthComponent::SetHealth(float NewHealth)
+{
+	CurrentHealth = FMath::Clamp(NewHealth, 0.f, MaxHealth);
+	return CurrentHealth;
+}

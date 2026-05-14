@@ -902,16 +902,11 @@ void APlayerCharacter::FailMissionWithReason(EMissionFailReason Reason)
 
 	if (AH_PlayerController* PC = Cast<AH_PlayerController>(TargetPC))
 	{
-		// 입력 중지
-		DisableInput(PC);
 		// 실패 메뉴 표시
 		PC->ShowFailMenu(FailText);
 	}
-
 	// 미션 실패 처리 델리게이트 (순서를 뒤로 미룸 — UI 생성 후 호출)
 	OnMissionFailed.Broadcast();
-
-	UE_LOG(LogTemp, Warning, TEXT("미션 실패: %s"), *FailText.ToString());
 }
 
 float APlayerCharacter::GetRemainingMissionTime() const

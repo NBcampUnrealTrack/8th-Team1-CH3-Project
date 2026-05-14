@@ -36,6 +36,9 @@ public:
 
 	float GetCurrentHealth() const { return CurrentHealth; }
 	float GetMaxHealth() const { return MaxHealth; }
+	
+	UFUNCTION(BlueprintCallable, Category = "Health")
+	float SetHealth(float NewHealth);
 
 private:
 	UPROPERTY(EditAnywhere, Category = "Health")
