@@ -21,8 +21,11 @@ protected:
 	virtual void BeginPlay() override;
 
 public:	
-	// Called every frame
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-
-		
+	
+	void PerformInteraction(class UCameraComponent* Camera);
+	
+private:
+	// 상호작용 가능 거리 (기존 300.0f 사용)
+	UPROPERTY(EditAnywhere, Category = "Interaction")
+	float TraceDistance = 200.0f;
 };

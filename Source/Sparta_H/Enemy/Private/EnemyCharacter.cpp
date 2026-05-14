@@ -10,6 +10,8 @@
 #include "TimerManager.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/WidgetComponent.h"
+#include "Components/CapsuleComponent.h"
+#include "Animation/AnimMontage.h"
 #include "BlackboardKeys.h"
 #include "CombatManager.h"
 
@@ -55,6 +57,12 @@ void AEnemyCharacter::BeginPlay()
     Super::BeginPlay();
     AIPerceptionComp->OnTargetPerceptionUpdated.AddDynamic(this, &AEnemyCharacter::OnTargetPerceived);
     ApplyPerceptionStats(IdleStats);
+    
+    if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+    {
+        MoveComp->bUseRVOAvoidance = true;
+        MoveComp->AvoidanceConsiderationRadius = GetCapsuleComponent()->GetScaledCapsuleRadius() * 2.0f;
+    }
 }
 
 // ---------------------------------------------------------------
@@ -348,6 +356,37 @@ void AEnemyCharacter::OnDetectionTimerExpired()
 }
 
 // ---------------------------------------------------------------
+// 사망 처리
+// ---------------------------------------------------------------
+void AEnemyCharacter::Die()
+{
+    Super::Die();
+
+    GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+    if (AAIController* AIC = Cast<AAIController>(GetController()))
+    {
+        AIC->StopMovement();
+        AIC->UnPossess();
+    }
+
+    if (DeathMontage)
+    {
+        const float MontageDuration = PlayAnimMontage(DeathMontage);
+        const float DestroyDelay = MontageDuration > 0.f ? MontageDuration : 2.f;
+        FTimerHandle DestroyTimerHandle;
+        GetWorldTimerManager().SetTimer(DestroyTimerHandle, [this]()
+        {
+            Destroy();
+        }, DestroyDelay, false);
+    }
+    else
+    {
+        Destroy();
+    }
+}
+
+// ---------------------------------------------------------------
 // 사격 관련
 // ---------------------------------------------------------------
 bool AEnemyCharacter::CanShootTarget(AActor* TargetActor)
@@ -399,7 +438,12 @@ bool AEnemyCharacter::FireAtTarget(AActor* TargetActor)
     }
     const FVector AimDirection = (TargetActor->GetActorLocation() - AimStart).GetSafeNormal();
 
-    CombatManagerComp->OnFire(AimStart, AimDirection, ECombatWeaponType::Rifle, WeaponDamage, 0.f);
+    if (FireMontage)
+    {
+        PlayAnimMontage(FireMontage);
+    }
+
+    CombatManagerComp->OnFire(AimStart, AimDirection, ECombatWeaponType::Rifle, WeaponDamage, true);
 
     return true;
 }
