@@ -23,21 +23,18 @@
 APlayerCharacter::APlayerCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
-
-	// 1. 스프링암 설정: 컨트롤러(마우스) 회전 사용!
+	
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->SetupAttachment(RootComponent);
-	SpringArm->TargetArmLength = 400.f;
 	SpringArm->bUsePawnControlRotation = true; // 핵심: 마우스 따라가기
-	SpringArm->bEnableCameraLag = true;
-	SpringArm->CameraLagSpeed = 10.0f;
+	SpringArm->bEnableCameraLag = false;
 
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
-	Camera->bUsePawnControlRotation = false; // 암이 돌고 있으니 이건 false로
+	Camera->bUsePawnControlRotation = false;
 
 	// 2. 캐릭터 본체 회전 설정: 마우스 따라 몸이 돌지 않게 분리
-	bUseControllerRotationYaw = false;
+	bUseControllerRotationYaw = true;
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
 	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = true;
@@ -46,6 +43,8 @@ APlayerCharacter::APlayerCharacter()
 	// 3. 이동 시 회전 설정
 	GetCharacterMovement()->bOrientRotationToMovement = true; // 이동 방향으로 몸 틀기
 	GetCharacterMovement()->RotationRate = FRotator(0.f, 540.f, 0.f);
+	
+	GetCharacterMovement()->bCrouchMaintainsBaseLocation = true;
 
 	MoveSpeed = 600.f;
 	SprintSpeedMultiplier = 1.5f;
@@ -89,6 +88,18 @@ void APlayerCharacter::BeginPlay()
 		// "죽었을 때(OnDeath), 나(this)의 OnDeath 함수를 실행해줘"라고 등록
 		HealthComponent->OnDeath.AddDynamic(this, &APlayerCharacter::OnDeath);
 	}
+	
+	//카메라 회전 각도 설정
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		if (PC->PlayerCameraManager)
+		{
+			// 위로 볼 수 있는 최대 각도 (예: 60도)
+			PC->PlayerCameraManager->ViewPitchMax = 60.0f;
+			// 아래로 볼 수 있는 최소 각도 (예: -60도)
+			PC->PlayerCameraManager->ViewPitchMin = -45.0f;
+		}
+	}
 
 	// 미션 데이터 초기화
 	CurrentMissionIndex = 0;
@@ -112,6 +123,27 @@ void APlayerCharacter::Tick(float DeltaTime)
 	if (StaminaComponent && !StaminaComponent->CanSprint())
 	{
 		StopRun(FInputActionValue()); // 스태미나 고갈 시 강제 정지
+	}
+	
+	if (!GetCharacterMovement()->IsCrouching())
+	{
+		SpringArm->bEnableCameraLag = false;
+	}
+	
+	if (SpringArm)
+	{
+		float TargetY = LeanAmount * -MaxLeanOffset;
+		
+		FVector CurrentRelativeLoc = SpringArm->GetRelativeLocation();
+		
+		CurrentRelativeLoc.Y = FMath::FInterpTo(
+			CurrentRelativeLoc.Y,
+			TargetY,
+			DeltaTime,
+			LeanSpeed
+		);
+		
+		SpringArm->SetRelativeLocation(CurrentRelativeLoc);
 	}
 }
 
@@ -202,11 +234,6 @@ void APlayerCharacter::Move(const FInputActionValue& value)
 		AddMovementInput(RightDirection, MoveInput.Y);
 		AddMovementInput(ForwardDirection, MoveInput.X);
 		
-		if (MoveSound)
-		{
-			// 캐릭터 위치에서 점프 소리 재생
-			UGameplayStatics::PlaySoundAtLocation(this, MoveSound, GetActorLocation());
-		}
 	}
 }
 
@@ -271,6 +298,11 @@ void APlayerCharacter::StartHide(const FInputActionValue& value)
 {
 	if (GetCharacterMovement() && !GetCharacterMovement()->IsFalling())
 	{
+		if (SpringArm)
+		{
+			SpringArm->bEnableCameraLag = true;
+			SpringArm->CameraLagSpeed = 12.0f; 
+		}
 		Crouch(); // 엔진 내장 함수 루트 컴포넌트를 아래로 내려줌
 	}
 }
@@ -324,12 +356,12 @@ void APlayerCharacter::OnRollMontageEnded(UAnimMontage* Montage, bool bInterrupt
 
 void APlayerCharacter::StartLeanRight(const FInputActionValue& value)
 {
-	LeanAmount = 1.0f;
+	LeanAmount = -1.0f;
 }
 
 void APlayerCharacter::StartLeanLeft(const FInputActionValue& value)
 {
-	LeanAmount = -1.0f;
+	LeanAmount = 1.0f;
 }
 
 void APlayerCharacter::StopLean(const FInputActionValue& value)
