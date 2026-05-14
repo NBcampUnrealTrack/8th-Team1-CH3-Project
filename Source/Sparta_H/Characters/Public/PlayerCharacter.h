@@ -61,6 +61,13 @@ public:
 	//기울이기 관련
 	UPROPERTY(BlueprintReadOnly, Category = "Movement")
 	float LeanAmount = 0.f;
+	/** 기울임 시 카메라가 옆으로 이동할 최대 거리 (예: 100.0) **/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+	float MaxLeanOffset = 50.0f;
+
+	/** 카메라 이동 속도 (값이 클수록 빠름) **/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+	float LeanSpeed = 3.5f;
 
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
