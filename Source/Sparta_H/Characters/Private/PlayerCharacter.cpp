@@ -38,6 +38,7 @@ APlayerCharacter::APlayerCharacter()
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
 	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = true;
+	
 
 	// 3. 이동 시 회전 설정
 	GetCharacterMovement()->bOrientRotationToMovement = true; // 이동 방향으로 몸 틀기
