@@ -17,33 +17,34 @@
 #include "NoiseComponent.h"
 #include "StaminaComponent.h"
 #include "VisibilityComponent.h"
+#include "Components/CapsuleComponent.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
-
-	// 1. 스프링암 설정: 컨트롤러(마우스) 회전 사용!
+	
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->SetupAttachment(RootComponent);
-	SpringArm->TargetArmLength = 400.f;
 	SpringArm->bUsePawnControlRotation = true; // 핵심: 마우스 따라가기
-	SpringArm->bEnableCameraLag = true;
-	SpringArm->CameraLagSpeed = 10.0f;
+	SpringArm->bEnableCameraLag = false;
 
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
-	Camera->bUsePawnControlRotation = false; // 암이 돌고 있으니 이건 false로
+	Camera->bUsePawnControlRotation = false;
 
 	// 2. 캐릭터 본체 회전 설정: 마우스 따라 몸이 돌지 않게 분리
-	bUseControllerRotationYaw = false;
+	bUseControllerRotationYaw = true;
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
 	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = true;
+	
 
 	// 3. 이동 시 회전 설정
 	GetCharacterMovement()->bOrientRotationToMovement = true; // 이동 방향으로 몸 틀기
 	GetCharacterMovement()->RotationRate = FRotator(0.f, 540.f, 0.f);
+	
+	GetCharacterMovement()->bCrouchMaintainsBaseLocation = true;
 
 	MoveSpeed = 600.f;
 	SprintSpeedMultiplier = 1.5f;
@@ -60,6 +61,12 @@ APlayerCharacter::APlayerCharacter()
 	NoiseComponent = CreateDefaultSubobject<UNoiseComponent>(TEXT("NoiseComponent"));
 	InteractionComponent = CreateDefaultSubobject<UInteractionComponent>(TEXT("InteractionComponent"));
 	VisibilityComponent = CreateDefaultSubobject<UVisibilityComponent>(TEXT("VisibilityComponent"));
+	
+	//그림자 제거
+	if (GetMesh())
+	{
+		GetMesh()->SetCastShadow(false);
+	}
 }
 
 // Called when the game starts or when spawned
@@ -73,6 +80,28 @@ void APlayerCharacter::BeginPlay()
 	if (!SpawnedWeapons.IsEmpty())
 	{
 		EquipWeaponByIndex(0);
+	}
+
+	// G키 투척 무기는 SpawnedWeapons 배열과 별개로 1개 스폰. Hidden 유지
+	SpawnThrowableWeapon();
+
+	// 플렝이어가 죽었을 때의 델리게이트에 함수 등록
+	if (HealthComponent)
+	{
+		// "죽었을 때(OnDeath), 나(this)의 OnDeath 함수를 실행해줘"라고 등록
+		HealthComponent->OnDeath.AddDynamic(this, &APlayerCharacter::OnDeath);
+	}
+	
+	//카메라 회전 각도 설정
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		if (PC->PlayerCameraManager)
+		{
+			// 위로 볼 수 있는 최대 각도 (예: 60도)
+			PC->PlayerCameraManager->ViewPitchMax = 60.0f;
+			// 아래로 볼 수 있는 최소 각도 (예: -60도)
+			PC->PlayerCameraManager->ViewPitchMin = -45.0f;
+		}
 	}
 
 	// 미션 데이터 초기화
@@ -97,6 +126,27 @@ void APlayerCharacter::Tick(float DeltaTime)
 	if (StaminaComponent && !StaminaComponent->CanSprint())
 	{
 		StopRun(FInputActionValue()); // 스태미나 고갈 시 강제 정지
+	}
+	
+	if (!GetCharacterMovement()->IsCrouching())
+	{
+		SpringArm->bEnableCameraLag = false;
+	}
+	
+	if (SpringArm)
+	{
+		float TargetY = LeanAmount * -MaxLeanOffset;
+		
+		FVector CurrentRelativeLoc = SpringArm->GetRelativeLocation();
+		
+		CurrentRelativeLoc.Y = FMath::FInterpTo(
+			CurrentRelativeLoc.Y,
+			TargetY,
+			DeltaTime,
+			LeanSpeed
+		);
+		
+		SpringArm->SetRelativeLocation(CurrentRelativeLoc);
 	}
 }
 
@@ -161,9 +211,22 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 			EnhancedInputComponent->BindAction(PlayerController->FireAction, ETriggerEvent::Triggered, this,
 			                                   &APlayerCharacter::OnFirePressed);
 
+			// 투척 무기 차징/투척용 — LMB Started 에서 BeginThrowCharge, Completed 에서 ReleaseThrow
+			EnhancedInputComponent->BindAction(PlayerController->FireAction, ETriggerEvent::Started, this,
+			                                   &APlayerCharacter::OnFireStarted);
+			EnhancedInputComponent->BindAction(PlayerController->FireAction, ETriggerEvent::Completed, this,
+			                                   &APlayerCharacter::OnFireReleased);
+
 			// 재장전 — Started로 R 1회 입력 처리. 무기 상태/탄창 가드는 Reload() 내부에서
 			EnhancedInputComponent->BindAction(PlayerController->ReloadAction, ETriggerEvent::Started, this,
 			                                   &APlayerCharacter::OnReloadPressed);
+
+			// G — 투척물 장착 토글. BP 인스턴스에 아직 세팅 안 됐을 가능성에 대비해 가드
+			if (PlayerController->ThrowableAction != nullptr)
+			{
+				EnhancedInputComponent->BindAction(PlayerController->ThrowableAction, ETriggerEvent::Started, this,
+				                                   &APlayerCharacter::OnThrowableEquipPressed);
+			}
 		}
 	}
 }
@@ -186,6 +249,7 @@ void APlayerCharacter::Move(const FInputActionValue& value)
 
 		AddMovementInput(RightDirection, MoveInput.Y);
 		AddMovementInput(ForwardDirection, MoveInput.X);
+		
 	}
 }
 
@@ -205,6 +269,12 @@ void APlayerCharacter::StartJump(const FInputActionValue& value)
 	if (value.Get<bool>())
 	{
 		Jump();
+		
+		if (JumpSound)
+		{
+			// 캐릭터 위치에서 점프 소리 재생
+			UGameplayStatics::PlaySoundAtLocation(this, JumpSound, GetActorLocation());
+		}
 	}
 }
 
@@ -222,6 +292,12 @@ void APlayerCharacter::StartRun(const FInputActionValue& value)
 	{
 		GetCharacterMovement()->MaxWalkSpeed = SprintSpeed;
 		StaminaComponent->SetSprinting(true);
+		
+		if (RunSound)
+		{
+			// 캐릭터 위치에서 점프 소리 재생
+			UGameplayStatics::PlaySoundAtLocation(this, RunSound, GetActorLocation());
+		}
 	}
 }
 
@@ -238,7 +314,12 @@ void APlayerCharacter::StartHide(const FInputActionValue& value)
 {
 	if (GetCharacterMovement() && !GetCharacterMovement()->IsFalling())
 	{
-		Crouch(); // 엔진 내장 함수 컴포넌트를 아래로 내려줌
+		if (SpringArm)
+		{
+			SpringArm->bEnableCameraLag = true;
+			SpringArm->CameraLagSpeed = 12.0f; 
+		}
+		Crouch(); // 엔진 내장 함수 루트 컴포넌트를 아래로 내려줌
 	}
 }
 
@@ -250,7 +331,7 @@ void APlayerCharacter::StopHide(const FInputActionValue& value)
 void APlayerCharacter::Roll(const FInputActionValue& value)
 {
 	// 이미 구르고 있거나, 몽타주가 설정되지 않았다면 리턴
-	if (bIsRolling || !DiveRollMontage)
+	if (bIsRolling || !DiveRollMontage || GetCharacterMovement()->IsFalling())
 	{
 		return;
 	}
@@ -262,6 +343,12 @@ void APlayerCharacter::Roll(const FInputActionValue& value)
 	if (MontageLength > 0.f)
 	{
 		bIsRolling = true;
+		
+		if (RollSound)
+		{
+			// 캐릭터 위치에서 점프 소리 재생
+			UGameplayStatics::PlaySoundAtLocation(this, RollSound, GetActorLocation());
+		}
 
 		// 몽타주 종료 시점을 알기 위해 델리게이트 연결
 		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
@@ -280,18 +367,17 @@ void APlayerCharacter::OnRollMontageEnded(UAnimMontage* Montage, bool bInterrupt
 	if (Montage == DiveRollMontage)
 	{
 		bIsRolling = false;
-		UE_LOG(LogTemp, Log, TEXT("구르기 종료 - 이제 다시 이동 가능"));
 	}
 }
 
 void APlayerCharacter::StartLeanRight(const FInputActionValue& value)
 {
-	LeanAmount = 1.0f;
+	LeanAmount = -1.0f;
 }
 
 void APlayerCharacter::StartLeanLeft(const FInputActionValue& value)
 {
-	LeanAmount = -1.0f;
+	LeanAmount = 1.0f;
 }
 
 void APlayerCharacter::StopLean(const FInputActionValue& value)
@@ -301,26 +387,9 @@ void APlayerCharacter::StopLean(const FInputActionValue& value)
 
 void APlayerCharacter::Interaction(const FInputActionValue& value)
 {
-	// 상호작용 라인 트레이스
-	FVector Start = Camera->GetComponentLocation();
-	FVector End = Start + (Camera->GetForwardVector() * 300.0f); // 3m 사거리
-
-	FHitResult HitResult;
-	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(this);
-
-	if (GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, Params))
+	if (InteractionComponent)
 	{
-		if (AActor* HitActor = HitResult.GetActor())
-		{
-			if (HitActor->GetClass()->ImplementsInterface(UMissionInteractableInterface::StaticClass()))
-			{
-				if (IMissionInteractableInterface::Execute_CanInteract(HitActor, this))
-				{
-					IMissionInteractableInterface::Execute_Interact(HitActor, this);
-				}
-			}
-		}
+		InteractionComponent->PerformInteraction(Camera);
 	}
 }
 
@@ -402,6 +471,8 @@ void APlayerCharacter::EquipWeaponByIndex(int32 NewWeaponIndex)
 
 	if (CurrentWeapon != nullptr)
 	{
+		// 투척물 차징 중 슬롯 전환 시 차징 취소 (no-op if not charging)
+		CurrentWeapon->CancelThrowCharge();
 		CurrentWeapon->SetActorHiddenInGame(true);
 	}
 
@@ -435,8 +506,8 @@ void APlayerCharacter::EquipPreviousWeapon()
 
 	// 음수 모듈로 회피용 + Num
 	const int32 Num = SpawnedWeapons.Num();
-	const int32 PreviousWeaponIndex = (CurrentWeaponIndex - 1 + Num) % Num;
-	EquipWeaponByIndex(PreviousWeaponIndex);
+	const int32 PrevIndex = (CurrentWeaponIndex - 1 + Num) % Num;
+	EquipWeaponByIndex(PrevIndex);
 }
 
 void APlayerCharacter::OnEquipSlotPressed(const FInputActionValue& Value)
@@ -466,15 +537,26 @@ void APlayerCharacter::OnEquipPreviousPressed(const FInputActionValue& /*Value*/
 
 void APlayerCharacter::OnFirePressed(const FInputActionValue& /*Value*/)
 {
-	if (CurrentWeapon != nullptr)
+	if (CurrentWeapon == nullptr)
 	{
-		CurrentWeapon->Fire();
+		return;
+	}
 
-		// 사격 시 즉시 최대 소음 발생
-		if (NoiseComponent)
+	// 투척 무기는 Started/Completed 로 처리 — Triggered 경로에서는 무시
+	if (UWeaponDataAsset* Data = CurrentWeapon->GetWeaponData())
+	{
+		if (Data->FireMode == EWeaponFireMode::Throwable)
 		{
-			NoiseComponent->SetNoiseToMax();
+			return;
 		}
+	}
+
+	CurrentWeapon->Fire();
+
+	// 사격 시 즉시 최대 소음 발생
+	if (NoiseComponent)
+	{
+		NoiseComponent->SetNoiseToMax();
 	}
 }
 
@@ -484,6 +566,160 @@ void APlayerCharacter::OnReloadPressed(const FInputActionValue& /*Value*/)
 	{
 		CurrentWeapon->Reload();
 	}
+}
+
+void APlayerCharacter::OnFireStarted(const FInputActionValue& /*Value*/)
+{
+	if (CurrentWeapon == nullptr)
+	{
+		return;
+	}
+
+	const UWeaponDataAsset* Data = CurrentWeapon->GetWeaponData();
+	if (Data == nullptr || Data->FireMode != EWeaponFireMode::Throwable)
+	{
+		return;
+	}
+
+	CurrentWeapon->BeginThrowCharge();
+}
+
+void APlayerCharacter::OnFireReleased(const FInputActionValue& /*Value*/)
+{
+	if (CurrentWeapon == nullptr)
+	{
+		return;
+	}
+
+	const UWeaponDataAsset* Data = CurrentWeapon->GetWeaponData();
+	if (Data == nullptr || Data->FireMode != EWeaponFireMode::Throwable)
+	{
+		return;
+	}
+
+	CurrentWeapon->ReleaseThrow();
+}
+
+void APlayerCharacter::OnThrowableEquipPressed(const FInputActionValue& /*Value*/)
+{
+	if (ThrowableWeapon == nullptr)
+	{
+		return;
+	}
+
+	// 토글 — 이미 투척물 들고 있으면 이전 슬롯으로 복귀
+	if (CurrentWeapon == ThrowableWeapon)
+	{
+		ThrowableWeapon->CancelThrowCharge();
+		EquipWeaponByIndex(PreviousWeaponIndex);
+		return;
+	}
+
+	// 보유 0/쿨다운 중이면 장착 거부
+	if (!ThrowableWeapon->CanThrow())
+	{
+		return;
+	}
+
+	// 현재 슬롯 무기 hide → 투척물 show. CurrentWeaponIndex 는 보존 (PreviousWeaponIndex 복귀용)
+	if (CurrentWeapon != nullptr)
+	{
+		const EWeaponState State = CurrentWeapon->GetWeaponState();
+		if (State == EWeaponState::Reloading || State == EWeaponState::Swapping)
+		{
+			return;
+		}
+		CurrentWeapon->SetActorHiddenInGame(true);
+	}
+
+	PreviousWeaponIndex = CurrentWeaponIndex;
+	CurrentWeapon = ThrowableWeapon;
+	CurrentWeapon->SetActorHiddenInGame(false);
+	CurrentWeapon->SetWeaponState(EWeaponState::Idle);
+}
+
+void APlayerCharacter::HandleThrowableDepleted()
+{
+	// 0 도달 시 자동으로 이전 슬롯 복귀. 투척물 들고 있는 동안에만 의미 있음
+	if (CurrentWeapon == ThrowableWeapon)
+	{
+		EquipWeaponByIndex(PreviousWeaponIndex);
+	}
+}
+
+void APlayerCharacter::SpawnThrowableWeapon()
+{
+	if (ThrowableWeapon != nullptr || CurrentThrowableData == nullptr || WeaponBaseClass == nullptr)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return;
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.Instigator = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	AWeaponBase* Spawned = World->SpawnActor<AWeaponBase>(WeaponBaseClass, SpawnParams);
+	if (Spawned == nullptr)
+	{
+		return;
+	}
+
+	Spawned->Initialize(CurrentThrowableData);
+	Spawned->AttachToComponent(GetMesh(),
+	                           FAttachmentTransformRules::SnapToTargetIncludingScale,
+	                           FName(TEXT("GripPoint")));
+	Spawned->SetActorHiddenInGame(true);
+	Spawned->OnDepleted.AddDynamic(this, &APlayerCharacter::HandleThrowableDepleted);
+
+	ThrowableWeapon = Spawned;
+}
+
+void APlayerCharacter::SetActiveThrowable(UWeaponDataAsset* NewThrowableData)
+{
+	// 들고 있다가 미션 전환되는 경우 슬롯 먼저 복귀
+	if (ThrowableWeapon != nullptr)
+	{
+		ThrowableWeapon->CancelThrowCharge();
+
+		if (CurrentWeapon == ThrowableWeapon)
+		{
+			EquipWeaponByIndex(PreviousWeaponIndex);
+
+			// EquipWeaponByIndex 가 실패(invalid index/빈 슬롯/상태 가드)했을 경우 첫 유효 슬롯으로 폴백.
+			// 이걸 안 하면 CurrentWeapon 이 아래에서 Destroy 될 ThrowableWeapon 을 계속 가리켜 dangling 발생
+			if (CurrentWeapon == ThrowableWeapon)
+			{
+				for (int32 i = 0; i < SpawnedWeapons.Num(); ++i)
+				{
+					if (SpawnedWeapons[i] != nullptr)
+					{
+						EquipWeaponByIndex(i);
+						break;
+					}
+				}
+			}
+
+			// 그래도 못 바꿨으면(유효 슬롯이 하나도 없음) 명시적으로 nullptr 처리해 dangling 차단
+			if (CurrentWeapon == ThrowableWeapon)
+			{
+				CurrentWeapon = nullptr;
+			}
+		}
+
+		ThrowableWeapon->OnDepleted.RemoveAll(this);
+		ThrowableWeapon->Destroy();
+		ThrowableWeapon = nullptr;
+	}
+
+	CurrentThrowableData = NewThrowableData;
+	SpawnThrowableWeapon();
 }
 
 UWeaponDataAsset* APlayerCharacter::GetCurrentWeaponData() const
@@ -613,5 +849,39 @@ void APlayerCharacter::UpdateMissionObjective()
 	else if (CurrentMissionIndex >= CurrentMissionData->MissionGoals.Num())
 	{
 		SetObjective(TEXT("모든 목표 달성!"));
+	}
+}
+
+void APlayerCharacter::OnDeath()
+{
+	if (bIsDead) return; // 이미 죽었다면 무시
+
+	bIsDead = true;
+	UE_LOG(LogTemp, Warning, TEXT("플레이어 사망: 모든 기능을 중지합니다."));
+
+	// 1. 입력 기능 마비
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC)
+	{
+		DisableInput(PC);
+	}
+
+	// 2. 이동 중지 및 가속도 초기화
+	GetCharacterMovement()->StopMovementImmediately();
+	GetCharacterMovement()->DisableMovement();
+
+	// 3. 충돌 설정 변경 (시체 위를 지나갈 수 있게 하거나 무시)
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	// 4. 사망 애니메이션 재생
+	if (DeathMontage)
+	{
+		PlayAnimMontage(DeathMontage);
+	}
+	else
+	{
+		// 몽타주가 없을 경우 물리 시뮬레이션(Ragdoll) 활성화
+		GetMesh()->SetSimulatePhysics(true);
+		GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
 	}
 }

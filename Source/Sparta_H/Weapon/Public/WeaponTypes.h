@@ -34,7 +34,8 @@ enum class EWeaponState : uint8
 	Idle,
 	Firing,
 	Reloading,
-	Swapping
+	Swapping,
+	ChargingThrow
 };
 
 // 반동 파라미터. DA에서 무기별로 세팅

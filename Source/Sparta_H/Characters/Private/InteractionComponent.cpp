@@ -2,33 +2,60 @@
 
 
 #include "InteractionComponent.h"
+#include "MissionInteractableInterface.h"
+#include "Camera//CameraComponent.h"
+#include "Engine/World.h"
+#include "PlayerCharacter.h"
+#include "GameFramework/SpringArmComponent.h"
 
 // Sets default values for this component's properties
 UInteractionComponent::UInteractionComponent()
 {
-	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
-	// off to improve performance if you don't need them.
-	PrimaryComponentTick.bCanEverTick = true;
-
-	// ...
+	PrimaryComponentTick.bCanEverTick = false;
 }
-
 
 // Called when the game starts
 void UInteractionComponent::BeginPlay()
 {
 	Super::BeginPlay();
-
-	// ...
-	
 }
 
-
-// Called every frame
-void UInteractionComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void UInteractionComponent::PerformInteraction(UCameraComponent* Camera)
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	if (!Camera || !GetWorld()) return;
+	
+	FVector Start = Camera->GetComponentLocation();
+	FVector End = Start + (Camera->GetForwardVector() * TraceDistance);
+	
+	FHitResult HitResult;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(GetOwner()); // 컴포넌트 소유자(플레이어) 무시
 
-	// ...
+	bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, Params);
+
+	// --- 디버그 라인 출력 ---
+	// 액터 시 초록색, 맞으면 노란색 미적중 시 빨간색으로 표시
+	FColor LineColor = FColor::Red;
+	
+	if (bHit)
+	{
+		LineColor = FColor::Yellow; //
+		
+		if (AActor* HitActor = HitResult.GetActor())
+		{
+			APlayerCharacter* Player = Cast<APlayerCharacter>(GetOwner());
+			
+			if (HitActor->GetClass()->ImplementsInterface(UMissionInteractableInterface::StaticClass()))
+			{
+				LineColor = FColor::Green;
+				
+				if (IMissionInteractableInterface::Execute_CanInteract(HitActor, Player))
+				{
+					IMissionInteractableInterface::Execute_Interact(HitActor, Player);
+				}
+			}
+		}
+	}
+	
+	DrawDebugLine(GetWorld(), Start, End, LineColor, false, 2.0f, 0, 1.0f);
 }
-
