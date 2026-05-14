@@ -5,13 +5,9 @@
 #include "WeaponTypes.h"
 #include "WeaponDataAsset.generated.h"
 
-class UAnimInstance;
-class UAnimMontage;
-class USkeletalMesh;
-class UNiagaraSystem;
 class UTexture2D;
-class USoundBase;
 class AThrowableActor;
+class AWeaponBase;
 
 // 무기 한 종(개체가 아닌 종류)의 정적 스펙을 담는 DA.
 // 런타임 상태(현재 탄약, 상태 등)는 캐릭터/컴포넌트에서 관리
@@ -75,6 +71,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Behavior")
 	bool bShouldTriggerAIAggro = false;
 	
+	// 이 DA를 사용할 무기 BP 클래스. 메시/몽타주/VFX는 BP에서 직접 세팅
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Behavior")
+	TSubclassOf<AWeaponBase> WeaponClass;
+
 	// 투척 무기 전용 - FireMode가 Throwble인 무기에서 스폰할 액터 클래스
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Behavior")
 	TSubclassOf<AThrowableActor> ThrowableClass;
@@ -104,44 +104,4 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Weapon|Throwable")
 	float TrajectoryProjectileRadius = 5.0f;
-
-	// ───── 메시 ─────
-
-	// 1인칭에서 GripPoint 소켓에 부착할 무기 메시. 패키징 용량을 위해 SoftObjectPtr 사용
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Mesh")
-	TSoftObjectPtr<USkeletalMesh> WeaponMesh;
-
-	// 무기 메시 자체의 AnimBP (팔 AnimBP와는 별개). 슬라이드/볼트 같은 무기 측 애니용
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Mesh")
-	TSoftClassPtr<UAnimInstance> WeaponAnimationClass;
-
-	// ───── 애니메이션 ─────
-
-	// 1인칭 팔(Mesh1P)에 재생할 발사 몽타주. 풀바디 임포트 애니는 팔 스켈레톤으로 리타게팅 후 몽타주화
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Animation")
-	TSoftObjectPtr<UAnimMontage> FireMontage1P;
-
-	// 1인칭 팔(Mesh1P)에 재생할 재장전 몽타주. 길이는 DA의 ReloadTime과 맞춰 세팅
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Animation")
-	TSoftObjectPtr<UAnimMontage> ReloadMontage1P;
-
-	// ───── 사운드 ─────
-
-	// 발사 시 재생할 사운드. 플레이어가 듣는 청각 피드백 — AI 어그로 노이즈(EmitNoise)와는 별개
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Audio")
-	TSoftObjectPtr<USoundBase> FireSound;
-
-	// ───── VFX ─────
-
-	// 발사 시 무기 메시의 MuzzleSocketName 위치에 스폰할 총구 화염 이펙트
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|VFX")
-	TSoftObjectPtr<UNiagaraSystem> MuzzleFlashEffect;
-
-	// 라인 트레이스 적중점에 스폰할 임팩트 이펙트 (피격 표면 스파크/데칼 등)
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|VFX")
-	TSoftObjectPtr<UNiagaraSystem> ImpactVFX;
-
-	// 무기 스켈레탈 메시에 만들어 둔 총구 소켓 이름. 메시별로 다를 수 있어 DA에서 지정
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|VFX")
-	FName MuzzleSocketName = TEXT("Muzzle");
 };

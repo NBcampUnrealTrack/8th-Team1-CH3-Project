@@ -5,6 +5,11 @@
 #include "WeaponTypes.h"
 #include "WeaponBase.generated.h"
 
+class UAnimMontage;
+class UNiagaraSystem;
+class USoundBase;
+
+class USceneComponent;
 class USkeletalMeshComponent;
 class UAmmoComponent;
 class UWeaponDataAsset;
@@ -25,10 +30,6 @@ public:
 	// 차징 중 궤적 갱신을 위해 Tick 활성 (생성자에서 bCanEverTick = true)
 	virtual void Tick(float DeltaTime) override;
 
-	// 스폰 직후 캐릭터가 호출. DA를 보관하고 메시/애님/탄약을 세팅
-	UFUNCTION(BlueprintCallable, Category = "Weapon")
-	void Initialize(UWeaponDataAsset* InWeaponData);
-
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	UWeaponDataAsset* GetWeaponData() const { return WeaponData; }
 
@@ -43,6 +44,10 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	void SetWeaponState(EWeaponState NewState) { CurrentWeaponState = NewState; }
+
+	// DA를 받아 WeaponData 포인터 세팅 + 탄약/스택 초기화. 메시/몽타주는 BP에서 설정하므로 건드리지 않음
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
+	void Initialize(UWeaponDataAsset* InWeaponData);
 
 	// 1발 발사. 상태/탄약/쿨다운을 가드하고 1인칭 팔에 발사 몽타주 재생
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
@@ -59,7 +64,10 @@ private:
 	// ReloadTime 종료 시 탄창 채우고 Idle 복귀. Reload 도중 Swap 들어왔으면 Swap 상태 보존
 	void OnReloadCompleted();
 
-	// 메시 자체를 루트로 — 캐릭터 GripPoint에 SnapToTarget으로 부착하면 메시가 소켓 트랜스폼에 맞춰짐
+	// 빈 루트 — GripPoint 소켓에 스냅되는 기준점. 메시는 자식으로 달려 BP에서 오프셋 조정 가능
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USceneComponent> WeaponRoot;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<USkeletalMeshComponent> WeaponMeshComponent;
 
@@ -125,4 +133,34 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Weapon|Throwable")
 	FOnThrowableDepleted OnDepleted;
+	
+	// ───── 애니메이션 ─────
+
+	// 1인칭 팔(Mesh1P)에 재생할 발사 몽타주. 풀바디 임포트 애니는 팔 스켈레톤으로 리타게팅 후 몽타주화
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Animation")
+	TSoftObjectPtr<UAnimMontage> FireMontage1P;
+
+	// 1인칭 팔(Mesh1P)에 재생할 재장전 몽타주. 길이는 DA의 ReloadTime과 맞춰 세팅
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Animation")
+	TSoftObjectPtr<UAnimMontage> ReloadMontage1P;
+
+	// ───── 사운드 ─────
+
+	// 발사 시 재생할 사운드. 플레이어가 듣는 청각 피드백 — AI 어그로 노이즈(EmitNoise)와는 별개
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Audio")
+	TSoftObjectPtr<USoundBase> FireSound;
+
+	// ───── VFX ─────
+
+	// 발사 시 무기 메시의 MuzzleSocketName 위치에 스폰할 총구 화염 이펙트
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|VFX")
+	TSoftObjectPtr<UNiagaraSystem> MuzzleFlashEffect;
+
+	// 라인 트레이스 적중점에 스폰할 임팩트 이펙트 (피격 표면 스파크/데칼 등)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|VFX")
+	TSoftObjectPtr<UNiagaraSystem> ImpactVFX;
+
+	// 무기 스켈레탈 메시에 만들어 둔 총구 소켓 이름. 메시별로 다를 수 있어 DA에서 지정
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|VFX")
+	FName MuzzleSocketName = TEXT("Muzzle");
 };
