@@ -135,6 +135,10 @@ public:
 	UWeaponDataAsset* GetCurrentWeaponData() const;
 
 	void ApplyRecoil(const FRecoilData& Recoil);
+
+	// 미션 진입 시 호출 — 현재 투척물을 새 DA로 교체. 들고 있던 경우 이전 슬롯 자동 복귀
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
+	void SetActiveThrowable(UWeaponDataAsset* NewThrowableData);
 	/** End of Weapon System **/
 
 	// --- 미션 시스템 추가 ---
@@ -224,15 +228,25 @@ private:
 	void OnEquipNextPressed(const FInputActionValue& Value);
 	void OnEquipPreviousPressed(const FInputActionValue& Value);
 	void OnFirePressed(const FInputActionValue& Value);
+	void OnFireStarted(const FInputActionValue& Value);
+	void OnFireReleased(const FInputActionValue& Value);
 	void OnReloadPressed(const FInputActionValue& Value);
+	void OnThrowableEquipPressed(const FInputActionValue& Value);
 
 	// BeginPlay에서 EquippedWeapons 각 DA로 무기 액터를 스폰해 본체 메시 GripPoint에 부착
 	void SpawnEquippedWeapons();
 
+	// CurrentThrowableData 로 ThrowableWeapon 액터를 스폰. 이미 있으면 무시
+	void SpawnThrowableWeapon();
+
+	// ThrowableWeapon 보유 수 0 도달 시 호출 — PreviousWeaponIndex 슬롯으로 복귀
+	UFUNCTION()
+	void HandleThrowableDepleted();
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UCombatManager> CombatManager;
 
-	// 슬롯에 등록할 무기 DA. BP 디테일에서 인덱스 0~3에 직접 등록
+	// 슬롯에 등록할 무기 DA. BP 디테일에서 1/2/3 슬롯(Pistol/Rifle/Knife)에 등록
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
 	TArray<TObjectPtr<UWeaponDataAsset>> EquippedWeapons;
 
@@ -249,6 +263,17 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
 	int32 CurrentWeaponIndex = 0;
+
+	// G키로 들 투척 무기 기본 DA. 미션 진행에 따라 SetActiveThrowable 로 변경
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Throwable", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UWeaponDataAsset> CurrentThrowableData;
+
+	// SpawnEquippedWeapons 직후 스폰된 투척 무기 액터. SpawnedWeapons 와는 별도 슬롯
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Throwable", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<AWeaponBase> ThrowableWeapon;
+
+	// G 누르기 직전 들고 있던 슬롯 인덱스. 0개 소진 시 자동 복귀용
+	int32 PreviousWeaponIndex = 0;
 
 	// 회복이 남아있는 누적 pitch (양수 = 위로 튕긴 양)
 	float RecoilPitchAccum = 0.0f;
