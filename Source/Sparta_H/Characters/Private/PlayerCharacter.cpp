@@ -866,22 +866,6 @@ void APlayerCharacter::OnDeath()
 		DisableInput(PC);
 	}
 
-	// 2. 이동 중지 및 가속도 초기화
-	GetCharacterMovement()->StopMovementImmediately();
-	GetCharacterMovement()->DisableMovement();
-
-	// 3. 충돌 설정 변경 (시체 위를 지나갈 수 있게 하거나 무시)
-	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-	// 4. 사망 애니메이션 재생
-	if (DeathMontage)
-	{
-		PlayAnimMontage(DeathMontage);
-	}
-	else
-	{
-		// 몽타주가 없을 경우 물리 시뮬레이션(Ragdoll) 활성화
-		GetMesh()->SetSimulatePhysics(true);
-		GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
-	}
+	// 실패 UI 재생, 메시지 = 플레이어 사망
+	
 }
