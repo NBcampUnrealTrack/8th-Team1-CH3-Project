@@ -128,6 +128,22 @@ void APlayerCharacter::Tick(float DeltaTime)
 	{
 		SpringArm->bEnableCameraLag = false;
 	}
+	
+	if (SpringArm)
+	{
+		float TargetY = LeanAmount * -MaxLeanOffset;
+		
+		FVector CurrentRelativeLoc = SpringArm->GetRelativeLocation();
+		
+		CurrentRelativeLoc.Y = FMath::FInterpTo(
+			CurrentRelativeLoc.Y,
+			TargetY,
+			DeltaTime,
+			LeanSpeed
+		);
+		
+		SpringArm->SetRelativeLocation(CurrentRelativeLoc);
+	}
 }
 
 // 캐릭터 상호작용 
