@@ -38,5 +38,6 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	ECombatWeaponType ThrowableType = ECombatWeaponType::Grenade;
 
-	void Launch(const FVector& Direction);
+	// 카메라 방향과 차징 속도를 받아 Velocity 세팅. Speed <= 0 이면 ProjectileMovement->InitialSpeed 폴백
+	void Launch(const FVector& Direction, float Speed = 0.0f);
 };
