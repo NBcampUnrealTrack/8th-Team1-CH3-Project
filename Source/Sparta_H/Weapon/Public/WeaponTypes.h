@@ -71,9 +71,10 @@ struct FWeaponSlot
 UENUM(BlueprintType)
 enum class ECrosshairState : uint8
 {
-	Default, // 일반
-	ADS, // 정조준
-	KillConfirm // 적 처치 시
+	Default,     // 일반
+	Pistol,      // 권총
+	Rifle,       // 라이플
+	KillConfirm  // 적 처치 시
 };
 
 

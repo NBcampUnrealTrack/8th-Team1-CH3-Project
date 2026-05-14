@@ -37,6 +37,9 @@ public:
 	FOnNoiseChanged OnNoiseChanged;
 
 private:
+	// 이번 프레임에 수동으로 노이즈가 업데이트되었는지 여부 (Tick에서의 즉시 보간 방지)
+	bool bNoiseUpdatedThisFrame = false;
+
 	UPROPERTY(EditAnywhere, Category = "Player|Stats")
 	float CurrentNoise = 0.0f;
 

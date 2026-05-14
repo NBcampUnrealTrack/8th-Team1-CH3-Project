@@ -41,3 +41,13 @@ struct FCombatDamageInfo
 	UPROPERTY(EditAnywhere, Category = "Damage")
 	EHitBone HitBone = EHitBone::None;
 };
+
+/** 미션 실패 원인 열거형 **/
+UENUM(BlueprintType)
+enum class EMissionFailReason : uint8
+{
+	PlayerDeath     UMETA(DisplayName = "Player Death"),
+	HostageDeath    UMETA(DisplayName = "Hostage Death"),
+	TimeOut         UMETA(DisplayName = "Time Out"),
+	Other           UMETA(DisplayName = "Other")
+};

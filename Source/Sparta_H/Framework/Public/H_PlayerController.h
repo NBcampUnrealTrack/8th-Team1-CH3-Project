@@ -66,6 +66,14 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
 	TObjectPtr<UH_HUDWidget> HUDWidgetInstance;
 
+	/** 미션 실패 위젯 클래스 **/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<class UH_FailWidget> FailWidgetClass;
+
+	/** 미션 실패 시 호출되는 함수 **/
+	UFUNCTION(BlueprintCallable, Category = "Game")
+	void ShowFailMenu(const FText& Reason);
+
 protected:
 	virtual void BeginPlay() override;
 };

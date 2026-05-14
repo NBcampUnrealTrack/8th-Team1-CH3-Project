@@ -6,6 +6,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Engine/World.h"
 #include "CombatManager.h"
+#include "CombatFeedbackHandler.h"
 #include "WeaponBase.h"
 #include "WeaponDataAsset.h"
 #include "MissionDataAsset.h"
@@ -90,6 +91,12 @@ void APlayerCharacter::BeginPlay()
 	{
 		// "죽었을 때(OnDeath), 나(this)의 OnDeath 함수를 실행해줘"라고 등록
 		HealthComponent->OnDeath.AddDynamic(this, &APlayerCharacter::OnDeath);
+	}
+
+	// 처치 피드백 델리게이트 등록
+	if (CombatManager && CombatManager->FeedbackHandler)
+	{
+		CombatManager->FeedbackHandler->OnKillDelegate.AddDynamic(this, &APlayerCharacter::NotifyEnemyKilled);
 	}
 	
 	//카메라 회전 각도 설정
@@ -482,6 +489,26 @@ void APlayerCharacter::EquipWeaponByIndex(int32 NewWeaponIndex)
 	CurrentWeapon->SetWeaponState(EWeaponState::Swapping);
 	CurrentWeapon->SetActorHiddenInGame(false);
 
+	// 무기 종류에 따라 크로스헤어 상태 업데이트
+	if (UWeaponDataAsset* WeaponData = CurrentWeapon->GetWeaponData())
+	{
+		switch (WeaponData->WeaponType)
+		{
+		case EWeaponType::Pistol:
+			SetCrosshairState(ECrosshairState::Pistol);
+			break;
+		case EWeaponType::Rifle:
+			SetCrosshairState(ECrosshairState::Rifle);
+			break;
+		case EWeaponType::Knife:
+			SetCrosshairState(ECrosshairState::Default);
+			break;
+		default:
+			SetCrosshairState(ECrosshairState::Default);
+			break;
+		}
+	}
+
 	// 교체 몽타주 도입 시 이 라인을 종료 콜백으로 옮길 것
 	CurrentWeapon->SetWeaponState(EWeaponState::Idle);
 }
@@ -741,6 +768,51 @@ void APlayerCharacter::NotifyEnemyKilled()
 {
 	// 적 처치 시 호출되는 함수.
 	UE_LOG(LogTemp, Log, TEXT("Enemy Killed!"));
+
+	// 크로스헤어 상태를 KillConfirm으로 변경
+	SetCrosshairState(ECrosshairState::KillConfirm);
+
+	// 기존 타이머가 있다면 취소하고 새로 설정 (0.5초 후 원복)
+	GetWorldTimerManager().ClearTimer(KillConfirmTimerHandle);
+	GetWorldTimerManager().SetTimer(KillConfirmTimerHandle, this, &APlayerCharacter::ResetCrosshairToDefault, 0.5f, false);
+}
+
+void APlayerCharacter::SetCrosshairState(ECrosshairState NewState)
+{
+	if (CurrentCrosshairState != NewState)
+	{
+		CurrentCrosshairState = NewState;
+		OnCrosshairStateChanged.Broadcast(CurrentCrosshairState);
+	}
+}
+
+void APlayerCharacter::ResetCrosshairToDefault()
+{
+	if (CurrentWeapon == nullptr)
+	{
+		SetCrosshairState(ECrosshairState::Default);
+		return;
+	}
+
+	// 현재 무기 종류에 맞춰 크로스헤어 상태 복구
+	if (UWeaponDataAsset* WeaponData = CurrentWeapon->GetWeaponData())
+	{
+		switch (WeaponData->WeaponType)
+		{
+		case EWeaponType::Pistol:
+			SetCrosshairState(ECrosshairState::Pistol);
+			break;
+		case EWeaponType::Rifle:
+			SetCrosshairState(ECrosshairState::Rifle);
+			break;
+		case EWeaponType::Knife:
+			SetCrosshairState(ECrosshairState::Default);
+			break;
+		default:
+			SetCrosshairState(ECrosshairState::Default);
+			break;
+		}
+	}
 }
 
 // 미션 관련
@@ -789,8 +861,53 @@ FName APlayerCharacter::GetCurrentObjectiveID() const
 
 void APlayerCharacter::FailMission()
 {
-	UE_LOG(LogTemp, Error, TEXT("Mission Failed!"));
+	FailMissionWithReason(EMissionFailReason::Other);
+}
+
+void APlayerCharacter::FailMissionWithReason(EMissionFailReason Reason)
+{
+	// 타이머 정지
+	GetWorldTimerManager().ClearTimer(MissionTimerHandle);
+
+	// 실패 원인에 따른 텍스트 설정
+	FText FailText;
+	switch (Reason)
+	{
+	case EMissionFailReason::PlayerDeath:
+		FailText = NSLOCTEXT("Mission", "FailReason_PlayerDeath", "플레이어가 사망했습니다.");
+		break;
+	case EMissionFailReason::HostageDeath:
+		FailText = NSLOCTEXT("Mission", "FailReason_HostageDeath", "인질이 사망했습니다.");
+		break;
+	case EMissionFailReason::TimeOut:
+		FailText = NSLOCTEXT("Mission", "FailReason_TimeOut", "제한 시간이 초과되었습니다.");
+		break;
+	case EMissionFailReason::Other:
+	default:
+		FailText = NSLOCTEXT("Mission", "FailReason_Other", "미션에 실패했습니다.");
+		break;
+	}
+
+	// 컨트롤러에게 실패 UI 표시 요청
+	// GetController()가 NULL일 수 있으므로 GetFirstPlayerController() 등을 시도
+	APlayerController* TargetPC = Cast<APlayerController>(GetController());
+	if (TargetPC == nullptr)
+	{
+		TargetPC = GetWorld()->GetFirstPlayerController();
+	}
+
+	if (AH_PlayerController* PC = Cast<AH_PlayerController>(TargetPC))
+	{
+		// 입력 중지
+		DisableInput(PC);
+		// 실패 메뉴 표시
+		PC->ShowFailMenu(FailText);
+	}
+
+	// 미션 실패 처리 델리게이트 (순서를 뒤로 미룸 — UI 생성 후 호출)
 	OnMissionFailed.Broadcast();
+
+	UE_LOG(LogTemp, Warning, TEXT("미션 실패: %s"), *FailText.ToString());
 }
 
 float APlayerCharacter::GetRemainingMissionTime() const
@@ -833,10 +950,12 @@ void APlayerCharacter::UpdateMissionObjective()
 		// 시간 제한 설정
 		if (CurrentGoal.TimeLimit > 0.0f)
 		{
+			FTimerDelegate TimerDel;
+			TimerDel.BindUFunction(this, FName("FailMissionWithReason"), EMissionFailReason::TimeOut);
+
 			GetWorldTimerManager().SetTimer(
 				MissionTimerHandle,
-				this,
-				&APlayerCharacter::FailMission,
+				TimerDel,
 				CurrentGoal.TimeLimit,
 				false
 			);
@@ -859,13 +978,6 @@ void APlayerCharacter::OnDeath()
 	bIsDead = true;
 	UE_LOG(LogTemp, Warning, TEXT("플레이어 사망: 모든 기능을 중지합니다."));
 
-	// 1. 입력 기능 마비
-	APlayerController* PC = Cast<APlayerController>(GetController());
-	if (PC)
-	{
-		DisableInput(PC);
-	}
-
 	// 실패 UI 재생, 메시지 = 플레이어 사망
-	
+	FailMissionWithReason(EMissionFailReason::PlayerDeath);
 }

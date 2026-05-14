@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "WeaponTypes.h"
+#include "Systems/Public/CombatTypes.h"
 #include "PlayerCharacter.generated.h"
 
 struct FInputActionValue;
@@ -25,6 +26,9 @@ class UVisibilityComponent;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnObjectiveChanged, const FString&, NewObjective);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMissionStateChanged);
+
+// 크로스헤어 상태 변경 시 호출될 델리게이트
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCrosshairStateChangedDelegate, ECrosshairState, NewState);
 
 
 UCLASS()
@@ -176,6 +180,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Objective")
 	void FailMission();
 
+	/** 원인과 함께 미션 실패 처리 **/
+	UFUNCTION(BlueprintCallable, Category = "Objective")
+	void FailMissionWithReason(EMissionFailReason Reason);
+
 	// 현재 남은 미션 시간 반환
 	UFUNCTION(BlueprintCallable, Category = "Objective")
 	float GetRemainingMissionTime() const;
@@ -194,11 +202,25 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Objective")
 	FOnObjectiveChanged OnObjectiveChanged;
 
+	UPROPERTY(BlueprintAssignable, Category = "Player|UI")
+	FOnCrosshairStateChangedDelegate OnCrosshairStateChanged;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player|UI")
 	ECrosshairState CurrentCrosshairState = ECrosshairState::Default;
 
 	UFUNCTION(BlueprintCallable, Category = "Player|UI")
 	void NotifyEnemyKilled();
+
+	/** 크로스헤어 상태를 변경하고 알림을 보냄 **/
+	UFUNCTION(BlueprintCallable, Category = "Player|UI")
+	void SetCrosshairState(ECrosshairState NewState);
+
+	/** 처치 확인 크로스헤어 상태를 원복하기 위한 함수 **/
+	UFUNCTION()
+	void ResetCrosshairToDefault();
+
+	/** 처치 확인용 타이머 핸들 **/
+	FTimerHandle KillConfirmTimerHandle;
 	/** End of 플레이어 스탯 / 목표 **/
 	
 	/** 사망 시 호출될 함수 **/

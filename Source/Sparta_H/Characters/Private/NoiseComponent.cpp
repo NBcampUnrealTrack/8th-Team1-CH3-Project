@@ -24,6 +24,13 @@ void UNoiseComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActor
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+	// 이번 프레임에 수동 업데이트(AddNoise/SetNoiseToMax)가 있었다면 보간을 건너뜀
+	if (bNoiseUpdatedThisFrame)
+	{
+		bNoiseUpdatedThisFrame = false;
+		return;
+	}
+
 	ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
 	if (!OwnerCharacter) return;
 
@@ -54,12 +61,16 @@ void UNoiseComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActor
 void UNoiseComponent::AddNoise(float Amount)
 {
 	CurrentNoise = FMath::Clamp(CurrentNoise + Amount, 0.0f, MaxNoise);
+	// Modified: 수동 업데이트 플래그 설정
+	bNoiseUpdatedThisFrame = true;
 	OnNoiseChanged.Broadcast(CurrentNoise, MaxNoise);
 }
 
 void UNoiseComponent::SetNoiseToMax()
 {
 	CurrentNoise = MaxNoise;
+	// Modified: 수동 업데이트 플래그 설정
+	bNoiseUpdatedThisFrame = true;
 	OnNoiseChanged.Broadcast(CurrentNoise, MaxNoise);
 }
 

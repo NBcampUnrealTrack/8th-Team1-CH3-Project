@@ -7,12 +7,14 @@
 
 class ASparta_HCharacter;
 
-UCLASS()
+	UCLASS()
 class SPARTA_H_API UH_CrosshairWidget : public UUserWidget
 {
 	GENERATED_BODY()
 
 public:
+	virtual void NativeConstruct() override;
+
 	// 캐릭터로부터 현재 크로스헤어 상태를 가져오는 함수
 	UFUNCTION(BlueprintCallable, Category = "Crosshair")
 	ECrosshairState GetCurrentCrosshairState() const;
@@ -23,4 +25,8 @@ public:
 	// 조준 상태에 따른 부드러운 스케일링이나 색상 변화 로직을 이곳에 추가할 수 있습니다.
 	UFUNCTION(BlueprintImplementableEvent, Category = "Crosshair")
 	void OnCrosshairStateChanged(ECrosshairState NewState);
+
+protected:
+	UFUNCTION()
+	void HandleOnCrosshairStateChanged(ECrosshairState NewState);
 };

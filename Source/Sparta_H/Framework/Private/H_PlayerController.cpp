@@ -1,7 +1,9 @@
 #include "H_PlayerController.h"
 #include "H_HUDWidget.h"
+#include "UI/Public/H_FailWidget.h"
 #include "Blueprint/UserWidget.h"
 #include "EnhancedInputSubsystems.h"
+#include "Kismet/GameplayStatics.h"
 
 AH_PlayerController::AH_PlayerController()
 {
@@ -46,6 +48,29 @@ void AH_PlayerController::BeginPlay()
 		if (HUDWidgetInstance)
 		{
 			HUDWidgetInstance->AddToViewport();
+		}
+	}
+}
+
+void AH_PlayerController::ShowFailMenu(const FText& Reason)
+{
+	if (FailWidgetClass)
+	{
+		UH_FailWidget* FailWidget = CreateWidget<UH_FailWidget>(this, FailWidgetClass);
+		if (FailWidget)
+		{
+			FailWidget->SetFailReasonText(Reason);
+			FailWidget->AddToViewport(10); // HUD보다 위에 표시되도록 Z-Order 설정
+
+			// 마우스 커서 표시 및 입력 모드 변경
+			FInputModeUIOnly InputMode;
+			InputMode.SetWidgetToFocus(FailWidget->TakeWidget());
+			InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+			SetInputMode(InputMode);
+			bShowMouseCursor = true;
+
+			// 게임 일시 정지
+			UGameplayStatics::SetGamePaused(GetWorld(), true);
 		}
 	}
 }
