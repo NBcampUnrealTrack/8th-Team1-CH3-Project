@@ -435,7 +435,9 @@ void APlayerCharacter::SpawnEquippedWeapons()
 			continue;
 		}
 
-		AWeaponBase* Weapon = World->SpawnActor<AWeaponBase>(WeaponBaseClass, SpawnParams);
+		TSubclassOf<AWeaponBase> ClassToSpawn = WeaponData->WeaponClass
+			? WeaponData->WeaponClass : WeaponBaseClass;
+		AWeaponBase* Weapon = World->SpawnActor<AWeaponBase>(ClassToSpawn, SpawnParams);
 		if (Weapon == nullptr)
 		{
 			SpawnedWeapons.Add(nullptr);
@@ -692,7 +694,9 @@ void APlayerCharacter::SpawnThrowableWeapon()
 	SpawnParams.Instigator = this;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-	AWeaponBase* Spawned = World->SpawnActor<AWeaponBase>(WeaponBaseClass, SpawnParams);
+	TSubclassOf<AWeaponBase> ClassToSpawn = CurrentThrowableData->WeaponClass
+		? CurrentThrowableData->WeaponClass : WeaponBaseClass;
+	AWeaponBase* Spawned = World->SpawnActor<AWeaponBase>(ClassToSpawn, SpawnParams);
 	if (Spawned == nullptr)
 	{
 		return;

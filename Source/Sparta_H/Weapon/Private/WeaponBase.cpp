@@ -10,6 +10,7 @@
 #include "GameFramework/PlayerController.h"
 #include "CombatManager.h"
 #include "ThrowableActor.h"
+#include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/World.h"
 #include "TimerManager.h"
@@ -20,12 +21,15 @@ AWeaponBase::AWeaponBase()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
+	WeaponRoot = CreateDefaultSubobject<USceneComponent>(TEXT("WeaponRoot"));
+	RootComponent = WeaponRoot;
+
 	WeaponMeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMeshComponent"));
-	WeaponMeshComponent->SetOnlyOwnerSee(true); // 1인칭 무기 — 본인에게만 보임
+	WeaponMeshComponent->SetupAttachment(WeaponRoot);
+	WeaponMeshComponent->SetOnlyOwnerSee(true);
 	WeaponMeshComponent->bCastDynamicShadow = false;
 	WeaponMeshComponent->CastShadow = false;
 	WeaponMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	RootComponent = WeaponMeshComponent;
 
 	AmmoComponent = CreateDefaultSubobject<UAmmoComponent>(TEXT("AmmoComponent"));
 }
@@ -42,17 +46,6 @@ void AWeaponBase::Initialize(UWeaponDataAsset* InWeaponData)
 	if (WeaponData->FireMode == EWeaponFireMode::Throwable)
 	{
 		CurrentStock = WeaponData->MaxStockCount;
-	}
-	
-	if (WeaponMeshComponent != nullptr)
-	{
-		// SoftObjectPtr 동기 로드 — 동시 다수 무기 스폰 시 비동기 로드로 전환 검토
-		WeaponMeshComponent->SetSkeletalMesh(InWeaponData->WeaponMesh.LoadSynchronous());
-
-		if (!InWeaponData->WeaponAnimationClass.IsNull())
-		{
-			WeaponMeshComponent->SetAnimInstanceClass(InWeaponData->WeaponAnimationClass.LoadSynchronous());
-		}
 	}
 
 	if (AmmoComponent != nullptr)
@@ -104,9 +97,9 @@ void AWeaponBase::Fire()
 		{
 			if (UAnimInstance* AnimInstance = CharacterMesh->GetAnimInstance())
 			{
-				if (UAnimMontage* Montage = WeaponData->FireMontage1P.LoadSynchronous())
+				if (FireMontage1P)
 				{
-					AnimInstance->Montage_Play(Montage, 1.0f);
+					AnimInstance->Montage_Play(FireMontage1P.Get(), 1.0f);
 				}
 			}
 		}
@@ -128,21 +121,22 @@ void AWeaponBase::Fire()
 					const FVector AimStart = PC->PlayerCameraManager->GetCameraLocation();
 					const FVector AimDirection = PC->PlayerCameraManager->GetCameraRotation().Vector();
 					const ECombatWeaponType CombatType = ToCombatWeaponType(WeaponData->WeaponType);
+					
 					CombatMgr->OnFire(AimStart, AimDirection, CombatType, WeaponData->Damage,
 									  WeaponData->bShouldTriggerAIAggro,
-									  WeaponData->ImpactVFX.LoadSynchronous());
+									  ImpactVFX.LoadSynchronous());
 				}
 			}
 		}
 	}
 
 	// 총구 화염 — 무기 메시 소켓에 부착해 스폰. 무기가 Hidden 상태로 토글돼도 부모 메시 따라 자연스럽게 사라짐
-	if (UNiagaraSystem* MuzzleFX = WeaponData->MuzzleFlashEffect.LoadSynchronous())
+	if (UNiagaraSystem* MuzzleFX = MuzzleFlashEffect.LoadSynchronous())
 	{
 		UNiagaraFunctionLibrary::SpawnSystemAttached(
 			MuzzleFX,
 			WeaponMeshComponent,
-			WeaponData->MuzzleSocketName,
+			MuzzleSocketName,
 			FVector::ZeroVector,
 			FRotator::ZeroRotator,
 			EAttachLocation::SnapToTarget,
@@ -151,12 +145,12 @@ void AWeaponBase::Fire()
 	}
 
 	// 발사 사운드 - 총구 소켓에 부착해 재생
-	if (USoundBase* Sound = WeaponData->FireSound.LoadSynchronous())
+	if (USoundBase* Sound = FireSound.LoadSynchronous())
 	{
 		UGameplayStatics::SpawnSoundAttached(
 			Sound,
 			WeaponMeshComponent,
-			WeaponData->MuzzleSocketName);
+			MuzzleSocketName);
 	}
 	
 	// FireRate <= 0 이면 한 프레임만 차단 후 즉시 복귀
@@ -203,7 +197,7 @@ void AWeaponBase::Reload()
 		{
 			if (UAnimInstance* AnimInstance = CharacterMesh->GetAnimInstance())
 			{
-				if (UAnimMontage* Montage = WeaponData->ReloadMontage1P.LoadSynchronous())
+				if (UAnimMontage* Montage = ReloadMontage1P.LoadSynchronous())
 				{
 					AnimInstance->Montage_Play(Montage, 1.0f);
 				}
