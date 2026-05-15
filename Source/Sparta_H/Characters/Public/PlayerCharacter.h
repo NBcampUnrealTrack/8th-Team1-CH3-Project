@@ -244,6 +244,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
 	TObjectPtr<class USoundBase> RollSound;
 	
+protected:
+	FVector2D TargetRecoil;
+	FVector2D CurrentRecoil;
+	FVector2D RemainingRecoil;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon|Recoil")
+	float RecoilSpeed;
+
+	
 private:
 	/** Weapon Input Callbacks **/
 	void OnEquipSlotPressed(const FInputActionValue& Value);

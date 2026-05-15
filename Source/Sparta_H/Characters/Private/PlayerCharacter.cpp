@@ -121,10 +121,26 @@ void APlayerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	if (!RemainingRecoil.IsNearlyZero(0.001f))
+	{
+		FVector2D InsideInterp = FMath::Vector2DInterpTo(RemainingRecoil, FVector2D::ZeroVector, DeltaTime, RecoilSpeed);
+		
+		FVector2D RecoilToApply = RemainingRecoil - InsideInterp;
+		
+		AddControllerYawInput(RecoilToApply.X);
+		AddControllerPitchInput(RecoilToApply.Y);
+		
+		RemainingRecoil = InsideInterp;
+	}
+	else
+	{
+		RemainingRecoil = FVector2D::ZeroVector;
+	}
+	
 	// 반동 회복 로직
 	if (RecoilPitchAccum > KINDA_SMALL_NUMBER)
 	{
-		const float RecoverPitch = FMath::Min(RecoilPitchAccum, RecoilRecoverySpeed * DeltaTime);
+		const float RecoverPitch = FMath::Min<float>(RecoilPitchAccum, RecoilRecoverySpeed * DeltaTime);
 		AddControllerPitchInput(RecoverPitch);
 		RecoilPitchAccum -= RecoverPitch;
 	}
@@ -268,6 +284,12 @@ void APlayerCharacter::Look(const FInputActionValue& value)
 	{
 		AddControllerYawInput(LookInput.X);
 		AddControllerPitchInput(LookInput.Y);
+
+		// Modified: 사용자가 마우스를 아래로 내려 반동을 보정하면 자동 회복량에서 차감
+		if (LookInput.Y > 0.f && RecoilPitchAccum > 0.f)
+		{
+			RecoilPitchAccum = FMath::Max(0.f, RecoilPitchAccum - LookInput.Y);
+		}
 	}
 }
 
@@ -760,11 +782,19 @@ UWeaponDataAsset* APlayerCharacter::GetCurrentWeaponData() const
 
 void APlayerCharacter::ApplyRecoil(const FRecoilData& Recoil)
 {
-	// 음수 pitch = 카메라 위로(pitch축 기준)
-	AddControllerPitchInput(-Recoil.VerticalRecoil);
-	AddControllerYawInput(FMath::RandRange(-Recoil.HorizontalRecoil, Recoil.HorizontalRecoil));
+	// // 음수 pitch = 카메라 위로(pitch축 기준)
+	// AddControllerPitchInput(-Recoil.VerticalRecoil);
+	// AddControllerYawInput(FMath::RandRange(-Recoil.HorizontalRecoil, Recoil.HorizontalRecoil));
+	
+	float TargetPitch = -Recoil.VerticalRecoil;
+	float TargetYaw = FMath::RandRange(-Recoil.HorizontalRecoil, Recoil.HorizontalRecoil);
 
+	RemainingRecoil.X += TargetYaw;
+	RemainingRecoil.Y += TargetPitch;
+	
+	// Modified: 반동 발생 시 누적 회복량(Pitch)을 업데이트하여 회복 로직이 작동하도록 함
 	RecoilPitchAccum += Recoil.VerticalRecoil;
+	RecoilSpeed = Recoil.RecoilSpeed;
 	RecoilRecoverySpeed = Recoil.RecoverySpeed;
 }
 
