@@ -10,6 +10,11 @@ AAlertManager::AAlertManager()
     PrimaryActorTick.bCanEverTick = false;
 }
 
+void AAlertManager::NotifyCombatEntered(FVector CombatLocation)
+{
+    OnCombatEntered.Broadcast(CombatLocation);
+}
+
 void AAlertManager::BeginPlay()
 {
     Super::BeginPlay();
