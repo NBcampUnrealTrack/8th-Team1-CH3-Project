@@ -13,35 +13,32 @@ void UH_WeaponWidget::UpdateFromCharacter(APlayerCharacter* Character)
 		return;
 	}
 
+	AWeaponBase* MainWeapon = Character->GetMainWeapon();
+	if (!MainWeapon)
+	{
+		SetVisibility(ESlateVisibility::Hidden);
+		return;
+	}
+
+	SetVisibility(ESlateVisibility::Visible);
+
 	FText Name;
 	UTexture2D* Icon = nullptr;
 	int32 Current = 0;
 	int32 Max = 0;
 
-	// 데이터 에셋에서 무기 정보(이름, 아이콘) 가져오기
-	if (const UWeaponDataAsset* Data = Character->GetCurrentWeaponData())
+	// 메인 무기의 데이터 에셋에서 정보 가져오기
+	if (const UWeaponDataAsset* Data = MainWeapon->GetWeaponData())
 	{
 		Name = Data->WeaponName;
-
-		// SoftObjectPtr 처리: 이미 로드되어 있으면 가져오고, 아니면 동기 로드
-		if (Data->WeaponIcon.IsPending())
-		{
-			Icon = Data->WeaponIcon.LoadSynchronous();
-		}
-		else
-		{
-			Icon = Data->WeaponIcon.Get();
-		}
+		Icon = Data->WeaponIcon.LoadSynchronous();
 	}
 
-	// 무기 액터 및 탄약 컴포넌트에서 현재 탄약 정보 가져오기
-	if (const AWeaponBase* Weapon = Character->GetCurrentWeapon())
+	// 메인 무기의 탄약 정보 가져오기
+	if (const UAmmoComponent* Ammo = MainWeapon->GetAmmoComponent())
 	{
-		if (const UAmmoComponent* Ammo = Weapon->GetAmmoComponent())
-		{
-			Current = Ammo->GetCurrentAmmoCount();
-			Max = Ammo->GetMaxAmmoCount();
-		}
+		Current = Ammo->GetCurrentAmmoCount();
+		Max = Ammo->GetMaxAmmoCount();
 	}
 
 	UpdateWeaponInfo(Name, Icon, Current, Max);

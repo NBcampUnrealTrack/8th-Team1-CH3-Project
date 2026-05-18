@@ -1,6 +1,7 @@
 #include "H_PlayerController.h"
 #include "H_HUDWidget.h"
 #include "UI/Public/H_FailWidget.h"
+#include "UI/Public/H_ClearWidget.h"
 #include "Blueprint/UserWidget.h"
 #include "EnhancedInputSubsystems.h"
 #include "Kismet/GameplayStatics.h"
@@ -74,4 +75,27 @@ void AH_PlayerController::ShowFailMenu(const FText& Reason)
 		}
 	}
 
+}
+
+void AH_PlayerController::ShowClearMenu(float ClearTime, int32 KillCount)
+{
+	if (ClearWidgetClass)
+	{
+		UH_ClearWidget* ClearWidget = CreateWidget<UH_ClearWidget>(this, ClearWidgetClass);
+		if (ClearWidget)
+		{
+			ClearWidget->SetClearResult(ClearTime, KillCount);
+			ClearWidget->AddToViewport();
+
+			// 마우스 커서 표시 및 입력 모드 변경
+			FInputModeUIOnly InputMode;
+			InputMode.SetWidgetToFocus(ClearWidget->TakeWidget());
+			InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+			SetInputMode(InputMode);
+			bShowMouseCursor = true;
+
+			// 게임 일시 정지
+			UGameplayStatics::SetGamePaused(GetWorld(), true);
+		}
+	}
 }

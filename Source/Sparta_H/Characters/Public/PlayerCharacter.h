@@ -135,6 +135,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	AWeaponBase* GetCurrentWeapon() const { return CurrentWeapon; }
 
+	/** 현재 슬롯에 선택된 메인 무기(총기/칼)를 반환. 투척 무기를 들고 있어도 슬롯 무기를 반환함 **/
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
+	AWeaponBase* GetMainWeapon() const;
+
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	UWeaponDataAsset* GetCurrentWeaponData() const;
 
@@ -243,6 +247,13 @@ public:
 	TObjectPtr<class USoundBase> JumpSound;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
 	TObjectPtr<class USoundBase> RollSound;
+
+	/** 적 처치 횟수 **/
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Status")
+	int32 KillCount = 0;
+
+	/** 미션 시작 시간 **/
+	float MissionStartTime = 0.0f;
 	
 protected:
 	FVector2D TargetRecoil;
@@ -299,9 +310,20 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Throwable", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UWeaponDataAsset> CurrentThrowableData;
 
+	/** 미션별 투척 무기 데이터 **/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Throwable", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UWeaponDataAsset> RockData;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Throwable", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UWeaponDataAsset> GrenadeData;
+
 	// SpawnEquippedWeapons 직후 스폰된 투척 무기 액터. SpawnedWeapons 와는 별도 슬롯
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Throwable", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<AWeaponBase> ThrowableWeapon;
+
+public:
+	UFUNCTION(BlueprintCallable, Category = "Weapon|Throwable")
+	AWeaponBase* GetThrowableWeapon() const { return ThrowableWeapon; }
 
 	// G 누르기 직전 들고 있던 슬롯 인덱스. 0개 소진 시 자동 복귀용
 	int32 PreviousWeaponIndex = 0;
