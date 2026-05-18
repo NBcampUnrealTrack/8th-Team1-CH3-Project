@@ -68,6 +68,9 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 	const bool bHitPlayer   = HitActor->ActorHasTag("Player");
 	const bool bOwnerIsEnemy = GetOwner()->ActorHasTag("Enemy");
 
+	UE_LOG(LogTemp, Warning, TEXT("[CombatManager] Hit: %s | bHitEnemy=%d bHitPlayer=%d bOwnerIsEnemy=%d"),
+		*HitActor->GetName(), bHitEnemy, bHitPlayer, bOwnerIsEnemy);
+
 	// 3. 환경 오브젝트 → 피격 소음만
 	if (!bHitEnemy && !bHitPlayer)
 	{

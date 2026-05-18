@@ -1,4 +1,5 @@
 #include "BaseEnemy.h"
+#include "Components/CapsuleComponent.h"
 
 ABaseEnemy::ABaseEnemy()
 {
@@ -6,11 +7,14 @@ ABaseEnemy::ABaseEnemy()
 	CurrentAlertLevel = EAlertLevel::Idle;
 	bIsDead = false;
 	EnemyStatData = nullptr;
+
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 }
 
 void ABaseEnemy::BeginPlay()
 {
 	Super::BeginPlay();
+	Tags.AddUnique(TEXT("Enemy"));
 	InitializeStats();
 }
 
