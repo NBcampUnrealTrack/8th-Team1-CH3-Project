@@ -190,7 +190,6 @@ void AEnemyCharacter::OnAlertLevelChanged(EAlertLevel NewLevel)
     
     // 타이머 초기화
     GetWorldTimerManager().ClearTimer(SuspiciousRevertTimerHandle);
-    GetWorldTimerManager().ClearTimer(LostRevertTimerHandle);
 
     Super::OnAlertLevelChanged(NewLevel);
 
@@ -225,7 +224,6 @@ void AEnemyCharacter::OnAlertLevelChanged(EAlertLevel NewLevel)
         break;
     case EAlertLevel::Lost:
         if (TargetPlayer) AlertNearbyEnemies(TargetPlayer, LostAlertRange, EAlertLevel::Suspicious);
-        GetWorldTimerManager().SetTimer(LostRevertTimerHandle, this, &AEnemyCharacter::OnLostRevertTimerExpired, LostRevertDelay, false);
         break;
     default: break;
     }
@@ -284,22 +282,6 @@ void AEnemyCharacter::AlertNearbyEnemies(AActor* TargetPlayer, float AlertRange,
 void AEnemyCharacter::OnSuspiciousRevertTimerExpired()
 {
     if (CurrentAlertLevel != EAlertLevel::Suspicious) return;
-
-    OnAlertLevelChanged(EAlertLevel::Idle);
-
-    if (AAIController* AIC = Cast<AAIController>(GetController()))
-    {
-        if (UBlackboardComponent* BB = AIC->GetBlackboardComponent())
-        {
-            BB->ClearValue(BBKeys::LAST_KNOWN_LOCATION);
-            BB->ClearValue(BBKeys::TARGET_ACTOR);
-        }
-    }
-}
-
-void AEnemyCharacter::OnLostRevertTimerExpired()
-{
-    if (CurrentAlertLevel != EAlertLevel::Lost) return;
 
     OnAlertLevelChanged(EAlertLevel::Idle);
 

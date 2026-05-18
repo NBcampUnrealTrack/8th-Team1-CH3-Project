@@ -159,14 +159,9 @@ private:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Alert", meta = (AllowPrivateAccess = "true"))
     float SuspiciousRevertDelay = 10.0f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Alert", meta = (AllowPrivateAccess = "true"))
-    float LostRevertDelay = 15.0f;
-
     FTimerHandle SuspiciousRevertTimerHandle;
-    FTimerHandle LostRevertTimerHandle;
 
     void OnSuspiciousRevertTimerExpired();
-    void OnLostRevertTimerExpired();
 
     // ---------------------------------------------------------------
     // 탐지 확정 타이머
