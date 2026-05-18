@@ -35,7 +35,7 @@ void ABaseSpawnVolume::BeginPlay()
 
 void ABaseSpawnVolume::HandleCombatEntered(FVector CombatLocation)
 {
-	if (CurrentSpawnState != ESpawnState::Idle)
+	if (CurrentSpawnState != ESpawnState::Triggered)
 	{
 		return;
 	}
