@@ -12,6 +12,7 @@ class UAISenseConfig_Sight;
 class UAISenseConfig_Hearing;
 class UWidgetComponent;
 class UAnimMontage;
+class USkeletalMeshComponent;
 
 // ---------------------------------------------------------------
 // AlertLevel별 Perception + 이동 수치 묶음
@@ -77,6 +78,9 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|Combat")
     UCombatManager* CombatManagerComp;
 
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|Weapon")
+    USkeletalMeshComponent* WeaponMeshComp;
+
     // ---------------------------------------------------------------
     // 머리 위 아이콘 위젯 (WBP_EnemyAlertIcon 할당)
     // ---------------------------------------------------------------
@@ -103,6 +107,10 @@ protected:
 
     UPROPERTY(EditAnywhere, Category = "AI")
     class UBehaviorTree* EnemyBT;
+
+    UPROPERTY(EditAnywhere, Category = "AI|VFX")
+    class UNiagaraSystem* MuzzleFlashEffect;
+
 private:
     // ---------------------------------------------------------------
     // 전투 수치

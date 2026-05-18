@@ -13,6 +13,7 @@
 #include "Animation/AnimMontage.h"
 #include "BlackboardKeys.h"
 #include "CombatManager.h"
+#include "NiagaraFunctionLibrary.h"
 
 AEnemyCharacter::AEnemyCharacter()
 {
@@ -20,6 +21,9 @@ AEnemyCharacter::AEnemyCharacter()
     SightConfig       = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("SightConfig"));
     HearingConfig     = CreateDefaultSubobject<UAISenseConfig_Hearing>(TEXT("HearingConfig"));
     CombatManagerComp = CreateDefaultSubobject<UCombatManager>(TEXT("CombatManager"));
+
+    WeaponMeshComp = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
+    WeaponMeshComp->SetupAttachment(GetMesh(), TEXT("GripPoint"));
 
     // 머리 위 아이콘 위젯 컴포넌트 생성
     AlertIconWidgetComp = CreateDefaultSubobject<UWidgetComponent>(TEXT("AlertIconWidget"));
@@ -448,11 +452,10 @@ bool AEnemyCharacter::CanShootTarget(AActor* TargetActor)
     FCollisionQueryParams CollisionParams;
     CollisionParams.AddIgnoredActor(this);
 
-    FVector StartLocation = GetMesh()->GetSocketLocation(TEXT("MuzzleSocket"));
-    if (StartLocation.IsZero())
-    {
-        StartLocation = GetActorLocation() + FVector(0.f, 0.f, BaseEyeHeight);
-    }
+    const FName MuzzleSocket = TEXT("Muzzle");
+    FVector StartLocation = (WeaponMeshComp && WeaponMeshComp->DoesSocketExist(MuzzleSocket))
+        ? WeaponMeshComp->GetSocketLocation(MuzzleSocket)
+        : GetActorLocation() + FVector(0.f, 0.f, BaseEyeHeight);
 
     const bool bHit = GetWorld()->LineTraceSingleByChannel(
         HitResult, StartLocation, TargetActor->GetActorLocation(),
@@ -473,16 +476,23 @@ bool AEnemyCharacter::FireAtTarget(AActor* TargetActor)
 
     if (!bIsHit) return false;
 
-    FVector AimStart = GetMesh()->GetSocketLocation(TEXT("MuzzleSocket"));
-    if (AimStart.IsZero())
-    {
-        AimStart = GetActorLocation() + FVector(0.f, 0.f, BaseEyeHeight);
-    }
+    const FName MuzzleSocket = TEXT("Muzzle");
+    FVector AimStart = (WeaponMeshComp && WeaponMeshComp->DoesSocketExist(MuzzleSocket))
+        ? WeaponMeshComp->GetSocketLocation(MuzzleSocket)
+        : GetActorLocation() + FVector(0.f, 0.f, BaseEyeHeight);
     const FVector AimDirection = (TargetActor->GetActorLocation() - AimStart).GetSafeNormal();
 
     if (FireMontage)
     {
         PlayAnimMontage(FireMontage);
+    }
+
+    if (MuzzleFlashEffect && WeaponMeshComp)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAttached(
+            MuzzleFlashEffect, WeaponMeshComp, TEXT("Muzzle"),
+            FVector::ZeroVector, FRotator::ZeroRotator,
+            EAttachLocation::SnapToTarget, true);
     }
 
     CombatManagerComp->OnFire(AimStart, AimDirection, ECombatWeaponType::Rifle, WeaponDamage, true);
