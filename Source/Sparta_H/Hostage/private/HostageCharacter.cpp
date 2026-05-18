@@ -75,15 +75,12 @@ void AHostageCharacter::ChangeState(EHostageState NewState)
     {
        if (UBlackboardComponent* BB = AIC->GetBlackboardComponent())
        {
-          // 💡 [치트키 보정] AIController의 이름과 통일한 "EHostageState" 방에 
-          // 0(Stay) 또는 1(Following) 이라는 명확한 순수 숫자로 변환하여 강제 주입합니다.
           BB->SetValueAsEnum(TEXT("EHostageState"), static_cast<uint8>(CurrentState));
 
           if (CurrentState == EHostageState::Following && TargetPlayer)
           {
              if (bIsSit) bIsSit = false;
 
-             // 💡 TargetActor가 헷갈리신다고 하셨으니 확실하게 주입 로그를 한 번 더 검증합니다.
              BB->SetValueAsObject(TEXT("TargetActor"), TargetPlayer); 
              
              if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, TEXT("C++ : TargetActor Set in Blackboard!"));
