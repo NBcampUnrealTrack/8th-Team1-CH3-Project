@@ -6,4 +6,6 @@ namespace BBKeys
 	const FName TARGET_ACTOR         = TEXT("TargetActor");
 	const FName LAST_KNOWN_LOCATION  = TEXT("LastKnownLocation");
 	const FName ALERT_LEVEL          = TEXT("AlertLevel");
+	const FName LOCATION_A          = TEXT("PatrolLocationA");
+	const FName LOCATION_B          = TEXT("PatrolLocationB");
 }
