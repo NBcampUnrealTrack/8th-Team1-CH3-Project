@@ -57,17 +57,16 @@ void AEnemyCharacter::BeginPlay()
     
     if (AAIController* AIC = Cast<AAIController>(GetController()))
     {
+        if (EnemyBT)
+        {
+            AIC->RunBehaviorTree(EnemyBT);
+        }
         // 리스폰/스폰 시 블랙보드에 에디터에서 지정한 A, B 절대 좌표를 그대로 주입
         if (UBlackboardComponent* BB = AIC->GetBlackboardComponent())
         {
             // "PatrolLocationA", "PatrolLocationB"는 블랙보드에 생성한 Vector 키 이름입니다.
-            BB->SetValueAsVector(TEXT("PatrolLocationA"), PatrolWorldLocationA);
-            BB->SetValueAsVector(TEXT("PatrolLocationB"), PatrolWorldLocationB);
-        }
-
-        if (EnemyBT)
-        {
-            AIC->RunBehaviorTree(EnemyBT);
+            BB->SetValueAsVector(BBKeys::LOCATION_A, PatrolWorldLocationA);
+            BB->SetValueAsVector(BBKeys::LOCATION_B, PatrolWorldLocationB);
         }
     }
     
@@ -167,7 +166,7 @@ void AEnemyCharacter::ApplyPerceptionStats(const FAlertLevelStats& Stats)
     if (SightConfig)
     {
         SightConfig->SightRadius = Stats.SightRange;
-        SightConfig->LoseSightRadius = Stats.SightRange + 50.f;
+        SightConfig->LoseSightRadius = Stats.SightRange;
         SightConfig->PeripheralVisionAngleDegrees = Stats.FOVAngle / 2.0f;
         AIPerceptionComp->ConfigureSense(*SightConfig);
     }

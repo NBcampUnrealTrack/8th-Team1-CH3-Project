@@ -96,7 +96,7 @@ protected:
     // AlertLevel별 Perception 수치 (기획서 기본값)
     // ---------------------------------------------------------------
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|AlertStats")
-    FAlertLevelStats IdleStats       = { 100.f, 1000.f,  500.f, 400.f };
+    FAlertLevelStats IdleStats       = { 60.f,  600.f,  400.f, 400.f };
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|AlertStats")
     FAlertLevelStats SuspiciousStats = { 180.f, 1500.f,  800.f, 600.f };

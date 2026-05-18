@@ -18,7 +18,6 @@ void ABaseEnemy::InitializeStats()
 {
 	if (!EnemyStatData)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[%s] EnemyStatData가 할당되지 않았습니다. 기본값을 사용합니다."), *GetName());
 		return;
 	}
 
