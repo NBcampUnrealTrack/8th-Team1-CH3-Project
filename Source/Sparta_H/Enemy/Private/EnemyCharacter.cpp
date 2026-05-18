@@ -54,13 +54,23 @@ void AEnemyCharacter::BeginPlay()
     Super::BeginPlay();
     AIPerceptionComp->OnTargetPerceptionUpdated.AddDynamic(this, &AEnemyCharacter::OnTargetPerceived);
     ApplyPerceptionStats(IdleStats);
+    
     if (AAIController* AIC = Cast<AAIController>(GetController()))
     {
+        // 리스폰/스폰 시 블랙보드에 에디터에서 지정한 A, B 절대 좌표를 그대로 주입
+        if (UBlackboardComponent* BB = AIC->GetBlackboardComponent())
+        {
+            // "PatrolLocationA", "PatrolLocationB"는 블랙보드에 생성한 Vector 키 이름입니다.
+            BB->SetValueAsVector(TEXT("PatrolLocationA"), PatrolWorldLocationA);
+            BB->SetValueAsVector(TEXT("PatrolLocationB"), PatrolWorldLocationB);
+        }
+
         if (EnemyBT)
         {
             AIC->RunBehaviorTree(EnemyBT);
         }
     }
+    
     if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
     {
         MoveComp->bUseRVOAvoidance = true;

@@ -53,6 +53,12 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "AI|Combat")
     bool FireAtTarget(AActor* TargetActor);
+    
+    UFUNCTION(BlueprintCallable, Category = "AI|Patrol")
+    FVector GetPatrolWorldLocationA() const { return PatrolWorldLocationA; }
+
+    UFUNCTION(BlueprintCallable, Category = "AI|Patrol")
+    FVector GetPatrolWorldLocationB() const { return PatrolWorldLocationB; }
 
 protected:
     virtual void BeginPlay() override;
@@ -178,4 +184,11 @@ private:
     AActor* SuspectedTarget = nullptr;
 
     void OnDetectionTimerExpired();
+    
+    // 패트롤하기 위해서 A지점과 B지점 설정
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Patrol", meta = (AllowPrivateAccess = "true"))
+    FVector PatrolWorldLocationA;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Patrol", meta = (AllowPrivateAccess = "true"))
+    FVector PatrolWorldLocationB;
 };
