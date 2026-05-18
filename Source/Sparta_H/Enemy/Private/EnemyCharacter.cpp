@@ -2,6 +2,8 @@
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
 #include "Perception/AISenseConfig_Hearing.h"
+#include "Perception/AISense_Sight.h"
+#include "Perception/AISense_Hearing.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "AIController.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -164,6 +166,12 @@ void AEnemyCharacter::ApplyPerceptionStats(const FAlertLevelStats& Stats)
         SightConfig->LoseSightRadius = Stats.SightRange + 50.f;
         SightConfig->PeripheralVisionAngleDegrees = Stats.FOVAngle / 2.0f;
         AIPerceptionComp->ConfigureSense(*SightConfig);
+    }
+
+    if (HearingConfig)
+    {
+        HearingConfig->HearingRange = Stats.HearingRange;
+        AIPerceptionComp->ConfigureSense(*HearingConfig);
     }
 
     if (GetCharacterMovement()) GetCharacterMovement()->MaxWalkSpeed = Stats.MoveSpeed;
@@ -333,14 +341,34 @@ void AEnemyCharacter::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
         else
         {
             //-------------------------------------------
-            // ClearValue시 바로 lost되는 문제 발생가능 
+            // ClearValue시 바로 lost되는 문제 발생가능
             //-------------------------------------------
-            
+
             GetWorldTimerManager().ClearTimer(SpotCheckTimerHandle);
-            
+
             if (CurrentAlertLevel == EAlertLevel::Combat)
             {
                 OnAlertLevelChanged(EAlertLevel::Lost);
+            }
+        }
+    }
+    else if (Stimulus.Type == UAISense::GetSenseID<UAISense_Hearing>())
+    {
+        if (Stimulus.WasSuccessfullySensed())
+        {
+            // 소음 위치를 마지막 알려진 위치로 기록 → BT가 조사하러 이동
+            BB->SetValueAsVector(BBKeys::LAST_KNOWN_LOCATION, Stimulus.StimulusLocation);
+
+            // Idle이면 Suspicious로 전환, Suspicious 이상이면 Combat으로 전환
+            if (CurrentAlertLevel == EAlertLevel::Idle)
+            {
+                OnAlertLevelChanged(EAlertLevel::Suspicious);
+            }
+            else if (CurrentAlertLevel == EAlertLevel::Suspicious)
+            {
+                SuspectedTarget = Actor;
+                BB->SetValueAsObject(BBKeys::TARGET_ACTOR, Actor);
+                OnAlertLevelChanged(EAlertLevel::Combat);
             }
         }
     }
