@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "CombatTypes.h"
+#include "DamageDataAsset.h"
 #include "CombatManager.generated.h"
 
 class UHitDetector;
@@ -26,6 +27,12 @@ public:
 
 	UPROPERTY()
 	UCombatFeedbackHandler* FeedbackHandler;
+
+	UPROPERTY(EditAnywhere, Category = "Combat|Damage")
+	TObjectPtr<UDamageDataAsset> RifleData;
+
+	UPROPERTY(EditAnywhere, Category = "Combat|Damage")
+	TObjectPtr<UDamageDataAsset> PistolData;
 
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	float TraceRange = 20000.f;
