@@ -131,6 +131,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Weapon|Throwable")
 	bool IsChargingThrow() const { return bIsChargingThrow; }
 
+	/** 쿨다운 관련 추가 **/
+	UFUNCTION(BlueprintCallable, Category = "Weapon|Throwable")
+	float GetThrowCooldownRemaining() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Weapon|Throwable")
+	float GetThrowCooldownPercent() const;
+
 	UPROPERTY(BlueprintAssignable, Category = "Weapon|Throwable")
 	FOnThrowableDepleted OnDepleted;
 	

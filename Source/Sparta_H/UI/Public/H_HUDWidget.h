@@ -33,6 +33,9 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	class UH_MissionWidget* MissionUI;
 
+	UPROPERTY(meta = (BindWidget))
+	class UH_ThrowableWidget* ThrowableUI;
+
 	UPROPERTY(meta = (BindWidgetOptional))
 	class UH_TimerWidget* TimerUI;
 	

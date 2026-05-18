@@ -75,6 +75,9 @@ void APlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// 미션 시작 시간 기록
+	MissionStartTime = GetWorld()->GetTimeSeconds();
+
 	// 슬롯에 등록된 모든 무기를 미리 스폰해 본체 메시 GripPoint에 부착, 첫 번째 무기 자동 장착
 	SpawnEquippedWeapons();
 
@@ -780,6 +783,15 @@ UWeaponDataAsset* APlayerCharacter::GetCurrentWeaponData() const
 	return CurrentWeapon != nullptr ? CurrentWeapon->GetWeaponData() : nullptr;
 }
 
+AWeaponBase* APlayerCharacter::GetMainWeapon() const
+{
+	if (SpawnedWeapons.IsValidIndex(CurrentWeaponIndex))
+	{
+		return SpawnedWeapons[CurrentWeaponIndex];
+	}
+	return nullptr;
+}
+
 void APlayerCharacter::ApplyRecoil(const FRecoilData& Recoil)
 {
 	// // 음수 pitch = 카메라 위로(pitch축 기준)
@@ -802,6 +814,8 @@ void APlayerCharacter::NotifyEnemyKilled()
 {
 	// 적 처치 시 호출되는 함수.
 	UE_LOG(LogTemp, Log, TEXT("Enemy Killed!"));
+
+	KillCount++;
 
 	// 크로스헤어 상태를 KillConfirm으로 변경
 	SetCrosshairState(ECrosshairState::KillConfirm);
@@ -873,6 +887,20 @@ void APlayerCharacter::CompleteCurrentObjective()
 		GetWorldTimerManager().ClearTimer(MissionTimerHandle);
 		OnMissionCompleted.Broadcast();
 		UpdateMissionObjective();
+
+		// 클리어 UI 표시 요청
+		float ClearTime = GetWorld()->GetTimeSeconds() - MissionStartTime;
+		
+		APlayerController* TargetPC = Cast<APlayerController>(GetController());
+		if (TargetPC == nullptr)
+		{
+			TargetPC = GetWorld()->GetFirstPlayerController();
+		}
+
+		if (AH_PlayerController* PC = Cast<AH_PlayerController>(TargetPC))
+		{
+			PC->ShowClearMenu(ClearTime, KillCount);
+		}
 	}
 	else
 	{
@@ -967,6 +995,23 @@ void APlayerCharacter::UpdateMissionObjective()
 	if (!CurrentMissionData)
 	{
 		return;
+	}
+
+	// 미션 번호에 따른 투척 무기 교체 (미션 1~3: 돌맹이, 미션 4~: 수류탄)
+	// CurrentMissionIndex는 0부터 시작하므로 3(미션 4) 이전까지는 돌맹이
+	if (CurrentMissionIndex < 3)
+	{
+		if (RockData && CurrentThrowableData != RockData)
+		{
+			SetActiveThrowable(RockData);
+		}
+	}
+	else
+	{
+		if (GrenadeData && CurrentThrowableData != GrenadeData)
+		{
+			SetActiveThrowable(GrenadeData);
+		}
 	}
 
 	// 기존 타이머 초기화
