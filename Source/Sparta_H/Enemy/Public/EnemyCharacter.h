@@ -12,6 +12,7 @@ class UAISenseConfig_Sight;
 class UAISenseConfig_Hearing;
 class UWidgetComponent;
 class UAnimMontage;
+class USkeletalMeshComponent;
 
 // ---------------------------------------------------------------
 // AlertLevel별 Perception + 이동 수치 묶음
@@ -83,6 +84,9 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|Combat")
     UCombatManager* CombatManagerComp;
 
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|Weapon")
+    USkeletalMeshComponent* WeaponMeshComp;
+
     // ---------------------------------------------------------------
     // 머리 위 아이콘 위젯 (WBP_EnemyAlertIcon 할당)
     // ---------------------------------------------------------------
@@ -109,6 +113,10 @@ protected:
 
     UPROPERTY(EditAnywhere, Category = "AI")
     class UBehaviorTree* EnemyBT;
+
+    UPROPERTY(EditAnywhere, Category = "AI|VFX")
+    class UNiagaraSystem* MuzzleFlashEffect;
+
 private:
     // ---------------------------------------------------------------
     // 전투 수치
@@ -165,14 +173,9 @@ private:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Alert", meta = (AllowPrivateAccess = "true"))
     float SuspiciousRevertDelay = 10.0f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Alert", meta = (AllowPrivateAccess = "true"))
-    float LostRevertDelay = 15.0f;
-
     FTimerHandle SuspiciousRevertTimerHandle;
-    FTimerHandle LostRevertTimerHandle;
 
     void OnSuspiciousRevertTimerExpired();
-    void OnLostRevertTimerExpired();
 
     // ---------------------------------------------------------------
     // 탐지 확정 타이머

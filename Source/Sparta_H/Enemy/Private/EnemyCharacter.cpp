@@ -2,6 +2,8 @@
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
 #include "Perception/AISenseConfig_Hearing.h"
+#include "Perception/AISense_Sight.h"
+#include "Perception/AISense_Hearing.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "AIController.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -13,6 +15,7 @@
 #include "Animation/AnimMontage.h"
 #include "BlackboardKeys.h"
 #include "CombatManager.h"
+#include "NiagaraFunctionLibrary.h"
 
 AEnemyCharacter::AEnemyCharacter()
 {
@@ -20,6 +23,9 @@ AEnemyCharacter::AEnemyCharacter()
     SightConfig       = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("SightConfig"));
     HearingConfig     = CreateDefaultSubobject<UAISenseConfig_Hearing>(TEXT("HearingConfig"));
     CombatManagerComp = CreateDefaultSubobject<UCombatManager>(TEXT("CombatManager"));
+
+    WeaponMeshComp = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
+    WeaponMeshComp->SetupAttachment(GetMesh(), TEXT("GripPoint"));
 
     // 머리 위 아이콘 위젯 컴포넌트 생성
     AlertIconWidgetComp = CreateDefaultSubobject<UWidgetComponent>(TEXT("AlertIconWidget"));
@@ -171,6 +177,12 @@ void AEnemyCharacter::ApplyPerceptionStats(const FAlertLevelStats& Stats)
         AIPerceptionComp->ConfigureSense(*SightConfig);
     }
 
+    if (HearingConfig)
+    {
+        HearingConfig->HearingRange = Stats.HearingRange;
+        AIPerceptionComp->ConfigureSense(*HearingConfig);
+    }
+
     if (GetCharacterMovement()) GetCharacterMovement()->MaxWalkSpeed = Stats.MoveSpeed;
     AIPerceptionComp->RequestStimuliListenerUpdate();
 }
@@ -199,7 +211,6 @@ void AEnemyCharacter::OnAlertLevelChanged(EAlertLevel NewLevel)
     
     // 타이머 초기화
     GetWorldTimerManager().ClearTimer(SuspiciousRevertTimerHandle);
-    GetWorldTimerManager().ClearTimer(LostRevertTimerHandle);
 
     Super::OnAlertLevelChanged(NewLevel);
 
@@ -234,7 +245,6 @@ void AEnemyCharacter::OnAlertLevelChanged(EAlertLevel NewLevel)
         break;
     case EAlertLevel::Lost:
         if (TargetPlayer) AlertNearbyEnemies(TargetPlayer, LostAlertRange, EAlertLevel::Suspicious);
-        GetWorldTimerManager().SetTimer(LostRevertTimerHandle, this, &AEnemyCharacter::OnLostRevertTimerExpired, LostRevertDelay, false);
         break;
     default: break;
     }
@@ -306,22 +316,6 @@ void AEnemyCharacter::OnSuspiciousRevertTimerExpired()
     }
 }
 
-void AEnemyCharacter::OnLostRevertTimerExpired()
-{
-    if (CurrentAlertLevel != EAlertLevel::Lost) return;
-
-    OnAlertLevelChanged(EAlertLevel::Idle);
-
-    if (AAIController* AIC = Cast<AAIController>(GetController()))
-    {
-        if (UBlackboardComponent* BB = AIC->GetBlackboardComponent())
-        {
-            BB->ClearValue(BBKeys::LAST_KNOWN_LOCATION);
-            BB->ClearValue(BBKeys::TARGET_ACTOR);
-        }
-    }
-}
-
 // ---------------------------------------------------------------
 // Perception 콜백
 // ---------------------------------------------------------------
@@ -356,14 +350,34 @@ void AEnemyCharacter::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
         else
         {
             //-------------------------------------------
-            // ClearValue시 바로 lost되는 문제 발생가능 
+            // ClearValue시 바로 lost되는 문제 발생가능
             //-------------------------------------------
-            
+
             GetWorldTimerManager().ClearTimer(SpotCheckTimerHandle);
-            
+
             if (CurrentAlertLevel == EAlertLevel::Combat)
             {
                 OnAlertLevelChanged(EAlertLevel::Lost);
+            }
+        }
+    }
+    else if (Stimulus.Type == UAISense::GetSenseID<UAISense_Hearing>())
+    {
+        if (Stimulus.WasSuccessfullySensed())
+        {
+            // 소음 위치를 마지막 알려진 위치로 기록 → BT가 조사하러 이동
+            BB->SetValueAsVector(BBKeys::LAST_KNOWN_LOCATION, Stimulus.StimulusLocation);
+
+            // Idle이면 Suspicious로 전환, Suspicious 이상이면 Combat으로 전환
+            if (CurrentAlertLevel == EAlertLevel::Idle)
+            {
+                OnAlertLevelChanged(EAlertLevel::Suspicious);
+            }
+            else if (CurrentAlertLevel == EAlertLevel::Suspicious)
+            {
+                SuspectedTarget = Actor;
+                BB->SetValueAsObject(BBKeys::TARGET_ACTOR, Actor);
+                OnAlertLevelChanged(EAlertLevel::Combat);
             }
         }
     }
@@ -475,11 +489,10 @@ bool AEnemyCharacter::CanShootTarget(AActor* TargetActor)
     FCollisionQueryParams CollisionParams;
     CollisionParams.AddIgnoredActor(this);
 
-    FVector StartLocation = GetMesh()->GetSocketLocation(TEXT("MuzzleSocket"));
-    if (StartLocation.IsZero())
-    {
-        StartLocation = GetActorLocation() + FVector(0.f, 0.f, BaseEyeHeight);
-    }
+    const FName MuzzleSocket = TEXT("Muzzle");
+    FVector StartLocation = (WeaponMeshComp && WeaponMeshComp->DoesSocketExist(MuzzleSocket))
+        ? WeaponMeshComp->GetSocketLocation(MuzzleSocket)
+        : GetActorLocation() + FVector(0.f, 0.f, BaseEyeHeight);
 
     const bool bHit = GetWorld()->LineTraceSingleByChannel(
         HitResult, StartLocation, TargetActor->GetActorLocation(),
@@ -500,16 +513,23 @@ bool AEnemyCharacter::FireAtTarget(AActor* TargetActor)
 
     if (!bIsHit) return false;
 
-    FVector AimStart = GetMesh()->GetSocketLocation(TEXT("MuzzleSocket"));
-    if (AimStart.IsZero())
-    {
-        AimStart = GetActorLocation() + FVector(0.f, 0.f, BaseEyeHeight);
-    }
+    const FName MuzzleSocket = TEXT("Muzzle");
+    FVector AimStart = (WeaponMeshComp && WeaponMeshComp->DoesSocketExist(MuzzleSocket))
+        ? WeaponMeshComp->GetSocketLocation(MuzzleSocket)
+        : GetActorLocation() + FVector(0.f, 0.f, BaseEyeHeight);
     const FVector AimDirection = (TargetActor->GetActorLocation() - AimStart).GetSafeNormal();
 
     if (FireMontage)
     {
         PlayAnimMontage(FireMontage);
+    }
+
+    if (MuzzleFlashEffect && WeaponMeshComp)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAttached(
+            MuzzleFlashEffect, WeaponMeshComp, TEXT("Muzzle"),
+            FVector::ZeroVector, FRotator::ZeroRotator,
+            EAttachLocation::SnapToTarget, true);
     }
 
     CombatManagerComp->OnFire(AimStart, AimDirection, ECombatWeaponType::Rifle, WeaponDamage, true);
