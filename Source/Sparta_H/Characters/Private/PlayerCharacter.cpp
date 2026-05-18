@@ -82,6 +82,25 @@ void APlayerCharacter::BeginPlay()
 	{
 		EquipWeaponByIndex(0);
 	}
+	
+	// 플렝이어가 죽었을 때의 델리게이트에 함수 등록
+	if (HealthComponent)
+	{
+		// "죽었을 때(OnDeath), 나(this)의 OnDeath 함수를 실행해줘"라고 등록
+		HealthComponent->OnDeath.AddDynamic(this, &APlayerCharacter::OnDeath);
+	}
+	
+	//카메라 회전 각도 설정
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		if (PC->PlayerCameraManager)
+		{
+			// 위로 볼 수 있는 최대 각도 (예: 60도)
+			PC->PlayerCameraManager->ViewPitchMax = 60.0f;
+			// 아래로 볼 수 있는 최소 각도 (예: -60도)
+			PC->PlayerCameraManager->ViewPitchMin = -45.0f;
+		}
+	}
 
 	// G키 투척 무기는 SpawnedWeapons 배열과 별개로 1개 스폰. Hidden 유지
 	SpawnThrowableWeapon();
