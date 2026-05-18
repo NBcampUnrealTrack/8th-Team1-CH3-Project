@@ -4,6 +4,7 @@
 #include "Perception/AISenseConfig_Hearing.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "AIController.h"
+#include "AlertManager.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/WidgetComponent.h"
 #include "TimerManager.h"
@@ -222,6 +223,12 @@ void AEnemyCharacter::OnAlertLevelChanged(EAlertLevel NewLevel)
         break;
     case EAlertLevel::Combat:
         if (TargetPlayer) AlertNearbyEnemies(TargetPlayer, CombatAlertRange, EAlertLevel::Combat);
+
+        if (AAlertManager* AlertMgr = AAlertManager::GetInstance(this))
+        {
+            AlertMgr->NotifyCombatEntered(GetActorLocation());
+        }
+        
         break;
     case EAlertLevel::Lost:
         if (TargetPlayer) AlertNearbyEnemies(TargetPlayer, LostAlertRange, EAlertLevel::Suspicious);
