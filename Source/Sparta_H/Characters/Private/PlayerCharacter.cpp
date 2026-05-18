@@ -101,6 +101,28 @@ void APlayerCharacter::BeginPlay()
 		}
 	}
 
+	// G키 투척 무기는 SpawnedWeapons 배열과 별개로 1개 스폰. Hidden 유지
+	SpawnThrowableWeapon();
+
+	// 플렝이어가 죽었을 때의 델리게이트에 함수 등록
+	if (HealthComponent)
+	{
+		// "죽었을 때(OnDeath), 나(this)의 OnDeath 함수를 실행해줘"라고 등록
+		HealthComponent->OnDeath.AddDynamic(this, &APlayerCharacter::OnDeath);
+	}
+	
+	//카메라 회전 각도 설정
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		if (PC->PlayerCameraManager)
+		{
+			// 위로 볼 수 있는 최대 각도 (예: 60도)
+			PC->PlayerCameraManager->ViewPitchMax = 60.0f;
+			// 아래로 볼 수 있는 최소 각도 (예: -60도)
+			PC->PlayerCameraManager->ViewPitchMin = -45.0f;
+		}
+	}
+
 	// 미션 데이터 초기화
 	CurrentMissionIndex = 0;
 	UpdateMissionObjective();
@@ -208,9 +230,22 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 			EnhancedInputComponent->BindAction(PlayerController->FireAction, ETriggerEvent::Triggered, this,
 			                                   &APlayerCharacter::OnFirePressed);
 
+			// 투척 무기 차징/투척용 — LMB Started 에서 BeginThrowCharge, Completed 에서 ReleaseThrow
+			EnhancedInputComponent->BindAction(PlayerController->FireAction, ETriggerEvent::Started, this,
+			                                   &APlayerCharacter::OnFireStarted);
+			EnhancedInputComponent->BindAction(PlayerController->FireAction, ETriggerEvent::Completed, this,
+			                                   &APlayerCharacter::OnFireReleased);
+
 			// 재장전 — Started로 R 1회 입력 처리. 무기 상태/탄창 가드는 Reload() 내부에서
 			EnhancedInputComponent->BindAction(PlayerController->ReloadAction, ETriggerEvent::Started, this,
 			                                   &APlayerCharacter::OnReloadPressed);
+
+			// G — 투척물 장착 토글. BP 인스턴스에 아직 세팅 안 됐을 가능성에 대비해 가드
+			if (PlayerController->ThrowableAction != nullptr)
+			{
+				EnhancedInputComponent->BindAction(PlayerController->ThrowableAction, ETriggerEvent::Started, this,
+				                                   &APlayerCharacter::OnThrowableEquipPressed);
+			}
 		}
 	}
 }
@@ -455,6 +490,8 @@ void APlayerCharacter::EquipWeaponByIndex(int32 NewWeaponIndex)
 
 	if (CurrentWeapon != nullptr)
 	{
+		// 투척물 차징 중 슬롯 전환 시 차징 취소 (no-op if not charging)
+		CurrentWeapon->CancelThrowCharge();
 		CurrentWeapon->SetActorHiddenInGame(true);
 	}
 
@@ -488,8 +525,8 @@ void APlayerCharacter::EquipPreviousWeapon()
 
 	// 음수 모듈로 회피용 + Num
 	const int32 Num = SpawnedWeapons.Num();
-	const int32 PreviousWeaponIndex = (CurrentWeaponIndex - 1 + Num) % Num;
-	EquipWeaponByIndex(PreviousWeaponIndex);
+	const int32 PrevIndex = (CurrentWeaponIndex - 1 + Num) % Num;
+	EquipWeaponByIndex(PrevIndex);
 }
 
 void APlayerCharacter::OnEquipSlotPressed(const FInputActionValue& Value)
@@ -519,15 +556,26 @@ void APlayerCharacter::OnEquipPreviousPressed(const FInputActionValue& /*Value*/
 
 void APlayerCharacter::OnFirePressed(const FInputActionValue& /*Value*/)
 {
-	if (CurrentWeapon != nullptr)
+	if (CurrentWeapon == nullptr)
 	{
-		CurrentWeapon->Fire();
+		return;
+	}
 
-		// 사격 시 즉시 최대 소음 발생
-		if (NoiseComponent)
+	// 투척 무기는 Started/Completed 로 처리 — Triggered 경로에서는 무시
+	if (UWeaponDataAsset* Data = CurrentWeapon->GetWeaponData())
+	{
+		if (Data->FireMode == EWeaponFireMode::Throwable)
 		{
-			NoiseComponent->SetNoiseToMax();
+			return;
 		}
+	}
+
+	CurrentWeapon->Fire();
+
+	// 사격 시 즉시 최대 소음 발생
+	if (NoiseComponent)
+	{
+		NoiseComponent->SetNoiseToMax();
 	}
 }
 
@@ -537,6 +585,160 @@ void APlayerCharacter::OnReloadPressed(const FInputActionValue& /*Value*/)
 	{
 		CurrentWeapon->Reload();
 	}
+}
+
+void APlayerCharacter::OnFireStarted(const FInputActionValue& /*Value*/)
+{
+	if (CurrentWeapon == nullptr)
+	{
+		return;
+	}
+
+	const UWeaponDataAsset* Data = CurrentWeapon->GetWeaponData();
+	if (Data == nullptr || Data->FireMode != EWeaponFireMode::Throwable)
+	{
+		return;
+	}
+
+	CurrentWeapon->BeginThrowCharge();
+}
+
+void APlayerCharacter::OnFireReleased(const FInputActionValue& /*Value*/)
+{
+	if (CurrentWeapon == nullptr)
+	{
+		return;
+	}
+
+	const UWeaponDataAsset* Data = CurrentWeapon->GetWeaponData();
+	if (Data == nullptr || Data->FireMode != EWeaponFireMode::Throwable)
+	{
+		return;
+	}
+
+	CurrentWeapon->ReleaseThrow();
+}
+
+void APlayerCharacter::OnThrowableEquipPressed(const FInputActionValue& /*Value*/)
+{
+	if (ThrowableWeapon == nullptr)
+	{
+		return;
+	}
+
+	// 토글 — 이미 투척물 들고 있으면 이전 슬롯으로 복귀
+	if (CurrentWeapon == ThrowableWeapon)
+	{
+		ThrowableWeapon->CancelThrowCharge();
+		EquipWeaponByIndex(PreviousWeaponIndex);
+		return;
+	}
+
+	// 보유 0/쿨다운 중이면 장착 거부
+	if (!ThrowableWeapon->CanThrow())
+	{
+		return;
+	}
+
+	// 현재 슬롯 무기 hide → 투척물 show. CurrentWeaponIndex 는 보존 (PreviousWeaponIndex 복귀용)
+	if (CurrentWeapon != nullptr)
+	{
+		const EWeaponState State = CurrentWeapon->GetWeaponState();
+		if (State == EWeaponState::Reloading || State == EWeaponState::Swapping)
+		{
+			return;
+		}
+		CurrentWeapon->SetActorHiddenInGame(true);
+	}
+
+	PreviousWeaponIndex = CurrentWeaponIndex;
+	CurrentWeapon = ThrowableWeapon;
+	CurrentWeapon->SetActorHiddenInGame(false);
+	CurrentWeapon->SetWeaponState(EWeaponState::Idle);
+}
+
+void APlayerCharacter::HandleThrowableDepleted()
+{
+	// 0 도달 시 자동으로 이전 슬롯 복귀. 투척물 들고 있는 동안에만 의미 있음
+	if (CurrentWeapon == ThrowableWeapon)
+	{
+		EquipWeaponByIndex(PreviousWeaponIndex);
+	}
+}
+
+void APlayerCharacter::SpawnThrowableWeapon()
+{
+	if (ThrowableWeapon != nullptr || CurrentThrowableData == nullptr || WeaponBaseClass == nullptr)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return;
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.Instigator = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	AWeaponBase* Spawned = World->SpawnActor<AWeaponBase>(WeaponBaseClass, SpawnParams);
+	if (Spawned == nullptr)
+	{
+		return;
+	}
+
+	Spawned->Initialize(CurrentThrowableData);
+	Spawned->AttachToComponent(GetMesh(),
+	                           FAttachmentTransformRules::SnapToTargetIncludingScale,
+	                           FName(TEXT("GripPoint")));
+	Spawned->SetActorHiddenInGame(true);
+	Spawned->OnDepleted.AddDynamic(this, &APlayerCharacter::HandleThrowableDepleted);
+
+	ThrowableWeapon = Spawned;
+}
+
+void APlayerCharacter::SetActiveThrowable(UWeaponDataAsset* NewThrowableData)
+{
+	// 들고 있다가 미션 전환되는 경우 슬롯 먼저 복귀
+	if (ThrowableWeapon != nullptr)
+	{
+		ThrowableWeapon->CancelThrowCharge();
+
+		if (CurrentWeapon == ThrowableWeapon)
+		{
+			EquipWeaponByIndex(PreviousWeaponIndex);
+
+			// EquipWeaponByIndex 가 실패(invalid index/빈 슬롯/상태 가드)했을 경우 첫 유효 슬롯으로 폴백.
+			// 이걸 안 하면 CurrentWeapon 이 아래에서 Destroy 될 ThrowableWeapon 을 계속 가리켜 dangling 발생
+			if (CurrentWeapon == ThrowableWeapon)
+			{
+				for (int32 i = 0; i < SpawnedWeapons.Num(); ++i)
+				{
+					if (SpawnedWeapons[i] != nullptr)
+					{
+						EquipWeaponByIndex(i);
+						break;
+					}
+				}
+			}
+
+			// 그래도 못 바꿨으면(유효 슬롯이 하나도 없음) 명시적으로 nullptr 처리해 dangling 차단
+			if (CurrentWeapon == ThrowableWeapon)
+			{
+				CurrentWeapon = nullptr;
+			}
+		}
+
+		ThrowableWeapon->OnDepleted.RemoveAll(this);
+		ThrowableWeapon->Destroy();
+		ThrowableWeapon = nullptr;
+	}
+
+	CurrentThrowableData = NewThrowableData;
+	SpawnThrowableWeapon();
 }
 
 UWeaponDataAsset* APlayerCharacter::GetCurrentWeaponData() const
