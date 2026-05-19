@@ -2,14 +2,12 @@
 #include "ThrowableActor.h"
 #include "CombatManager.h"
 #include "BlackboardKeys.h"
-#include "H_PlayerController.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISense_Sight.h"
 #include "Perception/AISense_Hearing.h"
 #include "AIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "Kismet/GameplayStatics.h"
 
 ABossEnemy::ABossEnemy()
 {
@@ -299,14 +297,4 @@ void ABossEnemy::SpawnReward()
     if (!RewardClass) return;
 
     GetWorld()->SpawnActor<AActor>(RewardClass, GetActorLocation(), FRotator::ZeroRotator);
-}
-
-// ─── Alert UI ────────────────────────────────────────────────────────────────
-void ABossEnemy::ShowBossAlert(const FString& Message, float Duration)
-{
-    APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
-    if (AH_PlayerController* HPC = Cast<AH_PlayerController>(PC))
-    {
-        HPC->ShowBossAlert(Message, Duration);
-    }
 }
