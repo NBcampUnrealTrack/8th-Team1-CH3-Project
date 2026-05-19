@@ -40,9 +40,9 @@ public:
 	// Sets default values for this character's properties
 	APlayerCharacter();
 	
+	//스프링 암
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components")
 	USpringArmComponent* SpringArm;
-
 	// 1인칭 카메라 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components")
 	UCameraComponent* Camera;
@@ -65,13 +65,15 @@ public:
 	//기울이기 관련
 	UPROPERTY(BlueprintReadOnly, Category = "Movement")
 	float LeanAmount = 0.f;
-	/** 기울임 시 카메라가 옆으로 이동할 최대 거리 (예: 100.0) **/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
-	float MaxLeanOffset = 50.0f;
-
-	/** 카메라 이동 속도 (값이 클수록 빠름) **/
+	float MaxLeanOffset = 25.0f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
 	float LeanSpeed = 3.5f;
+	
+	float CameraZOffset = 0.0f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+	float CrouchBlendSpeed = 5.0f; // 카메라가 부드럽게 움직이는 속
 
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -230,19 +232,6 @@ public:
 	/** 사망 상태를 확인하는 플래그 (중복 사망 처리 방지) **/
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Status")
 	bool bIsDead = false;
-
-	/** 사망 애니메이션 몽타주 (에디터에서 할당) **/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
-	UAnimMontage* DeathMontage;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
-	TObjectPtr<class USoundBase> MoveSound;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
-	TObjectPtr<class USoundBase> RunSound;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
-	TObjectPtr<class USoundBase> JumpSound;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
-	TObjectPtr<class USoundBase> RollSound;
 	
 private:
 	/** Weapon Input Callbacks **/
