@@ -195,27 +195,25 @@ void AEnemyCharacter::OnAlertLevelChanged(EAlertLevel NewLevel)
 {
     if (bIsDead) return;
 
-    // 1. C++ 내부 변수 업데이트
     CurrentAlertLevel = NewLevel;
 
-    // 2. 블랙보드에 실시간 기록 (이게 없으면 BT가 작동 안 함)
     if (AAIController* AIC = Cast<AAIController>(GetController()))
     {
         if (UBlackboardComponent* BB = AIC->GetBlackboardComponent())
         {
-            // BBKeys::ALERT_LEVEL을 사용하여 비헤이비어 트리에 신호 전송
             BB->SetValueAsEnum(BBKeys::ALERT_LEVEL, (uint8)NewLevel);
         }
     }
 
     UE_LOG(LogTemp, Warning, TEXT("[%s] 경계 레벨 변경: %d"), *GetName(), (int32)NewLevel);
     
-    // 타이머 초기화
+    // 타이머 일괄 정리 (상태가 바뀔 때 이전 상태의 타이머가 도는 것을 방지)
     GetWorldTimerManager().ClearTimer(SuspiciousRevertTimerHandle);
+    GetWorldTimerManager().ClearTimer(CombatToLostTimerHandle); // <-- 추가
 
     Super::OnAlertLevelChanged(NewLevel);
 
-    // 상태별 스탯/아이콘 적용
+    // 스탯 적용 분기
     switch (NewLevel)
     {
         case EAlertLevel::Idle:       ApplyPerceptionStats(IdleStats);       break;
@@ -227,7 +225,6 @@ void AEnemyCharacter::OnAlertLevelChanged(EAlertLevel NewLevel)
 
     UpdateAlertIcon(NewLevel);
 
-    // 타겟 정보 가져오기
     AActor* TargetPlayer = nullptr;
     if (AAIController* AIC = Cast<AAIController>(GetController()))
     {
@@ -235,7 +232,7 @@ void AEnemyCharacter::OnAlertLevelChanged(EAlertLevel NewLevel)
             TargetPlayer = Cast<AActor>(BB->GetValueAsObject(BBKeys::TARGET_ACTOR));
     }
 
-    // 상태별 타이머 및 알람 전파
+    // 상태별 후처리
     switch (NewLevel)
     {
     case EAlertLevel::Suspicious:
@@ -248,9 +245,9 @@ void AEnemyCharacter::OnAlertLevelChanged(EAlertLevel NewLevel)
         {
             AlertMgr->NotifyCombatEntered(GetActorLocation());
         }
-        
         break;
     case EAlertLevel::Lost:
+        // Lost 상태가 되었을 때 주변 적들에게 전파하는 기존 기획 유지
         if (TargetPlayer) AlertNearbyEnemies(TargetPlayer, LostAlertRange, EAlertLevel::Suspicious);
         break;
     default: break;
@@ -332,7 +329,7 @@ void AEnemyCharacter::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
     
     AAIController* AIC = Cast<AAIController>(GetController());
     if (!AIC) return;
-    UBlackboardComponent* BB = Cast<AAIController>(GetController())->GetBlackboardComponent();
+    UBlackboardComponent* BB = AIC->GetBlackboardComponent();
     if (!BB) return;
 
     if (Stimulus.Type == UAISense::GetSenseID<UAISense_Sight>())
@@ -343,7 +340,18 @@ void AEnemyCharacter::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
             BB->SetValueAsObject(BBKeys::TARGET_ACTOR, Actor);
             BB->SetValueAsVector(BBKeys::LAST_KNOWN_LOCATION, Actor->GetActorLocation());
 
-            // 2. 경계 레벨 올리기
+            // [추가 구현] 현재 Lost 상태인데 플레이어를 다시 목격했다면 즉시 Combat(3단계)으로 복귀
+            if (CurrentAlertLevel == EAlertLevel::Lost)
+            {
+                UE_LOG(LogTemp, Warning, TEXT("[%s] Lost 상태에서 플레이어 재발견! 전투 복귀."), *GetName());
+                OnAlertLevelChanged(EAlertLevel::Combat);
+                return;
+            }
+
+            // 플레이어를 보고 있는 중이므로 3->4단계 전환 타이머는 취소합니디.
+            GetWorldTimerManager().ClearTimer(CombatToLostTimerHandle);
+
+            // 경계 레벨 올리기 (기존 로직)
             if (CurrentAlertLevel < EAlertLevel::Combat)
             {
                 OnAlertLevelChanged(EAlertLevel::Suspicious);
@@ -354,28 +362,32 @@ void AEnemyCharacter::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
                 }
             }
         }
-        else
+        else // 플레이어가 시야에서 사라졌을 때
         {
-            //-------------------------------------------
-            // ClearValue시 바로 lost되는 문제 발생가능
-            //-------------------------------------------
-
             GetWorldTimerManager().ClearTimer(SpotCheckTimerHandle);
 
+            // [수정 구현] 전투 중일 때 바로 Lost로 가지 않고 20초 타이머를 가동합니다.
             if (CurrentAlertLevel == EAlertLevel::Combat)
             {
-                OnAlertLevelChanged(EAlertLevel::Lost);
+                UE_LOG(LogTemp, Warning, TEXT("[%s] 플레이어를 시야에서 놓침. 20초 카운트다운 시작."), *GetName());
+                
+                GetWorldTimerManager().SetTimer(
+                    CombatToLostTimerHandle, 
+                    this, 
+                    &AEnemyCharacter::OnCombatToLostTimerExpired, 
+                    2.0f, 
+                    false
+                );
             }
         }
     }
     else if (Stimulus.Type == UAISense::GetSenseID<UAISense_Hearing>())
     {
+        // 기존 청각 로직 유지
         if (Stimulus.WasSuccessfullySensed())
         {
-            // 소음 위치를 마지막 알려진 위치로 기록 → BT가 조사하러 이동
             BB->SetValueAsVector(BBKeys::LAST_KNOWN_LOCATION, Stimulus.StimulusLocation);
 
-            // Idle이면 Suspicious로 전환, Suspicious 이상이면 Combat으로 전환
             if (CurrentAlertLevel == EAlertLevel::Idle)
             {
                 OnAlertLevelChanged(EAlertLevel::Suspicious);
@@ -542,4 +554,12 @@ bool AEnemyCharacter::FireAtTarget(AActor* TargetActor)
     CombatManagerComp->OnFire(AimStart, AimDirection, ECombatWeaponType::Rifle, WeaponDamage, true);
 
     return true;
+}
+
+void AEnemyCharacter::OnCombatToLostTimerExpired()
+{
+    if (bIsDead || CurrentAlertLevel != EAlertLevel::Combat) return;
+
+    UE_LOG(LogTemp, Warning, TEXT("[%s] 플레이어를 20초간 놓쳐 Lost 상태로 전환합니다."), *GetName());
+    OnAlertLevelChanged(EAlertLevel::Lost);
 }
