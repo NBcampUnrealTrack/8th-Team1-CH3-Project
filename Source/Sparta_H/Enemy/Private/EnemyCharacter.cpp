@@ -20,6 +20,10 @@
 
 AEnemyCharacter::AEnemyCharacter()
 {
+    // 메시 임포트 방향이 액터 Forward(X축)와 90도 어긋나는 경우 보정
+    // 반대 방향이면 -90.f → 90.f 로 변경
+    GetMesh()->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));
+
     AIPerceptionComp  = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("PerceptionComp"));
     SightConfig       = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("SightConfig"));
     HearingConfig     = CreateDefaultSubobject<UAISenseConfig_Hearing>(TEXT("HearingConfig"));
