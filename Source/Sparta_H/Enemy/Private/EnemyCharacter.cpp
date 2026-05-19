@@ -147,6 +147,22 @@ void AEnemyCharacter::HideAlertIcon()
     }
 }
 
+void AEnemyCharacter::ShowExclamationIcon(float Duration)
+{
+    if (!AlertIconWidgetComp) return;
+
+    GetWorldTimerManager().ClearTimer(IconHideTimerHandle);
+
+    UEnemyAlertWidget* AlertWidget = Cast<UEnemyAlertWidget>(AlertIconWidgetComp->GetUserWidgetObject());
+    if (AlertWidget)
+    {
+        AlertWidget->OnAlertLevelUpdated(EAlertLevel::Combat);
+    }
+
+    AlertIconWidgetComp->SetVisibility(true);
+    GetWorldTimerManager().SetTimer(IconHideTimerHandle, this, &AEnemyCharacter::HideAlertIcon, Duration, false);
+}
+
 // ---------------------------------------------------------------
 // Perception 수치 런타임 갱신
 // ---------------------------------------------------------------
@@ -207,8 +223,6 @@ void AEnemyCharacter::OnAlertLevelChanged(EAlertLevel NewLevel)
         case EAlertLevel::Lost:       ApplyPerceptionStats(LostStats);       break;
         default: break;
     }
-
-    UpdateAlertIcon(NewLevel);
 
     // 타겟 정보 가져오기
     AActor* TargetPlayer = nullptr;

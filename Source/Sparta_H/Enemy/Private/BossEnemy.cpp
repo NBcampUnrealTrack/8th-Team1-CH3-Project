@@ -1,4 +1,5 @@
 #include "BossEnemy.h"
+#include "Components/WidgetComponent.h"
 #include "ThrowableActor.h"
 #include "CombatManager.h"
 #include "BlackboardKeys.h"
@@ -12,6 +13,11 @@
 
 ABossEnemy::ABossEnemy()
 {
+    PrecisionWarningWidgetComp = CreateDefaultSubobject<UWidgetComponent>(TEXT("PrecisionWarningWidget"));
+    PrecisionWarningWidgetComp->SetupAttachment(GetMesh(), TEXT("head"));
+    PrecisionWarningWidgetComp->SetWidgetSpace(EWidgetSpace::Screen);
+    PrecisionWarningWidgetComp->SetDrawSize(FVector2D(200.f, 60.f));
+    PrecisionWarningWidgetComp->SetVisibility(false);
 }
 
 void ABossEnemy::BeginPlay()
@@ -238,7 +244,10 @@ void ABossEnemy::StartPrecisionAim()
 {
     if (bIsDead || CurrentAlertLevel != EAlertLevel::Combat || !IsValid(BossTarget)) return;
 
-    ShowBossAlert(TEXT("INCOMING PRECISION SHOT"), PrecisionAimDuration);
+    if (PrecisionWarningWidgetComp)
+    {
+        PrecisionWarningWidgetComp->SetVisibility(true);
+    }
 
     GetWorldTimerManager().SetTimer(PrecisionFireHandle, this,
         &ABossEnemy::ExecutePrecisionFire, PrecisionAimDuration, false);
@@ -247,6 +256,11 @@ void ABossEnemy::StartPrecisionAim()
 void ABossEnemy::ExecutePrecisionFire()
 {
     if (bIsDead || !IsValid(BossTarget)) return;
+
+    if (PrecisionWarningWidgetComp)
+    {
+        PrecisionWarningWidgetComp->SetVisibility(false);
+    }
 
     const FName MuzzleSocket = TEXT("Muzzle");
     const FVector AimStart = (WeaponMeshComp && WeaponMeshComp->DoesSocketExist(MuzzleSocket))
@@ -293,6 +307,7 @@ void ABossEnemy::SpawnReinforcement()
             }
         }
         Reinforcement->OnAlertLevelChanged(EAlertLevel::Combat);
+        Reinforcement->ShowExclamationIcon(3.f);
     }
 }
 

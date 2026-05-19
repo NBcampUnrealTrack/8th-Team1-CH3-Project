@@ -64,6 +64,10 @@ public:
     UFUNCTION(BlueprintCallable, Category = "AI")
     UBehaviorTree* GetEnemyBT() const { return EnemyBT; }
 
+    // 소환 등 특수 상황에서 머리 위에 !! 아이콘을 Duration초 동안 표시
+    UFUNCTION(BlueprintCallable, Category = "AI|UI")
+    void ShowExclamationIcon(float Duration);
+
 protected:
     virtual void BeginPlay() override;
     virtual void InitializeStats() override;
