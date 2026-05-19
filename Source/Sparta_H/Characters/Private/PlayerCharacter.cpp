@@ -15,6 +15,7 @@
 
 #include "HealthComponent.h"
 #include "InteractionComponent.h"
+#include "MovieSceneSequenceID.h"
 #include "NoiseComponent.h"
 #include "StaminaComponent.h"
 #include "VisibilityComponent.h"
@@ -27,9 +28,11 @@ APlayerCharacter::APlayerCharacter()
 	
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->SetupAttachment(RootComponent);
-	SpringArm->bUsePawnControlRotation = true; // 핵심: 마우스 따라가기
-	SpringArm->bEnableCameraLag = false;
-
+	SpringArm->SetRelativeLocation(FVector(0.0f, 0.0f, 65.0f));
+	
+	SpringArm->bUsePawnControlRotation = true;
+	SpringArm->TargetArmLength = 0.0f; // 1인칭이므로 소켓 거리는 0
+	
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 	Camera->bUsePawnControlRotation = false;
@@ -38,14 +41,15 @@ APlayerCharacter::APlayerCharacter()
 	bUseControllerRotationYaw = true;
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
-	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = true;
 	
+	
+	GetMesh()->SetupAttachment(Camera);
+	GetMesh()->SetCastShadow(false);
+	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = true;
+	GetCharacterMovement()->bCrouchMaintainsBaseLocation = true;
 
 	// 3. 이동 시 회전 설정
-	GetCharacterMovement()->bOrientRotationToMovement = true; // 이동 방향으로 몸 틀기
 	GetCharacterMovement()->RotationRate = FRotator(0.f, 540.f, 0.f);
-	
-	GetCharacterMovement()->bCrouchMaintainsBaseLocation = true;
 
 	MoveSpeed = 600.f;
 	SprintSpeedMultiplier = 1.5f;
@@ -63,11 +67,6 @@ APlayerCharacter::APlayerCharacter()
 	InteractionComponent = CreateDefaultSubobject<UInteractionComponent>(TEXT("InteractionComponent"));
 	VisibilityComponent = CreateDefaultSubobject<UVisibilityComponent>(TEXT("VisibilityComponent"));
 	
-	//그림자 제거
-	if (GetMesh())
-	{
-		GetMesh()->SetCastShadow(false);
-	}
 }
 
 // Called when the game starts or when spawned
@@ -107,10 +106,10 @@ void APlayerCharacter::BeginPlay()
 	{
 		if (PC->PlayerCameraManager)
 		{
-			// 위로 볼 수 있는 최대 각도 (예: 60도)
-			PC->PlayerCameraManager->ViewPitchMax = 60.0f;
-			// 아래로 볼 수 있는 최소 각도 (예: -60도)
-			PC->PlayerCameraManager->ViewPitchMin = -45.0f;
+			// 위로 볼 수 있는 최대 각도 
+			PC->PlayerCameraManager->ViewPitchMax = 70.0f;
+			// 아래로 볼 수 있는 최소 각도 
+			PC->PlayerCameraManager->ViewPitchMin = -70.0f;
 		}
 	}
 
@@ -154,26 +153,21 @@ void APlayerCharacter::Tick(float DeltaTime)
 		StopRun(FInputActionValue()); // 스태미나 고갈 시 강제 정지
 	}
 	
-	if (!GetCharacterMovement()->IsCrouching())
+	// 앉기 동작시 자연스러운 카메라 보간
+	if (Camera)
 	{
-		SpringArm->bEnableCameraLag = false;
+		const float BaseCameraZ = 75.0f; 
+	
+		CameraZOffset = FMath::FInterpTo(CameraZOffset, 0.0f, DeltaTime, CrouchBlendSpeed);
+		
+		static float CurrentLeanY = 0.0f;
+		float TargetY = LeanAmount * MaxLeanOffset;
+		CurrentLeanY = FMath::FInterpTo(CurrentLeanY, TargetY, DeltaTime, LeanSpeed);
+
+		// X, Y축은 칼같이 고정되고 오직 Z축(높이)만 부드럽게 움직입니다.
+		Camera->SetRelativeLocation(FVector(20.0f, CurrentLeanY, BaseCameraZ + CameraZOffset));
 	}
 	
-	if (SpringArm)
-	{
-		float TargetY = LeanAmount * -MaxLeanOffset;
-		
-		FVector CurrentRelativeLoc = SpringArm->GetRelativeLocation();
-		
-		CurrentRelativeLoc.Y = FMath::FInterpTo(
-			CurrentRelativeLoc.Y,
-			TargetY,
-			DeltaTime,
-			LeanSpeed
-		);
-		
-		SpringArm->SetRelativeLocation(CurrentRelativeLoc);
-	}
 }
 
 // 캐릭터 상호작용 
@@ -301,12 +295,6 @@ void APlayerCharacter::StartJump(const FInputActionValue& value)
 	if (value.Get<bool>())
 	{
 		Jump();
-		
-		if (JumpSound)
-		{
-			// 캐릭터 위치에서 점프 소리 재생
-			UGameplayStatics::PlaySoundAtLocation(this, JumpSound, GetActorLocation());
-		}
 	}
 }
 
@@ -324,12 +312,6 @@ void APlayerCharacter::StartRun(const FInputActionValue& value)
 	{
 		GetCharacterMovement()->MaxWalkSpeed = SprintSpeed;
 		StaminaComponent->SetSprinting(true);
-		
-		if (RunSound)
-		{
-			// 캐릭터 위치에서 점프 소리 재생
-			UGameplayStatics::PlaySoundAtLocation(this, RunSound, GetActorLocation());
-		}
 	}
 }
 
@@ -346,18 +328,20 @@ void APlayerCharacter::StartHide(const FInputActionValue& value)
 {
 	if (GetCharacterMovement() && !GetCharacterMovement()->IsFalling())
 	{
-		if (SpringArm)
-		{
-			SpringArm->bEnableCameraLag = true;
-			SpringArm->CameraLagSpeed = 12.0f; 
-		}
+		CameraZOffset = 40.0f;
+		
 		Crouch(); // 엔진 내장 함수 루트 컴포넌트를 아래로 내려줌
 	}
 }
 
 void APlayerCharacter::StopHide(const FInputActionValue& value)
 {
-	UnCrouch();
+	if (GetCharacterMovement() && GetCharacterMovement()->IsCrouching())
+	{
+		CameraZOffset = -40.0f;
+
+		UnCrouch();
+	}
 }
 
 void APlayerCharacter::Roll(const FInputActionValue& value)
@@ -375,12 +359,6 @@ void APlayerCharacter::Roll(const FInputActionValue& value)
 	if (MontageLength > 0.f)
 	{
 		bIsRolling = true;
-		
-		if (RollSound)
-		{
-			// 캐릭터 위치에서 점프 소리 재생
-			UGameplayStatics::PlaySoundAtLocation(this, RollSound, GetActorLocation());
-		}
 
 		// 몽타주 종료 시점을 알기 위해 델리게이트 연결
 		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
@@ -404,12 +382,12 @@ void APlayerCharacter::OnRollMontageEnded(UAnimMontage* Montage, bool bInterrupt
 
 void APlayerCharacter::StartLeanRight(const FInputActionValue& value)
 {
-	LeanAmount = -1.0f;
+	LeanAmount = 1.0f;
 }
 
 void APlayerCharacter::StartLeanLeft(const FInputActionValue& value)
 {
-	LeanAmount = 1.0f;
+	LeanAmount = -1.0f;
 }
 
 void APlayerCharacter::StopLean(const FInputActionValue& value)

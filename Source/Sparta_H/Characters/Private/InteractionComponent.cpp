@@ -22,40 +22,60 @@ void UInteractionComponent::BeginPlay()
 
 void UInteractionComponent::PerformInteraction(UCameraComponent* Camera)
 {
-	if (!Camera || !GetWorld()) return;
-	
+	// 1. 필수 컴포넌트 체크 및 쿨타임 중인지 검사
+	if (!Camera || !GetWorld() || bIsCooldown) return;
+    
 	FVector Start = Camera->GetComponentLocation();
 	FVector End = Start + (Camera->GetForwardVector() * TraceDistance);
-	
+    
 	FHitResult HitResult;
 	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(GetOwner()); // 컴포넌트 소유자(플레이어) 무시
+	Params.AddIgnoredActor(GetOwner());
 
 	bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, Params);
 
-	// --- 디버그 라인 출력 ---
-	// 액터 시 초록색, 맞으면 노란색 미적중 시 빨간색으로 표시
 	FColor LineColor = FColor::Red;
-	
+    
 	if (bHit)
 	{
-		LineColor = FColor::Yellow; //
-		
+		LineColor = FColor::Yellow;
+        
 		if (AActor* HitActor = HitResult.GetActor())
 		{
 			APlayerCharacter* Player = Cast<APlayerCharacter>(GetOwner());
-			
+            
 			if (HitActor->GetClass()->ImplementsInterface(UMissionInteractableInterface::StaticClass()))
 			{
 				LineColor = FColor::Green;
-				
+                
 				if (IMissionInteractableInterface::Execute_CanInteract(HitActor, Player))
 				{
+					// 실제 인터랙션 실행
 					IMissionInteractableInterface::Execute_Interact(HitActor, Player);
+                    
+					// 2. 인터랙션 성공 시 쿨타임 가동
+					bIsCooldown = true;
+                    
+					// InteractionCooldown만큼의 시간이 흐른 뒤 ResetInteractionCooldown 함수를 호출함
+					GetWorld()->GetTimerManager().SetTimer(
+						CooldownTimerHandle, 
+						this, 
+						&UInteractionComponent::ResetInteractionCooldown, 
+						InteractionCooldown, 
+						false
+					);
 				}
 			}
 		}
 	}
-	
+    
 	DrawDebugLine(GetWorld(), Start, End, LineColor, false, 2.0f, 0, 1.0f);
+}
+
+void UInteractionComponent::ResetInteractionCooldown()
+{
+	bIsCooldown = false;
+    
+	// 타이머 핸들 깔끔하게 정리 (선택 사항이지만 권장)
+	GetWorld()->GetTimerManager().ClearTimer(CooldownTimerHandle);
 }
