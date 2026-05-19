@@ -36,6 +36,7 @@ public:
 
 protected:
     virtual void BeginPlay() override;
+    virtual void Tick(float DeltaTime) override;
     virtual void InitializeStats() override;
     virtual void Die() override;
 
@@ -90,6 +91,8 @@ protected:
 
     FTimerHandle PrecisionCycleHandle;
     FTimerHandle PrecisionFireHandle;
+    float PrecisionAimElapsed = 0.f;
+    bool bIsAiming = false;
 
     void StartPrecisionCycle();
     void StartPrecisionAim();
@@ -108,6 +111,9 @@ protected:
     // ─── Precision Warning Widget (머리 위 경고) ──────────────────────────
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Boss|UI")
     UWidgetComponent* PrecisionWarningWidgetComp;
+
+    UFUNCTION(BlueprintPure, Category = "Boss|UI")
+    class UBossPrecisionWidget* GetPrecisionWidget() const;
 
     // ─── Reward ───────────────────────────────────────────────────────────
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Reward")
