@@ -376,6 +376,9 @@ void AEnemyCharacter::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
     {
         if (Stimulus.WasSuccessfullySensed())
         {
+            UE_LOG(LogTemp, Warning, TEXT("[%s] 청각 감지! 소음 위치=%s | 현재 경계=%d"),
+                *GetName(), *Stimulus.StimulusLocation.ToString(), (int32)CurrentAlertLevel);
+
             // 소음 위치를 마지막 알려진 위치로 기록 → BT가 조사하러 이동
             BB->SetValueAsVector(BBKeys::LAST_KNOWN_LOCATION, Stimulus.StimulusLocation);
 
@@ -396,7 +399,7 @@ void AEnemyCharacter::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
 
 void AEnemyCharacter::StartFirePattern(AActor* TargetActor)
 {
-    if (bIsDead || !TargetActor) return;
+    if (bIsDead || !TargetActor || TargetActor == this) return;
 
     if (CurrentShotCount == 0 && !GetWorldTimerManager().IsTimerActive(FirePatternTimerHandle))
     {

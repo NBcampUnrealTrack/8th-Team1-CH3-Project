@@ -140,14 +140,21 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 void UCombatManager::EmitNoise(const FVector& NoiseLocation, float NoiseRange)
 {
 	APawn* OwnerPawn = Cast<APawn>(GetOwner());
-	if (!IsValid(OwnerPawn)) return;
+	if (!IsValid(OwnerPawn))
+	{
+		UE_LOG(LogTemp, Error, TEXT("[EmitNoise] OwnerPawn이 NULL — CombatManager 소유자가 Pawn이 아님"));
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[EmitNoise] 소음 발생 | Location=%s | Range=%.0f | Instigator=%s"),
+		*NoiseLocation.ToString(), NoiseRange, *OwnerPawn->GetName());
 
 	UAISense_Hearing::ReportNoiseEvent(
 		GetWorld(),
 		NoiseLocation,
-		1.f, // Loudness (0.0~1.0)
+		1.f,
 		OwnerPawn,
-		NoiseRange, // 무기별 Range를 여기에 전달
+		NoiseRange,
 		NAME_None
 	);
 }
