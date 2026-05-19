@@ -88,6 +88,9 @@ public:
 	// 총기 착용 여부
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Equipment")
 	bool bIsEquipped = false;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Equipment")
+	bool bHasRifle;
 
 	// 구르기 관련 , 일회성 동작이므로 몽타주 사용
 	bool bIsRolling = false;
