@@ -50,7 +50,7 @@ public:
 
     // 3점사 패턴 시작 함수 (Behavior Tree 등에서 호출)
     UFUNCTION(BlueprintCallable, Category = "AI|Combat")
-    void StartFirePattern(AActor* TargetActor);
+    virtual void StartFirePattern(AActor* TargetActor);
 
     UFUNCTION(BlueprintCallable, Category = "AI|Combat")
     bool FireAtTarget(AActor* TargetActor);
@@ -100,6 +100,9 @@ protected:
     // ---------------------------------------------------------------
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|UI")
     UWidgetComponent* AlertIconWidgetComp;
+
+    UPROPERTY(EditDefaultsOnly, Category = "AI|UI")
+    float AlertIconHeightOffset = 120.f;
 
     UFUNCTION()
     void OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus);
