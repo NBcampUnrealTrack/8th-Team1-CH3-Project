@@ -170,4 +170,12 @@ public:
 	// 무기 스켈레탈 메시에 만들어 둔 총구 소켓 이름. 메시별로 다를 수 있어 DA에서 지정
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|VFX")
 	FName MuzzleSocketName = TEXT("Muzzle");
+	
+	
+	// 💡 블루프린트에서 각 총마다 수정할 수 있도록 노출
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon Placement")
+	FVector HandLocationOffset;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon Placement")
+	FRotator HandRotationOffset;
 };

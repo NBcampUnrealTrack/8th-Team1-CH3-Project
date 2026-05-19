@@ -32,6 +32,9 @@ AWeaponBase::AWeaponBase()
 	WeaponMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	AmmoComponent = CreateDefaultSubobject<UAmmoComponent>(TEXT("AmmoComponent"));
+	
+	HandLocationOffset = FVector::ZeroVector;
+	HandRotationOffset = FRotator::ZeroRotator;
 }
 
 void AWeaponBase::Initialize(UWeaponDataAsset* InWeaponData)

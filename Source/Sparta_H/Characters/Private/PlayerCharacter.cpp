@@ -452,6 +452,8 @@ void APlayerCharacter::SpawnEquippedWeapons()
 		                          FAttachmentTransformRules::SnapToTargetIncludingScale,
 		                          FName(TEXT("GripPoint")));
 		Weapon->SetActorHiddenInGame(true);
+		Weapon->SetActorRelativeLocation(Weapon->HandLocationOffset);
+		Weapon->SetActorRelativeRotation(Weapon->HandRotationOffset);
 
 		SpawnedWeapons.Add(Weapon);
 	}
