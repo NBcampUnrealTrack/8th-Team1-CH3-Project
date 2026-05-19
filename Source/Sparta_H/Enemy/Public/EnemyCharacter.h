@@ -61,6 +61,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "AI|Patrol")
     FVector GetPatrolWorldLocationB() const { return PatrolWorldLocationB; }
 
+    UFUNCTION(BlueprintCallable, Category = "AI")
+    UBehaviorTree* GetEnemyBT() const { return EnemyBT; }
+
 protected:
     virtual void BeginPlay() override;
     virtual void InitializeStats() override;
@@ -71,6 +74,7 @@ protected:
 
     UPROPERTY(EditDefaultsOnly, Category = "AI|Animation")
     UAnimMontage* FireMontage;
+
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
     UAIPerceptionComponent* AIPerceptionComp;

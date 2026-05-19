@@ -1,4 +1,5 @@
 #include "CCTV.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
 #include "Perception/AIPerceptionTypes.h"
@@ -25,6 +26,13 @@ ACCTV::ACCTV()
         GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     }
 
+    // 중력 및 이동 비활성화 — CharacterMovement가 있으면 CCTV가 바닥으로 떨어짐
+    if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+    {
+        MoveComp->GravityScale = 0.f;
+        MoveComp->SetMovementMode(MOVE_None);
+    }
+
     // 스태틱 메쉬 컴포넌트 추가
     CCTVMeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("CCTVMeshComp"));
     CCTVMeshComp->SetupAttachment(GetRootComponent());
@@ -48,7 +56,23 @@ ACCTV::ACCTV()
 
 void ACCTV::BeginPlay()
 {
+    // Super::BeginPlay() 안에서 SetDefaultMovementMode()가 MOVE_None을 덮어쓰고
+    // 위치/회전을 재조정하므로, 먼저 트랜스폼을 저장해 둔다
+    const FVector SavedLocation = GetActorLocation();
+    const FRotator SavedRotation = GetActorRotation();
+
     Super::BeginPlay();
+
+    // 이동 모드 재비활성화 (Super가 Walking/Falling으로 되돌림)
+    if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+    {
+        MoveComp->DisableMovement();
+        MoveComp->GravityScale = 0.f;
+    }
+
+    // 에디터에서 배치한 위치·회전 복원
+    SetActorLocationAndRotation(SavedLocation, SavedRotation);
+
     AIPerceptionComp->OnTargetPerceptionUpdated.AddDynamic(this, &ACCTV::OnTargetPerceived);
 }
 
@@ -71,11 +95,12 @@ void ACCTV::Die()
         {
             // 현재 회전에서 Pitch를 -90도로 설정 (아래를 보게)
             FRotator BrokenRotation = GetActorRotation();
-            BrokenRotation.Pitch = -60.0f;
+            BrokenRotation.Roll= 60.0f;
 
+            const FVector SpawnLocation = GetActorLocation() + FVector(0.f, 0.f, -30.f);
             AStaticMeshActor* BrokenActor = World->SpawnActor<AStaticMeshActor>(
                 AStaticMeshActor::StaticClass(),
-                GetActorLocation(),
+                SpawnLocation,
                 BrokenRotation
             );
 
@@ -83,6 +108,8 @@ void ACCTV::Die()
             {
                 BrokenActor->GetStaticMeshComponent()->SetMobility(EComponentMobility::Movable);
                 BrokenActor->GetStaticMeshComponent()->SetStaticMesh(BrokenCCTVMesh);
+                // 에디터에서 줄인 원본 스케일 그대로 적용
+                BrokenActor->GetStaticMeshComponent()->SetWorldScale3D(CCTVMeshComp->GetComponentScale());
                 UE_LOG(LogTemp, Log, TEXT("CCTV [%s]: 파괴된 메시 스폰 완료."), *GetName());
             }
         }

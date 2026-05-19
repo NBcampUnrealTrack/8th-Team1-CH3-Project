@@ -82,6 +82,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Game")
 	void ShowClearMenu(float ClearTime, int32 KillCount);
 
+
 protected:
 	virtual void BeginPlay() override;
 };
