@@ -24,11 +24,7 @@ protected:
 	// 이 트리거와 연결된 스폰 볼륨들 (레벨에서 직접 할당)
 	UPROPERTY(EditInstanceOnly, Category="Trigger|Settings")
 	TArray<TObjectPtr<ABaseSpawnVolume>> TargetSpawnVolumes;
-	
-	// 1회성 트리거 여부
-	UPROPERTY(EditInstanceOnly, Category="Trigger|Settings")
-	bool bIsOnce = true;
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly,Category="Trigger|Settings")
 	bool bHasTriggered = false;
 	

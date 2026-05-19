@@ -34,7 +34,7 @@ void ARespawnTrigger::HandleOnComponentBeginOverlap(
 	bool /*bFromSweep*/, 
 	const FHitResult& /*SweepResult*/)
 {
-	if (bHasTriggered && bIsOnce)
+	if (bHasTriggered)
 	{
 		return;
 	}

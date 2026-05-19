@@ -42,7 +42,6 @@ APlayerCharacter::APlayerCharacter()
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
 	
-	
 	GetMesh()->SetupAttachment(Camera);
 	GetMesh()->SetCastShadow(false);
 	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = true;
@@ -67,6 +66,7 @@ APlayerCharacter::APlayerCharacter()
 	InteractionComponent = CreateDefaultSubobject<UInteractionComponent>(TEXT("InteractionComponent"));
 	VisibilityComponent = CreateDefaultSubobject<UVisibilityComponent>(TEXT("VisibilityComponent"));
 	
+	bHasRifle = false;
 }
 
 // Called when the game starts or when spawned
@@ -574,8 +574,10 @@ void APlayerCharacter::OnFirePressed(const FInputActionValue& /*Value*/)
 		return;
 	}
 
+	UWeaponDataAsset* Data = CurrentWeapon->GetWeaponData();
+
 	// 투척 무기는 Started/Completed 로 처리 — Triggered 경로에서는 무시
-	if (UWeaponDataAsset* Data = CurrentWeapon->GetWeaponData())
+	if (Data)
 	{
 		if (Data->FireMode == EWeaponFireMode::Throwable)
 		{
@@ -586,12 +588,12 @@ void APlayerCharacter::OnFirePressed(const FInputActionValue& /*Value*/)
 	CurrentWeapon->Fire();
 
 	// 사격 시 즉시 최대 소음 발생
-	if (NoiseComponent)
+	// Modified: 칼 무기는 소음을 최대로 만들지 않음
+	if (NoiseComponent && Data && Data->WeaponType != EWeaponType::Knife)
 	{
 		NoiseComponent->SetNoiseToMax();
 	}
 }
-
 void APlayerCharacter::OnReloadPressed(const FInputActionValue& /*Value*/)
 {
 	if (CurrentWeapon != nullptr)
