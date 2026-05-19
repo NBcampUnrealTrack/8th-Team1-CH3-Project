@@ -485,16 +485,28 @@ void AEnemyCharacter::Die()
 
     GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
+    // 이동만 멈추고 Unpossess는 몽타주 시작 후로 미룸
     if (AAIController* AIC = Cast<AAIController>(GetController()))
     {
         AIC->StopMovement();
+    }
+
+    if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+    {
+        MoveComp->DisableMovement();
+    }
+
+    if (AAIController* AIC = Cast<AAIController>(GetController()))
+    {
         AIC->UnPossess();
     }
 
-    if (DeathMontage)
+    UAnimInstance* AnimInst = GetMesh() ? GetMesh()->GetAnimInstance() : nullptr;
+    if (DeathMontage && AnimInst)
     {
-        const float MontageDuration = PlayAnimMontage(DeathMontage);
-        const float DestroyDelay = MontageDuration > 0.f ? MontageDuration : 2.f;
+        const float MontageDuration = AnimInst->Montage_Play(DeathMontage, 1.0f);
+        const float DestroyDelay = FMath::Max(MontageDuration - 0.2f, 0.1f);
+
         FTimerHandle DestroyTimerHandle;
         GetWorldTimerManager().SetTimer(DestroyTimerHandle, [this]()
         {
