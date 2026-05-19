@@ -25,14 +25,14 @@
 APlayerCharacter::APlayerCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
-
+	
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->SetupAttachment(RootComponent);
 	SpringArm->SetRelativeLocation(FVector(0.0f, 0.0f, 65.0f));
-
+	
 	SpringArm->bUsePawnControlRotation = true;
 	SpringArm->TargetArmLength = 0.0f; // 1인칭이므로 소켓 거리는 0
-
+	
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 	Camera->bUsePawnControlRotation = false;
@@ -96,6 +96,8 @@ void APlayerCharacter::LoadCheckpoint(const FPlayerCheckpointData& CheckpointDat
 	{
 		HealthComponent->SetHealth(HealthComponent->GetMaxHealth());
 	}
+	
+	bHasRifle = false;
 }
 
 // Called when the game starts or when spawned
@@ -129,7 +131,7 @@ void APlayerCharacter::BeginPlay()
 	{
 		CombatManager->FeedbackHandler->OnKillDelegate.AddDynamic(this, &APlayerCharacter::NotifyEnemyKilled);
 	}
-
+	
 	//카메라 회전 각도 설정
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
@@ -158,17 +160,17 @@ void APlayerCharacter::Tick(float DeltaTime)
 			FMath::Vector2DInterpTo(RemainingRecoil, FVector2D::ZeroVector, DeltaTime, RecoilSpeed);
 
 		FVector2D RecoilToApply = RemainingRecoil - InsideInterp;
-
+		
 		AddControllerYawInput(RecoilToApply.X);
 		AddControllerPitchInput(RecoilToApply.Y);
-
+		
 		RemainingRecoil = InsideInterp;
 	}
 	else
 	{
 		RemainingRecoil = FVector2D::ZeroVector;
 	}
-
+	
 	// 반동 회복 로직
 	if (RecoilPitchAccum > KINDA_SMALL_NUMBER)
 	{
@@ -182,14 +184,14 @@ void APlayerCharacter::Tick(float DeltaTime)
 	{
 		StopRun(FInputActionValue()); // 스태미나 고갈 시 강제 정지
 	}
-
+	
 	// 앉기 동작시 자연스러운 카메라 보간
 	if (Camera)
 	{
-		constexpr float BaseCameraZ = 75.0f;
-
+		const float BaseCameraZ = 75.0f; 
+	
 		CameraZOffset = FMath::FInterpTo(CameraZOffset, 0.0f, DeltaTime, CrouchBlendSpeed);
-
+		
 		static float CurrentLeanY = 0.0f;
 		float TargetY = LeanAmount * MaxLeanOffset;
 		CurrentLeanY = FMath::FInterpTo(CurrentLeanY, TargetY, DeltaTime, LeanSpeed);
@@ -197,6 +199,7 @@ void APlayerCharacter::Tick(float DeltaTime)
 		// X, Y축은 칼같이 고정되고 오직 Z축(높이)만 부드럽게 움직입니다.
 		Camera->SetRelativeLocation(FVector(20.0f, CurrentLeanY, BaseCameraZ + CameraZOffset));
 	}
+	
 }
 
 // 캐릭터 상호작용 
@@ -298,6 +301,7 @@ void APlayerCharacter::Move(const FInputActionValue& value)
 
 		AddMovementInput(RightDirection, MoveInput.Y);
 		AddMovementInput(ForwardDirection, MoveInput.X);
+		
 	}
 }
 
@@ -357,7 +361,7 @@ void APlayerCharacter::StartHide(const FInputActionValue& value)
 	if (GetCharacterMovement() && !GetCharacterMovement()->IsFalling())
 	{
 		CameraZOffset = 40.0f;
-
+		
 		Crouch(); // 엔진 내장 함수 루트 컴포넌트를 아래로 내려줌
 	}
 }
@@ -603,8 +607,10 @@ void APlayerCharacter::OnFirePressed(const FInputActionValue& /*Value*/)
 		return;
 	}
 
+	UWeaponDataAsset* Data = CurrentWeapon->GetWeaponData();
+
 	// 투척 무기는 Started/Completed 로 처리 — Triggered 경로에서는 무시
-	if (UWeaponDataAsset* Data = CurrentWeapon->GetWeaponData())
+	if (Data)
 	{
 		if (Data->FireMode == EWeaponFireMode::Throwable)
 		{
@@ -615,7 +621,8 @@ void APlayerCharacter::OnFirePressed(const FInputActionValue& /*Value*/)
 	CurrentWeapon->Fire();
 
 	// 사격 시 즉시 최대 소음 발생
-	if (NoiseComponent)
+	// Modified: 칼 무기는 소음을 최대로 만들지 않음
+	if (NoiseComponent && Data && Data->WeaponType != EWeaponType::Knife)
 	{
 		NoiseComponent->SetNoiseToMax();
 	}
@@ -805,13 +812,13 @@ void APlayerCharacter::ApplyRecoil(const FRecoilData& Recoil)
 	// // 음수 pitch = 카메라 위로(pitch축 기준)
 	// AddControllerPitchInput(-Recoil.VerticalRecoil);
 	// AddControllerYawInput(FMath::RandRange(-Recoil.HorizontalRecoil, Recoil.HorizontalRecoil));
-
+	
 	float TargetPitch = -Recoil.VerticalRecoil;
 	float TargetYaw = FMath::RandRange(-Recoil.HorizontalRecoil, Recoil.HorizontalRecoil);
 
 	RemainingRecoil.X += TargetYaw;
 	RemainingRecoil.Y += TargetPitch;
-
+	
 	// Modified: 반동 발생 시 누적 회복량(Pitch)을 업데이트하여 회복 로직이 작동하도록 함
 	RecoilPitchAccum += Recoil.VerticalRecoil;
 	RecoilSpeed = Recoil.RecoilSpeed;
@@ -899,7 +906,7 @@ void APlayerCharacter::CompleteCurrentObjective()
 
 		// 클리어 UI 표시 요청
 		float ClearTime = GetWorld()->GetTimeSeconds() - MissionStartTime;
-
+		
 		APlayerController* TargetPC = Cast<APlayerController>(GetController());
 		if (TargetPC == nullptr)
 		{
@@ -1054,8 +1061,8 @@ void APlayerCharacter::UpdateMissionObjective()
 	}
 }
 
-float APlayerCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEvent, AController* EventInstigator,
-                                   AActor* DamageCauser)
+float APlayerCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator,
+	AActor* DamageCauser)
 {
 	float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
@@ -1067,10 +1074,7 @@ float APlayerCharacter::TakeDamage(float DamageAmount, const FDamageEvent& Damag
 
 void APlayerCharacter::OnDeath()
 {
-	if (bIsDead)
-	{
-		return; // 이미 죽었다면 무시
-	}
+	if (bIsDead) return; // 이미 죽었다면 무시
 
 	bIsDead = true;
 	UE_LOG(LogTemp, Warning, TEXT("플레이어 사망: 모든 기능을 중지합니다."));
