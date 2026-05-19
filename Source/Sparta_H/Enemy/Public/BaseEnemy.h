@@ -31,6 +31,10 @@ public:
     UFUNCTION(BlueprintCallable, Category = "AI")
     virtual void OnAlertLevelChanged(EAlertLevel NewLevel);
 
+    // 경계 상태 변화를 블루프린트에서 처리하기 위한 이벤트
+    UFUNCTION(BlueprintImplementableEvent, Category = "AI", meta = (DisplayName = "OnAlertLevelChanged"))
+    void OnAlertLevelChanged_BP(EAlertLevel NewLevel);
+
 protected:
     virtual void BeginPlay() override;
 
