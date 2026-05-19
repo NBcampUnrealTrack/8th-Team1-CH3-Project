@@ -66,20 +66,7 @@ void AEnemyCharacter::BeginPlay()
     AIPerceptionComp->OnTargetPerceptionUpdated.AddDynamic(this, &AEnemyCharacter::OnTargetPerceived);
     ApplyPerceptionStats(IdleStats);
     
-    if (AAIController* AIC = Cast<AAIController>(GetController()))
-    {
-        if (EnemyBT)
-        {
-            AIC->RunBehaviorTree(EnemyBT);
-        }
-        // 리스폰/스폰 시 블랙보드에 에디터에서 지정한 A, B 절대 좌표를 그대로 주입
-        if (UBlackboardComponent* BB = AIC->GetBlackboardComponent())
-        {
-            // "PatrolLocationA", "PatrolLocationB"는 블랙보드에 생성한 Vector 키 이름입니다.
-            BB->SetValueAsVector(BBKeys::LOCATION_A, PatrolWorldLocationA);
-            BB->SetValueAsVector(BBKeys::LOCATION_B, PatrolWorldLocationB);
-        }
-    }
+    // BT 실행 및 블랙보드 초기화는 MyAIController::OnPossess에서 처리
     
     if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
     {
