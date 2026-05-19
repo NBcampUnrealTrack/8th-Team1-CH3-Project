@@ -34,6 +34,25 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCrosshairStateChangedDelegate, EC
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPlayerTakeDamage, float, DamageAmount);
 
 
+// 체크포인트 저장을 위한 구조체
+USTRUCT(BlueprintType)
+struct FPlayerCheckpointData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 MissionIndex = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bHasRifle = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector Location = FVector::ZeroVector;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FRotator Rotation = FRotator::ZeroRotator;
+};
+
 UCLASS()
 class SPARTA_H_API APlayerCharacter : public ACharacter
 {
@@ -42,7 +61,18 @@ class SPARTA_H_API APlayerCharacter : public ACharacter
 public:
 	// Sets default values for this character's properties
 	APlayerCharacter();
-	
+
+	// Modified: 라이플 보유 여부 플래그
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Status")
+	bool bHasRifle = false;
+
+	/** 체크포인트 저장/로드 **/
+	UFUNCTION(BlueprintCallable, Category = "Checkpoint")
+	FPlayerCheckpointData SaveCheckpoint();
+
+	UFUNCTION(BlueprintCallable, Category = "Checkpoint")
+	void LoadCheckpoint(const FPlayerCheckpointData& CheckpointData);
+
 	//스프링 암
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components")
 	USpringArmComponent* SpringArm;
@@ -74,9 +104,9 @@ public:
 	float MaxLeanOffset = 25.0f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
 	float LeanSpeed = 3.5f;
-	
+
 	float CameraZOffset = 0.0f;
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
 	float CrouchBlendSpeed = 5.0f; // 카메라가 부드럽게 움직이는 속
 
@@ -179,8 +209,8 @@ public:
 
 	// 미션 데이터로부터 현재 목표 텍스트 업데이트
 	void UpdateMissionObjective();
-	float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator,
-	                 AActor* DamageCauser);
+	virtual float TakeDamage(float DamageAmount, const FDamageEvent& DamageEvent, AController* EventInstigator,
+	                         AActor* DamageCauser) override;
 
 	// 미션 성공/실패 이벤트
 	UPROPERTY(BlueprintAssignable, Category = "Objective")
@@ -240,7 +270,7 @@ public:
 	FOnPlayerTakeDamage OnPlayerTakeDamage;
 
 	/** End of 플레이어 스탯 / 목표 **/
-	
+
 	/** 사망 시 호출될 함수 **/
 	UFUNCTION(BlueprintCallable)
 	void OnDeath();
@@ -248,7 +278,7 @@ public:
 	/** 사망 상태를 확인하는 플래그 (중복 사망 처리 방지) **/
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Status")
 	bool bIsDead = false;
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
 	TObjectPtr<class USoundBase> MoveSound;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
@@ -264,16 +294,15 @@ public:
 
 	/** 미션 시작 시간 **/
 	float MissionStartTime = 0.0f;
-	
+
 protected:
 	FVector2D TargetRecoil;
 	FVector2D CurrentRecoil;
 	FVector2D RemainingRecoil;
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon|Recoil")
 	float RecoilSpeed;
 
-	
 private:
 	/** Weapon Input Callbacks **/
 	void OnEquipSlotPressed(const FInputActionValue& Value);

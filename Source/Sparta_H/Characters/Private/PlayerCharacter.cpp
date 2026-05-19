@@ -25,14 +25,14 @@
 APlayerCharacter::APlayerCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
-	
+
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->SetupAttachment(RootComponent);
 	SpringArm->SetRelativeLocation(FVector(0.0f, 0.0f, 65.0f));
-	
+
 	SpringArm->bUsePawnControlRotation = true;
 	SpringArm->TargetArmLength = 0.0f; // 1인칭이므로 소켓 거리는 0
-	
+
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 	Camera->bUsePawnControlRotation = false;
@@ -41,8 +41,8 @@ APlayerCharacter::APlayerCharacter()
 	bUseControllerRotationYaw = true;
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
-	
-	
+
+
 	GetMesh()->SetupAttachment(Camera);
 	GetMesh()->SetCastShadow(false);
 	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = true;
@@ -66,7 +66,36 @@ APlayerCharacter::APlayerCharacter()
 	NoiseComponent = CreateDefaultSubobject<UNoiseComponent>(TEXT("NoiseComponent"));
 	InteractionComponent = CreateDefaultSubobject<UInteractionComponent>(TEXT("InteractionComponent"));
 	VisibilityComponent = CreateDefaultSubobject<UVisibilityComponent>(TEXT("VisibilityComponent"));
-	
+}
+
+FPlayerCheckpointData APlayerCharacter::SaveCheckpoint()
+{
+	FPlayerCheckpointData Data;
+	Data.MissionIndex = CurrentMissionIndex;
+	Data.bHasRifle = bHasRifle;
+	Data.Location = GetActorLocation();
+	Data.Rotation = GetActorRotation();
+	return Data;
+}
+
+void APlayerCharacter::LoadCheckpoint(const FPlayerCheckpointData& CheckpointData)
+{
+	CurrentMissionIndex = CheckpointData.MissionIndex;
+	bHasRifle = CheckpointData.bHasRifle;
+
+	// 위치 및 회전 복구
+	SetActorLocationAndRotation(CheckpointData.Location, CheckpointData.Rotation, false, nullptr,
+	                            ETeleportType::TeleportPhysics);
+
+	// 미션 데이터 동기화 (UI 및 내부 상태 갱신)
+	UpdateMissionObjective();
+
+	// Modified: 사망 상태 해제 및 체력 최대치로 회복
+	bIsDead = false;
+	if (HealthComponent)
+	{
+		HealthComponent->SetHealth(HealthComponent->GetMaxHealth());
+	}
 }
 
 // Called when the game starts or when spawned
@@ -100,7 +129,7 @@ void APlayerCharacter::BeginPlay()
 	{
 		CombatManager->FeedbackHandler->OnKillDelegate.AddDynamic(this, &APlayerCharacter::NotifyEnemyKilled);
 	}
-	
+
 	//카메라 회전 각도 설정
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
@@ -125,20 +154,21 @@ void APlayerCharacter::Tick(float DeltaTime)
 
 	if (!RemainingRecoil.IsNearlyZero(0.001f))
 	{
-		FVector2D InsideInterp = FMath::Vector2DInterpTo(RemainingRecoil, FVector2D::ZeroVector, DeltaTime, RecoilSpeed);
-		
+		FVector2D InsideInterp =
+			FMath::Vector2DInterpTo(RemainingRecoil, FVector2D::ZeroVector, DeltaTime, RecoilSpeed);
+
 		FVector2D RecoilToApply = RemainingRecoil - InsideInterp;
-		
+
 		AddControllerYawInput(RecoilToApply.X);
 		AddControllerPitchInput(RecoilToApply.Y);
-		
+
 		RemainingRecoil = InsideInterp;
 	}
 	else
 	{
 		RemainingRecoil = FVector2D::ZeroVector;
 	}
-	
+
 	// 반동 회복 로직
 	if (RecoilPitchAccum > KINDA_SMALL_NUMBER)
 	{
@@ -152,14 +182,14 @@ void APlayerCharacter::Tick(float DeltaTime)
 	{
 		StopRun(FInputActionValue()); // 스태미나 고갈 시 강제 정지
 	}
-	
+
 	// 앉기 동작시 자연스러운 카메라 보간
 	if (Camera)
 	{
-		const float BaseCameraZ = 75.0f; 
-	
+		constexpr float BaseCameraZ = 75.0f;
+
 		CameraZOffset = FMath::FInterpTo(CameraZOffset, 0.0f, DeltaTime, CrouchBlendSpeed);
-		
+
 		static float CurrentLeanY = 0.0f;
 		float TargetY = LeanAmount * MaxLeanOffset;
 		CurrentLeanY = FMath::FInterpTo(CurrentLeanY, TargetY, DeltaTime, LeanSpeed);
@@ -167,7 +197,6 @@ void APlayerCharacter::Tick(float DeltaTime)
 		// X, Y축은 칼같이 고정되고 오직 Z축(높이)만 부드럽게 움직입니다.
 		Camera->SetRelativeLocation(FVector(20.0f, CurrentLeanY, BaseCameraZ + CameraZOffset));
 	}
-	
 }
 
 // 캐릭터 상호작용 
@@ -269,7 +298,6 @@ void APlayerCharacter::Move(const FInputActionValue& value)
 
 		AddMovementInput(RightDirection, MoveInput.Y);
 		AddMovementInput(ForwardDirection, MoveInput.X);
-		
 	}
 }
 
@@ -329,7 +357,7 @@ void APlayerCharacter::StartHide(const FInputActionValue& value)
 	if (GetCharacterMovement() && !GetCharacterMovement()->IsFalling())
 	{
 		CameraZOffset = 40.0f;
-		
+
 		Crouch(); // 엔진 내장 함수 루트 컴포넌트를 아래로 내려줌
 	}
 }
@@ -439,7 +467,8 @@ void APlayerCharacter::SpawnEquippedWeapons()
 		}
 
 		TSubclassOf<AWeaponBase> ClassToSpawn = WeaponData->WeaponClass
-			? WeaponData->WeaponClass : WeaponBaseClass;
+			                                        ? WeaponData->WeaponClass
+			                                        : WeaponBaseClass;
 		AWeaponBase* Weapon = World->SpawnActor<AWeaponBase>(ClassToSpawn, SpawnParams);
 		if (Weapon == nullptr)
 		{
@@ -698,7 +727,8 @@ void APlayerCharacter::SpawnThrowableWeapon()
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
 	TSubclassOf<AWeaponBase> ClassToSpawn = CurrentThrowableData->WeaponClass
-		? CurrentThrowableData->WeaponClass : WeaponBaseClass;
+		                                        ? CurrentThrowableData->WeaponClass
+		                                        : WeaponBaseClass;
 	AWeaponBase* Spawned = World->SpawnActor<AWeaponBase>(ClassToSpawn, SpawnParams);
 	if (Spawned == nullptr)
 	{
@@ -775,13 +805,13 @@ void APlayerCharacter::ApplyRecoil(const FRecoilData& Recoil)
 	// // 음수 pitch = 카메라 위로(pitch축 기준)
 	// AddControllerPitchInput(-Recoil.VerticalRecoil);
 	// AddControllerYawInput(FMath::RandRange(-Recoil.HorizontalRecoil, Recoil.HorizontalRecoil));
-	
+
 	float TargetPitch = -Recoil.VerticalRecoil;
 	float TargetYaw = FMath::RandRange(-Recoil.HorizontalRecoil, Recoil.HorizontalRecoil);
 
 	RemainingRecoil.X += TargetYaw;
 	RemainingRecoil.Y += TargetPitch;
-	
+
 	// Modified: 반동 발생 시 누적 회복량(Pitch)을 업데이트하여 회복 로직이 작동하도록 함
 	RecoilPitchAccum += Recoil.VerticalRecoil;
 	RecoilSpeed = Recoil.RecoilSpeed;
@@ -800,7 +830,8 @@ void APlayerCharacter::NotifyEnemyKilled()
 
 	// 기존 타이머가 있다면 취소하고 새로 설정 (0.5초 후 원복)
 	GetWorldTimerManager().ClearTimer(KillConfirmTimerHandle);
-	GetWorldTimerManager().SetTimer(KillConfirmTimerHandle, this, &APlayerCharacter::ResetCrosshairToDefault, 0.5f, false);
+	GetWorldTimerManager().SetTimer(KillConfirmTimerHandle, this, &APlayerCharacter::ResetCrosshairToDefault, 0.5f,
+	                                false);
 }
 
 void APlayerCharacter::SetCrosshairState(ECrosshairState NewState)
@@ -868,7 +899,7 @@ void APlayerCharacter::CompleteCurrentObjective()
 
 		// 클리어 UI 표시 요청
 		float ClearTime = GetWorld()->GetTimeSeconds() - MissionStartTime;
-		
+
 		APlayerController* TargetPC = Cast<APlayerController>(GetController());
 		if (TargetPC == nullptr)
 		{
@@ -1023,8 +1054,8 @@ void APlayerCharacter::UpdateMissionObjective()
 	}
 }
 
-float APlayerCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator,
-	AActor* DamageCauser)
+float APlayerCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEvent, AController* EventInstigator,
+                                   AActor* DamageCauser)
 {
 	float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
@@ -1036,7 +1067,10 @@ float APlayerCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damag
 
 void APlayerCharacter::OnDeath()
 {
-	if (bIsDead) return; // 이미 죽었다면 무시
+	if (bIsDead)
+	{
+		return; // 이미 죽었다면 무시
+	}
 
 	bIsDead = true;
 	UE_LOG(LogTemp, Warning, TEXT("플레이어 사망: 모든 기능을 중지합니다."));
