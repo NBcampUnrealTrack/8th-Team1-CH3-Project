@@ -37,7 +37,6 @@ AEnemyCharacter::AEnemyCharacter()
 
     if (SightConfig)
     {
-       
         SightConfig->DetectionByAffiliation.bDetectEnemies    = true;
         SightConfig->DetectionByAffiliation.bDetectFriendlies = true;
         SightConfig->DetectionByAffiliation.bDetectNeutrals   = true;
@@ -54,6 +53,8 @@ AEnemyCharacter::AEnemyCharacter()
     }
 
     AIPerceptionComp->SetDominantSense(SightConfig->GetSenseImplementation());
+    
+    bUseControllerRotationYaw = true; 
 }
 
 void AEnemyCharacter::BeginPlay()
@@ -71,7 +72,6 @@ void AEnemyCharacter::BeginPlay()
         // 리스폰/스폰 시 블랙보드에 에디터에서 지정한 A, B 절대 좌표를 그대로 주입
         if (UBlackboardComponent* BB = AIC->GetBlackboardComponent())
         {
-            // "PatrolLocationA", "PatrolLocationB"는 블랙보드에 생성한 Vector 키 이름입니다.
             BB->SetValueAsVector(BBKeys::LOCATION_A, PatrolWorldLocationA);
             BB->SetValueAsVector(BBKeys::LOCATION_B, PatrolWorldLocationB);
         }
@@ -80,6 +80,7 @@ void AEnemyCharacter::BeginPlay()
     if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
     {
         MoveComp->bUseRVOAvoidance = true;
+        MoveComp->bOrientRotationToMovement = true; 
     }
 }
 
@@ -109,7 +110,6 @@ void AEnemyCharacter::ProcessSpotCheck()
     {
         OnAlertLevelChanged(EAlertLevel::Combat);
         GetWorldTimerManager().ClearTimer(SpotCheckTimerHandle);
-        UE_LOG(LogTemp, Warning, TEXT("[%s] 플레이어 발각 확정!"), *GetName());
     }
     else
     {
@@ -164,11 +164,11 @@ void AEnemyCharacter::HideAlertIcon()
 // ---------------------------------------------------------------
 void AEnemyCharacter::ApplyPerceptionStats(const FAlertLevelStats& Stats)
 {
-    if (AAIController* AIC = Cast<AAIController>(GetController()))
+    /*if (AAIController* AIC = Cast<AAIController>(GetController()))
     {
         if (CurrentAlertLevel == EAlertLevel::Combat && SuspectedTarget) AIC->SetFocus(SuspectedTarget);
         else AIC->ClearFocus(EAIFocusPriority::Gameplay);
-    }
+    }*/
     
     if (SightConfig)
     {
@@ -204,16 +204,25 @@ void AEnemyCharacter::OnAlertLevelChanged(EAlertLevel NewLevel)
             BB->SetValueAsEnum(BBKeys::ALERT_LEVEL, (uint8)NewLevel);
         }
     }
-
-    UE_LOG(LogTemp, Warning, TEXT("[%s] 경계 레벨 변경: %d"), *GetName(), (int32)NewLevel);
     
     // 타이머 일괄 정리 (상태가 바뀔 때 이전 상태의 타이머가 도는 것을 방지)
     GetWorldTimerManager().ClearTimer(SuspiciousRevertTimerHandle);
-    GetWorldTimerManager().ClearTimer(CombatToLostTimerHandle); // <-- 추가
+    GetWorldTimerManager().ClearTimer(CombatToLostTimerHandle);
 
     Super::OnAlertLevelChanged(NewLevel);
 
-    // 스탯 적용 분기
+    if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+    {
+        if (NewLevel == EAlertLevel::Combat)
+        {
+            MoveComp->bOrientRotationToMovement = false;
+        }
+        else
+        {
+            MoveComp->bOrientRotationToMovement = true;
+        }
+    }
+
     switch (NewLevel)
     {
         case EAlertLevel::Idle:       ApplyPerceptionStats(IdleStats);       break;
@@ -247,7 +256,6 @@ void AEnemyCharacter::OnAlertLevelChanged(EAlertLevel NewLevel)
         }
         break;
     case EAlertLevel::Lost:
-        // Lost 상태가 되었을 때 주변 적들에게 전파하는 기존 기획 유지
         if (TargetPlayer) AlertNearbyEnemies(TargetPlayer, LostAlertRange, EAlertLevel::Suspicious);
         break;
     default: break;
@@ -340,18 +348,14 @@ void AEnemyCharacter::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
             BB->SetValueAsObject(BBKeys::TARGET_ACTOR, Actor);
             BB->SetValueAsVector(BBKeys::LAST_KNOWN_LOCATION, Actor->GetActorLocation());
 
-            // [추가 구현] 현재 Lost 상태인데 플레이어를 다시 목격했다면 즉시 Combat(3단계)으로 복귀
             if (CurrentAlertLevel == EAlertLevel::Lost)
             {
-                UE_LOG(LogTemp, Warning, TEXT("[%s] Lost 상태에서 플레이어 재발견! 전투 복귀."), *GetName());
                 OnAlertLevelChanged(EAlertLevel::Combat);
                 return;
             }
 
-            // 플레이어를 보고 있는 중이므로 3->4단계 전환 타이머는 취소합니디.
             GetWorldTimerManager().ClearTimer(CombatToLostTimerHandle);
 
-            // 경계 레벨 올리기 (기존 로직)
             if (CurrentAlertLevel < EAlertLevel::Combat)
             {
                 OnAlertLevelChanged(EAlertLevel::Suspicious);
@@ -366,11 +370,8 @@ void AEnemyCharacter::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
         {
             GetWorldTimerManager().ClearTimer(SpotCheckTimerHandle);
 
-            // [수정 구현] 전투 중일 때 바로 Lost로 가지 않고 20초 타이머를 가동합니다.
             if (CurrentAlertLevel == EAlertLevel::Combat)
             {
-                UE_LOG(LogTemp, Warning, TEXT("[%s] 플레이어를 시야에서 놓침. 20초 카운트다운 시작."), *GetName());
-                
                 GetWorldTimerManager().SetTimer(
                     CombatToLostTimerHandle, 
                     this, 
@@ -406,17 +407,28 @@ void AEnemyCharacter::StartFirePattern(AActor* TargetActor)
 {
     if (bIsDead || !TargetActor) return;
 
-    if (CurrentShotCount == 0 && !GetWorldTimerManager().IsTimerActive(FirePatternTimerHandle))
+    if (GetWorldTimerManager().IsTimerActive(FirePatternTimerHandle) || CurrentShotCount != 0) return;
+
+    SuspectedTarget = TargetActor;
+
+    if (AAIController* AIC = Cast<AAIController>(GetController()))
     {
-        SuspectedTarget = TargetActor;
-        UE_LOG(LogTemp, Warning, TEXT("[%s] 사격 패턴 시작! 타겟: %s"), *GetName(), *TargetActor->GetName());
-        
-        ExecuteFireStep();
+        AIC->StopMovement();
+        AIC->SetFocus(TargetActor, EAIFocusPriority::Gameplay);
     }
+
+    if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+    {
+        MoveComp->bOrientRotationToMovement = false;
+    }
+    
+    ExecuteFireStep();
 }
 
 void AEnemyCharacter::ExecuteFireStep()
 {
+    FString TargetName = SuspectedTarget ? SuspectedTarget->GetName() : TEXT("None");
+
     if (bIsDead || CurrentAlertLevel != EAlertLevel::Combat || !SuspectedTarget)
     {
         CurrentShotCount = 0;
@@ -434,11 +446,18 @@ void AEnemyCharacter::ExecuteFireStep()
         else
         {
             CurrentShotCount = 0;
+            
+            if (AAIController* AIC = Cast<AAIController>(GetController())) AIC->ClearFocus(EAIFocusPriority::Gameplay);
+            if (GetCharacterMovement()) GetCharacterMovement()->bOrientRotationToMovement = true;
         }
     }
     else
     {
         CurrentShotCount = 0;
+        
+        if (AAIController* AIC = Cast<AAIController>(GetController())) AIC->ClearFocus(EAIFocusPriority::Gameplay);
+        if (GetCharacterMovement()) GetCharacterMovement()->bOrientRotationToMovement = true;
+
         GetWorldTimerManager().SetTimer(FirePatternTimerHandle, 0.8f, false);
     }
 }
@@ -498,27 +517,42 @@ bool AEnemyCharacter::CanShootTarget(AActor* TargetActor)
     const float Distance = FVector::Dist(GetActorLocation(), TargetActor->GetActorLocation());
     if (Distance > FireRange) return false;
 
-    const FVector DirectionToTarget = (TargetActor->GetActorLocation() - GetActorLocation()).GetSafeNormal();
-    const float AngleToTarget = FMath::RadiansToDegrees(
-        FMath::Acos(FVector::DotProduct(GetActorForwardVector(), DirectionToTarget))
-    );
+    const FVector DirectionToTarget = (TargetActor->GetActorLocation() - GetActorLocation()).GetSafeNormal2D();
+    const float AngleToTarget = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(GetActorForwardVector(), DirectionToTarget)));
     if (AngleToTarget > FireAngleLimit) return false;
 
     FHitResult HitResult;
     FCollisionQueryParams CollisionParams;
-    CollisionParams.AddIgnoredActor(this);
+    
+    CollisionParams.AddIgnoredActor(this); 
+    if (WeaponMeshComp) CollisionParams.AddIgnoredComponent(WeaponMeshComp); 
+    if (GetCapsuleComponent()) CollisionParams.AddIgnoredComponent(GetCapsuleComponent()); 
 
     const FName MuzzleSocket = TEXT("Muzzle");
     FVector StartLocation = (WeaponMeshComp && WeaponMeshComp->DoesSocketExist(MuzzleSocket))
         ? WeaponMeshComp->GetSocketLocation(MuzzleSocket)
         : GetActorLocation() + FVector(0.f, 0.f, BaseEyeHeight);
 
-    const bool bHit = GetWorld()->LineTraceSingleByChannel(
-        HitResult, StartLocation, TargetActor->GetActorLocation(),
-        ECC_Visibility, CollisionParams
-    );
+    FVector TargetLocation = TargetActor->GetActorLocation();
+    if (ACharacter* TargetChar = Cast<ACharacter>(TargetActor))
+    {
+        TargetLocation = TargetChar->GetMesh()->GetSocketLocation(TEXT("spine_03"));
+    }
+    else
+    {
+        TargetLocation += FVector(0.f, 0.f, 90.f);
+    }
 
-    return bHit && HitResult.GetActor() == TargetActor;
+    const bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, StartLocation, TargetLocation, ECC_Visibility, CollisionParams);
+
+    //DrawDebugLine(GetWorld(), StartLocation, bHit ? HitResult.ImpactPoint : TargetLocation, bHit ? FColor::Red : FColor::Green, false, 0.2f, 0, 2.0f);
+
+    if (!bHit || HitResult.GetActor() == TargetActor || HitResult.GetActor()->ActorHasTag(TEXT("Player")) || HitResult.GetActor()->IsA(AEnemyCharacter::StaticClass()))
+    {
+        return true;
+    }
+    
+    return false;
 }
 
 bool AEnemyCharacter::FireAtTarget(AActor* TargetActor)
@@ -526,17 +560,23 @@ bool AEnemyCharacter::FireAtTarget(AActor* TargetActor)
     if (bIsDead || !TargetActor || !CombatManagerComp) return false;
 
     if (!CanShootTarget(TargetActor)) return false;
-
-    const float RandomRoll = FMath::FRand();
-    const bool bIsHit = RandomRoll <= HitAccuracy;
-
-    if (!bIsHit) return false;
-
+    
     const FName MuzzleSocket = TEXT("Muzzle");
     FVector AimStart = (WeaponMeshComp && WeaponMeshComp->DoesSocketExist(MuzzleSocket))
         ? WeaponMeshComp->GetSocketLocation(MuzzleSocket)
         : GetActorLocation() + FVector(0.f, 0.f, BaseEyeHeight);
-    const FVector AimDirection = (TargetActor->GetActorLocation() - AimStart).GetSafeNormal();
+        
+    FVector TargetTargetLocation = TargetActor->GetActorLocation();
+    if (ACharacter* TargetChar = Cast<ACharacter>(TargetActor))
+    {
+        TargetTargetLocation = TargetChar->GetMesh()->GetSocketLocation(TEXT("spine_03"));
+    }
+    else
+    {
+        TargetTargetLocation += FVector(0.f, 0.f, 90.f);
+    }
+    
+    const FVector AimDirection = (TargetTargetLocation - AimStart).GetSafeNormal();
 
     if (FireMontage)
     {

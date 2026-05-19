@@ -122,10 +122,10 @@ private:
     // 전투 수치
     // ---------------------------------------------------------------
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Combat", meta = (AllowPrivateAccess = "true"))
-    float FireRange = 1200.0f;
+    float FireRange = 4000.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Combat", meta = (AllowPrivateAccess = "true"))
-    float FireAngleLimit = 30.0f;
+    float FireAngleLimit = 90.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Combat", meta = (AllowPrivateAccess = "true"))
     float HitAccuracy = 0.3f;
