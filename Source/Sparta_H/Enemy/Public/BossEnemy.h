@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "EnemyCharacter.h"
+#include "Components/WidgetComponent.h"
 #include "BossEnemy.generated.h"
 
 class AThrowableActor;
@@ -103,6 +104,10 @@ protected:
 
     bool bHasSpawnedReinforcement = false;
     void SpawnReinforcement();
+
+    // ─── Precision Warning Widget (머리 위 경고) ──────────────────────────
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Boss|UI")
+    UWidgetComponent* PrecisionWarningWidgetComp;
 
     // ─── Reward ───────────────────────────────────────────────────────────
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Reward")
