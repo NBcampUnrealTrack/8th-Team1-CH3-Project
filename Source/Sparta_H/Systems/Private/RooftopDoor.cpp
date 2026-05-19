@@ -3,7 +3,8 @@
 
 ARooftopDoor::ARooftopDoor()
 {
-    PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bStartWithTickEnabled = false;
 
     DoorMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("DoorMesh"));
     RootComponent = DoorMesh;
@@ -19,7 +20,7 @@ void ARooftopDoor::OpenDoor_Implementation()
 {
     if (bOpening) return;
     bOpening = true;
-    DoorMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+DoorMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     SetActorTickEnabled(true);
 }
 
