@@ -66,6 +66,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Status")
 	bool bHasRifle = false;
 
+	// IsRifle Getter
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	bool IsRifle() const {return bHasRifle;}
+	
 	/** 체크포인트 저장/로드 **/
 	UFUNCTION(BlueprintCallable, Category = "Checkpoint")
 	FPlayerCheckpointData SaveCheckpoint();
@@ -168,6 +172,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	void EquipPreviousWeapon();
+
+	// 해당 슬롯의 무기를 현재 상태에서 장착할 수 있는지 (라이플 가드 등)
+	bool CanEquipSlot(int32 Index) const;
+
+	// Direction +1(Next) / -1(Previous). 라이플 미보유 슬롯과 빈 슬롯 스킵
+	void CycleWeapon(int32 Direction);
 
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	AWeaponBase* GetCurrentWeapon() const { return CurrentWeapon; }
@@ -320,6 +330,9 @@ private:
 	// CurrentThrowableData 로 ThrowableWeapon 액터를 스폰. 이미 있으면 무시
 	void SpawnThrowableWeapon();
 
+	// DA로 무기 액터를 스폰해 본체 메시 GripPoint에 부착, Hidden 상태로 반환. 실패 시 nullptr
+	AWeaponBase* SpawnAndAttachWeapon(UWeaponDataAsset* Data);
+
 	// ThrowableWeapon 보유 수 0 도달 시 호출 — PreviousWeaponIndex 슬롯으로 복귀
 	UFUNCTION()
 	void HandleThrowableDepleted();
@@ -343,7 +356,7 @@ private:
 	TObjectPtr<AWeaponBase> CurrentWeapon;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
-	int32 CurrentWeaponIndex = 0;
+	int32 CurrentWeaponIndex = INDEX_NONE;
 
 	// G키로 들 투척 무기 기본 DA. 미션 진행에 따라 SetActiveThrowable 로 변경
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Throwable", meta = (AllowPrivateAccess = "true"))
@@ -365,7 +378,7 @@ public:
 	AWeaponBase* GetThrowableWeapon() const { return ThrowableWeapon; }
 
 	// G 누르기 직전 들고 있던 슬롯 인덱스. 0개 소진 시 자동 복귀용
-	int32 PreviousWeaponIndex = 0;
+	int32 PreviousWeaponIndex = INDEX_NONE;
 
 	// 회복이 남아있는 누적 pitch (양수 = 위로 튕긴 양)
 	float RecoilPitchAccum = 0.0f;
