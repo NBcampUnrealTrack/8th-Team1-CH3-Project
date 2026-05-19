@@ -4,14 +4,16 @@
 #include "Blueprint/UserWidget.h"
 #include "BossPrecisionWidget.generated.h"
 
+class UImage;
+
 /**
  * 보스 정밀 조준 경고 위젯
  *
  * 사용법:
  * 1. 이 클래스를 부모로 WBP_BossPrecisionWarning 블루프린트 생성
- * 2. WBP 내에서 OnWarningStarted / OnWarningStopped 이벤트 구현
- *    - OnWarningStarted → 깜빡임/레드 조준 애니메이션 재생
- *    - OnWarningStopped → 애니메이션 정지, 위젯 숨김 처리
+ * 2. WBP 디자이너에서 Image 위젯을 배치하고 이름을 "WarningImage"로 설정
+ * 3. WarningImage의 Brush > Image에 원하는 텍스처/이미지 지정
+ * 4. (선택) OnWarningStarted / OnWarningStopped 이벤트로 애니메이션 추가
  */
 UCLASS()
 class SPARTA_H_API UBossPrecisionWidget : public UUserWidget
@@ -31,15 +33,21 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Boss|UI")
 	void UpdateWarningProgress(float Progress);
 
+	// C++/BP에서 런타임에 이미지 교체하고 싶을 때 사용
+	UFUNCTION(BlueprintCallable, Category = "Boss|UI")
+	void SetWarningImage(UTexture2D* Texture);
+
 protected:
-	// 블루프린트에서 깜빡임 애니메이션 등 시각 처리 구현
+	// WBP 디자이너에서 "WarningImage"라는 이름의 Image 위젯과 자동 바인딩
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UImage> WarningImage;
+
 	UFUNCTION(BlueprintImplementableEvent, Category = "Boss|UI")
 	void OnWarningStarted();
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Boss|UI")
 	void OnWarningStopped();
 
-	// 조준 진행도 (0=시작, 1=발사 직전) — 블루프린트에서 프로그레스 바 등에 활용
 	UFUNCTION(BlueprintImplementableEvent, Category = "Boss|UI")
 	void OnWarningProgressUpdated(float Progress);
 };
