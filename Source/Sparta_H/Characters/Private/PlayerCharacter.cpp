@@ -66,6 +66,8 @@ APlayerCharacter::APlayerCharacter()
 	InteractionComponent = CreateDefaultSubobject<UInteractionComponent>(TEXT("InteractionComponent"));
 	VisibilityComponent = CreateDefaultSubobject<UVisibilityComponent>(TEXT("VisibilityComponent"));
 	
+	Tags.Add(TEXT("Player"));
+	
 	bHasRifle = false;
 }
 
