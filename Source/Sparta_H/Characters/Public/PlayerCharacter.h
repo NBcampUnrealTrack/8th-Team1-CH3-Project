@@ -30,6 +30,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMissionStateChanged);
 // 크로스헤어 상태 변경 시 호출될 델리게이트
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCrosshairStateChangedDelegate, ECrosshairState, NewState);
 
+// 플레이어 대미지 발생 시 비네트 등 효과 처리를 위한 델리게이트
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPlayerTakeDamage, float, DamageAmount);
+
 
 UCLASS()
 class SPARTA_H_API APlayerCharacter : public ACharacter
@@ -176,6 +179,8 @@ public:
 
 	// 미션 데이터로부터 현재 목표 텍스트 업데이트
 	void UpdateMissionObjective();
+	float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator,
+	                 AActor* DamageCauser);
 
 	// 미션 성공/실패 이벤트
 	UPROPERTY(BlueprintAssignable, Category = "Objective")
@@ -229,6 +234,11 @@ public:
 
 	/** 처치 확인용 타이머 핸들 **/
 	FTimerHandle KillConfirmTimerHandle;
+
+	// 대미지 수신 시 호출될 델리게이트
+	UPROPERTY(BlueprintAssignable, Category = "Player|Effects")
+	FOnPlayerTakeDamage OnPlayerTakeDamage;
+
 	/** End of 플레이어 스탯 / 목표 **/
 	
 	/** 사망 시 호출될 함수 **/

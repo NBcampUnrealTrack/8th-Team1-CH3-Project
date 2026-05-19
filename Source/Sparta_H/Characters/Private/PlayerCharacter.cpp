@@ -1023,6 +1023,17 @@ void APlayerCharacter::UpdateMissionObjective()
 	}
 }
 
+float APlayerCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator,
+	AActor* DamageCauser)
+{
+	float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+
+	// 대미지 발생 시 이펙트 처리를 위해 델리게이트 호출
+	OnPlayerTakeDamage.Broadcast(ActualDamage);
+
+	return ActualDamage;
+}
+
 void APlayerCharacter::OnDeath()
 {
 	if (bIsDead) return; // 이미 죽었다면 무시
