@@ -545,7 +545,7 @@ bool AEnemyCharacter::CanShootTarget(AActor* TargetActor)
 
     const bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, StartLocation, TargetLocation, ECC_Visibility, CollisionParams);
 
-    //DrawDebugLine(GetWorld(), StartLocation, bHit ? HitResult.ImpactPoint : TargetLocation, bHit ? FColor::Red : FColor::Green, false, 0.2f, 0, 2.0f);
+    DrawDebugLine(GetWorld(), StartLocation, bHit ? HitResult.ImpactPoint : TargetLocation, bHit ? FColor::Red : FColor::Green, false, 0.2f, 0, 2.0f);
 
     if (!bHit || HitResult.GetActor() == TargetActor || HitResult.GetActor()->ActorHasTag(TEXT("Player")) || HitResult.GetActor()->IsA(AEnemyCharacter::StaticClass()))
     {
