@@ -82,6 +82,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Game")
 	void ShowClearMenu(float ClearTime, int32 KillCount);
 
+	/** 보스 경고 및 페이즈 전환 알림 — BP_PlayerController에서 위젯으로 구현 **/
+	UFUNCTION(BlueprintImplementableEvent, Category = "Boss")
+	void ShowBossAlert(const FString& Message, float Duration);
+
 protected:
 	virtual void BeginPlay() override;
 };
