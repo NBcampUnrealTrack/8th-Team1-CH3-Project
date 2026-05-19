@@ -194,4 +194,10 @@ private:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Patrol", meta = (AllowPrivateAccess = "true"))
     FVector PatrolWorldLocationB;
+    
+    // 20초 동안 플레이어를 놓쳤을 때 호출될 함수
+    void OnCombatToLostTimerExpired();
+    
+    FTimerHandle CombatToLostTimerHandle;
+    
 };
