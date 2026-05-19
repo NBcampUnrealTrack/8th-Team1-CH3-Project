@@ -81,11 +81,8 @@ void AWeaponBase::Fire()
 	{
 		if (AmmoComponent == nullptr || !AmmoComponent->ConsumeAmmo())
 		{
-			// 탄약 소진 - 자동 재장전 옵션이면 Reload 시작, 아니면 차단만
-			if (WeaponData->bShouldAutoReload)
-			{
-				Reload();
-			}
+			// 탄약 소진 - 자동 재장전 옵션이면 Reload 시작, 아니면 차단만 -> 자동 재장전으로 수정
+			Reload();
 			return;
 		}
 	}
@@ -106,7 +103,7 @@ void AWeaponBase::Fire()
 				}
 			}
 		}
-		
+
 		// 리코일 틱 - 몽타주와 같은 프레임
 		Character->ApplyRecoil(WeaponData->RecoilData);
 	}
@@ -124,10 +121,10 @@ void AWeaponBase::Fire()
 					const FVector AimStart = PC->PlayerCameraManager->GetCameraLocation();
 					const FVector AimDirection = PC->PlayerCameraManager->GetCameraRotation().Vector();
 					const ECombatWeaponType CombatType = ToCombatWeaponType(WeaponData->WeaponType);
-					
+
 					CombatMgr->OnFire(AimStart, AimDirection, CombatType, WeaponData->Damage,
-									  WeaponData->bShouldTriggerAIAggro,
-									  ImpactVFX.LoadSynchronous());
+					                  WeaponData->bShouldTriggerAIAggro,
+					                  ImpactVFX.LoadSynchronous());
 				}
 			}
 		}
@@ -155,7 +152,7 @@ void AWeaponBase::Fire()
 			WeaponMeshComponent,
 			MuzzleSocketName);
 	}
-	
+
 	// FireRate <= 0 이면 한 프레임만 차단 후 즉시 복귀
 	const float Cooldown = FMath::Max(WeaponData->FireRate, KINDA_SMALL_NUMBER);
 	if (UWorld* World = GetWorld())

@@ -37,6 +37,9 @@ void ABaseEnemy::OnAlertLevelChanged(EAlertLevel NewLevel)
 {
 	if (bIsDead) return;
 	CurrentAlertLevel = NewLevel;
+
+	// 블루프린트에서 상태 변화를 감지할 수 있도록 이벤트 호출
+	OnAlertLevelChanged_BP(NewLevel);
 }
 
 void ABaseEnemy::Die()
