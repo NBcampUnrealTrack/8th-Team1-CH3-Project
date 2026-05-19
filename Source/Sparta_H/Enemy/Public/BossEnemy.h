@@ -29,6 +29,9 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "Boss")
     EBossPhase GetCurrentPhase() const { return CurrentPhase; }
+    
+    UFUNCTION(BlueprintImplementableEvent, Category = "Boss")
+    void ShowBossAlert(const FString& Message, float Duration);
 
 protected:
     virtual void BeginPlay() override;
@@ -112,7 +115,6 @@ protected:
     void OnBossTargetPerceived(AActor* Actor, FAIStimulus Stimulus);
 
 private:
-    void ShowBossAlert(const FString& Message, float Duration = 2.f);
 
     static constexpr float Phase2HPRatio = 0.6f;
     static constexpr float Phase3HPRatio = 0.3f;
