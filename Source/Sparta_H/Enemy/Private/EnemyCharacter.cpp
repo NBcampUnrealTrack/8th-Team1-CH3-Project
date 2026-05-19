@@ -2,8 +2,11 @@
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
 #include "Perception/AISenseConfig_Hearing.h"
+#include "Perception/AISense_Sight.h"
+#include "Perception/AISense_Hearing.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "AIController.h"
+#include "AlertManager.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/WidgetComponent.h"
 #include "TimerManager.h"
@@ -13,6 +16,7 @@
 #include "Animation/AnimMontage.h"
 #include "BlackboardKeys.h"
 #include "CombatManager.h"
+#include "NiagaraFunctionLibrary.h"
 
 AEnemyCharacter::AEnemyCharacter()
 {
@@ -20,6 +24,9 @@ AEnemyCharacter::AEnemyCharacter()
     SightConfig       = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("SightConfig"));
     HearingConfig     = CreateDefaultSubobject<UAISenseConfig_Hearing>(TEXT("HearingConfig"));
     CombatManagerComp = CreateDefaultSubobject<UCombatManager>(TEXT("CombatManager"));
+
+    WeaponMeshComp = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
+    WeaponMeshComp->SetupAttachment(GetMesh(), TEXT("GripPoint"));
 
     // 머리 위 아이콘 위젯 컴포넌트 생성
     AlertIconWidgetComp = CreateDefaultSubobject<UWidgetComponent>(TEXT("AlertIconWidget"));
@@ -54,13 +61,22 @@ void AEnemyCharacter::BeginPlay()
     Super::BeginPlay();
     AIPerceptionComp->OnTargetPerceptionUpdated.AddDynamic(this, &AEnemyCharacter::OnTargetPerceived);
     ApplyPerceptionStats(IdleStats);
+    
     if (AAIController* AIC = Cast<AAIController>(GetController()))
     {
         if (EnemyBT)
         {
             AIC->RunBehaviorTree(EnemyBT);
         }
+        // 리스폰/스폰 시 블랙보드에 에디터에서 지정한 A, B 절대 좌표를 그대로 주입
+        if (UBlackboardComponent* BB = AIC->GetBlackboardComponent())
+        {
+            // "PatrolLocationA", "PatrolLocationB"는 블랙보드에 생성한 Vector 키 이름입니다.
+            BB->SetValueAsVector(BBKeys::LOCATION_A, PatrolWorldLocationA);
+            BB->SetValueAsVector(BBKeys::LOCATION_B, PatrolWorldLocationB);
+        }
     }
+    
     if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
     {
         MoveComp->bUseRVOAvoidance = true;
@@ -157,9 +173,15 @@ void AEnemyCharacter::ApplyPerceptionStats(const FAlertLevelStats& Stats)
     if (SightConfig)
     {
         SightConfig->SightRadius = Stats.SightRange;
-        SightConfig->LoseSightRadius = Stats.SightRange + 50.f;
+        SightConfig->LoseSightRadius = Stats.SightRange;
         SightConfig->PeripheralVisionAngleDegrees = Stats.FOVAngle / 2.0f;
         AIPerceptionComp->ConfigureSense(*SightConfig);
+    }
+
+    if (HearingConfig)
+    {
+        HearingConfig->HearingRange = Stats.HearingRange;
+        AIPerceptionComp->ConfigureSense(*HearingConfig);
     }
 
     if (GetCharacterMovement()) GetCharacterMovement()->MaxWalkSpeed = Stats.MoveSpeed;
@@ -190,7 +212,6 @@ void AEnemyCharacter::OnAlertLevelChanged(EAlertLevel NewLevel)
     
     // 타이머 초기화
     GetWorldTimerManager().ClearTimer(SuspiciousRevertTimerHandle);
-    GetWorldTimerManager().ClearTimer(LostRevertTimerHandle);
 
     Super::OnAlertLevelChanged(NewLevel);
 
@@ -222,10 +243,15 @@ void AEnemyCharacter::OnAlertLevelChanged(EAlertLevel NewLevel)
         break;
     case EAlertLevel::Combat:
         if (TargetPlayer) AlertNearbyEnemies(TargetPlayer, CombatAlertRange, EAlertLevel::Combat);
+
+        if (AAlertManager* AlertMgr = AAlertManager::GetInstance(this))
+        {
+            AlertMgr->NotifyCombatEntered(GetActorLocation());
+        }
+        
         break;
     case EAlertLevel::Lost:
         if (TargetPlayer) AlertNearbyEnemies(TargetPlayer, LostAlertRange, EAlertLevel::Suspicious);
-        GetWorldTimerManager().SetTimer(LostRevertTimerHandle, this, &AEnemyCharacter::OnLostRevertTimerExpired, LostRevertDelay, false);
         break;
     default: break;
     }
@@ -297,22 +323,6 @@ void AEnemyCharacter::OnSuspiciousRevertTimerExpired()
     }
 }
 
-void AEnemyCharacter::OnLostRevertTimerExpired()
-{
-    if (CurrentAlertLevel != EAlertLevel::Lost) return;
-
-    OnAlertLevelChanged(EAlertLevel::Idle);
-
-    if (AAIController* AIC = Cast<AAIController>(GetController()))
-    {
-        if (UBlackboardComponent* BB = AIC->GetBlackboardComponent())
-        {
-            BB->ClearValue(BBKeys::LAST_KNOWN_LOCATION);
-            BB->ClearValue(BBKeys::TARGET_ACTOR);
-        }
-    }
-}
-
 // ---------------------------------------------------------------
 // Perception 콜백
 // ---------------------------------------------------------------
@@ -347,14 +357,34 @@ void AEnemyCharacter::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
         else
         {
             //-------------------------------------------
-            // ClearValue시 바로 lost되는 문제 발생가능 
+            // ClearValue시 바로 lost되는 문제 발생가능
             //-------------------------------------------
-            
+
             GetWorldTimerManager().ClearTimer(SpotCheckTimerHandle);
-            
+
             if (CurrentAlertLevel == EAlertLevel::Combat)
             {
                 OnAlertLevelChanged(EAlertLevel::Lost);
+            }
+        }
+    }
+    else if (Stimulus.Type == UAISense::GetSenseID<UAISense_Hearing>())
+    {
+        if (Stimulus.WasSuccessfullySensed())
+        {
+            // 소음 위치를 마지막 알려진 위치로 기록 → BT가 조사하러 이동
+            BB->SetValueAsVector(BBKeys::LAST_KNOWN_LOCATION, Stimulus.StimulusLocation);
+
+            // Idle이면 Suspicious로 전환, Suspicious 이상이면 Combat으로 전환
+            if (CurrentAlertLevel == EAlertLevel::Idle)
+            {
+                OnAlertLevelChanged(EAlertLevel::Suspicious);
+            }
+            else if (CurrentAlertLevel == EAlertLevel::Suspicious)
+            {
+                SuspectedTarget = Actor;
+                BB->SetValueAsObject(BBKeys::TARGET_ACTOR, Actor);
+                OnAlertLevelChanged(EAlertLevel::Combat);
             }
         }
     }
@@ -466,11 +496,10 @@ bool AEnemyCharacter::CanShootTarget(AActor* TargetActor)
     FCollisionQueryParams CollisionParams;
     CollisionParams.AddIgnoredActor(this);
 
-    FVector StartLocation = GetMesh()->GetSocketLocation(TEXT("MuzzleSocket"));
-    if (StartLocation.IsZero())
-    {
-        StartLocation = GetActorLocation() + FVector(0.f, 0.f, BaseEyeHeight);
-    }
+    const FName MuzzleSocket = TEXT("Muzzle");
+    FVector StartLocation = (WeaponMeshComp && WeaponMeshComp->DoesSocketExist(MuzzleSocket))
+        ? WeaponMeshComp->GetSocketLocation(MuzzleSocket)
+        : GetActorLocation() + FVector(0.f, 0.f, BaseEyeHeight);
 
     const bool bHit = GetWorld()->LineTraceSingleByChannel(
         HitResult, StartLocation, TargetActor->GetActorLocation(),
@@ -491,16 +520,23 @@ bool AEnemyCharacter::FireAtTarget(AActor* TargetActor)
 
     if (!bIsHit) return false;
 
-    FVector AimStart = GetMesh()->GetSocketLocation(TEXT("MuzzleSocket"));
-    if (AimStart.IsZero())
-    {
-        AimStart = GetActorLocation() + FVector(0.f, 0.f, BaseEyeHeight);
-    }
+    const FName MuzzleSocket = TEXT("Muzzle");
+    FVector AimStart = (WeaponMeshComp && WeaponMeshComp->DoesSocketExist(MuzzleSocket))
+        ? WeaponMeshComp->GetSocketLocation(MuzzleSocket)
+        : GetActorLocation() + FVector(0.f, 0.f, BaseEyeHeight);
     const FVector AimDirection = (TargetActor->GetActorLocation() - AimStart).GetSafeNormal();
 
     if (FireMontage)
     {
         PlayAnimMontage(FireMontage);
+    }
+
+    if (MuzzleFlashEffect && WeaponMeshComp)
+    {
+        UNiagaraFunctionLibrary::SpawnSystemAttached(
+            MuzzleFlashEffect, WeaponMeshComp, TEXT("Muzzle"),
+            FVector::ZeroVector, FRotator::ZeroRotator,
+            EAttachLocation::SnapToTarget, true);
     }
 
     CombatManagerComp->OnFire(AimStart, AimDirection, ECombatWeaponType::Rifle, WeaponDamage, true);

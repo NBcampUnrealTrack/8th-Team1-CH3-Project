@@ -74,6 +74,9 @@ void APlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// 미션 시작 시간 기록
+	MissionStartTime = GetWorld()->GetTimeSeconds();
+
 	// 슬롯에 등록된 모든 무기를 미리 스폰해 본체 메시 GripPoint에 부착, 첫 번째 무기 자동 장착
 	SpawnEquippedWeapons();
 
@@ -120,10 +123,26 @@ void APlayerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	if (!RemainingRecoil.IsNearlyZero(0.001f))
+	{
+		FVector2D InsideInterp = FMath::Vector2DInterpTo(RemainingRecoil, FVector2D::ZeroVector, DeltaTime, RecoilSpeed);
+		
+		FVector2D RecoilToApply = RemainingRecoil - InsideInterp;
+		
+		AddControllerYawInput(RecoilToApply.X);
+		AddControllerPitchInput(RecoilToApply.Y);
+		
+		RemainingRecoil = InsideInterp;
+	}
+	else
+	{
+		RemainingRecoil = FVector2D::ZeroVector;
+	}
+	
 	// 반동 회복 로직
 	if (RecoilPitchAccum > KINDA_SMALL_NUMBER)
 	{
-		const float RecoverPitch = FMath::Min(RecoilPitchAccum, RecoilRecoverySpeed * DeltaTime);
+		const float RecoverPitch = FMath::Min<float>(RecoilPitchAccum, RecoilRecoverySpeed * DeltaTime);
 		AddControllerPitchInput(RecoverPitch);
 		RecoilPitchAccum -= RecoverPitch;
 	}
@@ -262,6 +281,12 @@ void APlayerCharacter::Look(const FInputActionValue& value)
 	{
 		AddControllerYawInput(LookInput.X);
 		AddControllerPitchInput(LookInput.Y);
+
+		// Modified: 사용자가 마우스를 아래로 내려 반동을 보정하면 자동 회복량에서 차감
+		if (LookInput.Y > 0.f && RecoilPitchAccum > 0.f)
+		{
+			RecoilPitchAccum = FMath::Max(0.f, RecoilPitchAccum - LookInput.Y);
+		}
 	}
 }
 
@@ -736,13 +761,30 @@ UWeaponDataAsset* APlayerCharacter::GetCurrentWeaponData() const
 	return CurrentWeapon != nullptr ? CurrentWeapon->GetWeaponData() : nullptr;
 }
 
+AWeaponBase* APlayerCharacter::GetMainWeapon() const
+{
+	if (SpawnedWeapons.IsValidIndex(CurrentWeaponIndex))
+	{
+		return SpawnedWeapons[CurrentWeaponIndex];
+	}
+	return nullptr;
+}
+
 void APlayerCharacter::ApplyRecoil(const FRecoilData& Recoil)
 {
-	// 음수 pitch = 카메라 위로(pitch축 기준)
-	AddControllerPitchInput(-Recoil.VerticalRecoil);
-	AddControllerYawInput(FMath::RandRange(-Recoil.HorizontalRecoil, Recoil.HorizontalRecoil));
+	// // 음수 pitch = 카메라 위로(pitch축 기준)
+	// AddControllerPitchInput(-Recoil.VerticalRecoil);
+	// AddControllerYawInput(FMath::RandRange(-Recoil.HorizontalRecoil, Recoil.HorizontalRecoil));
+	
+	float TargetPitch = -Recoil.VerticalRecoil;
+	float TargetYaw = FMath::RandRange(-Recoil.HorizontalRecoil, Recoil.HorizontalRecoil);
 
+	RemainingRecoil.X += TargetYaw;
+	RemainingRecoil.Y += TargetPitch;
+	
+	// Modified: 반동 발생 시 누적 회복량(Pitch)을 업데이트하여 회복 로직이 작동하도록 함
 	RecoilPitchAccum += Recoil.VerticalRecoil;
+	RecoilSpeed = Recoil.RecoilSpeed;
 	RecoilRecoverySpeed = Recoil.RecoverySpeed;
 }
 
@@ -750,6 +792,8 @@ void APlayerCharacter::NotifyEnemyKilled()
 {
 	// 적 처치 시 호출되는 함수.
 	UE_LOG(LogTemp, Log, TEXT("Enemy Killed!"));
+
+	KillCount++;
 
 	// 크로스헤어 상태를 KillConfirm으로 변경
 	SetCrosshairState(ECrosshairState::KillConfirm);
@@ -821,6 +865,20 @@ void APlayerCharacter::CompleteCurrentObjective()
 		GetWorldTimerManager().ClearTimer(MissionTimerHandle);
 		OnMissionCompleted.Broadcast();
 		UpdateMissionObjective();
+
+		// 클리어 UI 표시 요청
+		float ClearTime = GetWorld()->GetTimeSeconds() - MissionStartTime;
+		
+		APlayerController* TargetPC = Cast<APlayerController>(GetController());
+		if (TargetPC == nullptr)
+		{
+			TargetPC = GetWorld()->GetFirstPlayerController();
+		}
+
+		if (AH_PlayerController* PC = Cast<AH_PlayerController>(TargetPC))
+		{
+			PC->ShowClearMenu(ClearTime, KillCount);
+		}
 	}
 	else
 	{
@@ -915,6 +973,23 @@ void APlayerCharacter::UpdateMissionObjective()
 	if (!CurrentMissionData)
 	{
 		return;
+	}
+
+	// 미션 번호에 따른 투척 무기 교체 (미션 1~3: 돌맹이, 미션 4~: 수류탄)
+	// CurrentMissionIndex는 0부터 시작하므로 3(미션 4) 이전까지는 돌맹이
+	if (CurrentMissionIndex < 3)
+	{
+		if (RockData && CurrentThrowableData != RockData)
+		{
+			SetActiveThrowable(RockData);
+		}
+	}
+	else
+	{
+		if (GrenadeData && CurrentThrowableData != GrenadeData)
+		{
+			SetActiveThrowable(GrenadeData);
+		}
 	}
 
 	// 기존 타이머 초기화

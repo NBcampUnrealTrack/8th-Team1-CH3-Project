@@ -7,6 +7,7 @@
 
 // 경보 활성화 시 브로드캐스트 (UI, 사운드 등 연동용)
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAlertActivatedDelegate);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCombatEnteredDelegate, FVector, CombatLocation);
 
 UCLASS()
 class SPARTA_H_API AAlertManager : public AActor
@@ -46,7 +47,13 @@ public:
 	// 폭탄 설치 지점 기준 고정 반경 (추후 조정)
 	UPROPERTY(EditAnywhere,Category = "Alert")
 	float BombAlertRadius;
+	
+	UPROPERTY(BlueprintAssignable, Category = "Alert")
+	FOnCombatEnteredDelegate OnCombatEntered;
 
+	UFUNCTION(BlueprintCallable, Category = "Alert")
+	void NotifyCombatEntered(FVector CombatLocation);
+	
 protected:
 	virtual void BeginPlay() override;
 

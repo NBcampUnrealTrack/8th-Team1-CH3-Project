@@ -50,6 +50,10 @@ struct FRecoilData
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Recoil")
 	float HorizontalRecoil = 0.0f;
 
+	// 반동이 적용되는 속도를 결정하는 필드
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Recoil")
+	float RecoilSpeed = 20.0f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Recoil")
 	float RecoverySpeed = 0.0f;
 };

@@ -433,3 +433,21 @@ void AWeaponBase::UpdateTrajectoryPreview()
 			2.0f);
 	}
 }
+
+float AWeaponBase::GetThrowCooldownRemaining() const
+{
+	if (bThrowOnCooldown && ThrowCooldownTimerHandle.IsValid())
+	{
+		return GetWorldTimerManager().GetTimerRemaining(ThrowCooldownTimerHandle);
+	}
+	return 0.0f;
+}
+
+float AWeaponBase::GetThrowCooldownPercent() const
+{
+	if (bThrowOnCooldown && WeaponData && WeaponData->ThrowCooldown > 0.0f)
+	{
+		return FMath::Clamp(GetThrowCooldownRemaining() / WeaponData->ThrowCooldown, 0.0f, 1.0f);
+	}
+	return 0.0f;
+}

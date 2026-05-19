@@ -74,6 +74,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Game")
 	void ShowFailMenu(const FText& Reason);
 
+	/** 게임 클리어 UI 클래스 **/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+	TSubclassOf<class UH_ClearWidget> ClearWidgetClass;
+
+	/** 미션 클리어 시 호출되는 함수 **/
+	UFUNCTION(BlueprintCallable, Category = "Game")
+	void ShowClearMenu(float ClearTime, int32 KillCount);
+
 protected:
 	virtual void BeginPlay() override;
 };

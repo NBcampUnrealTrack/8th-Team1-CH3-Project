@@ -16,6 +16,7 @@ public:
 	UCombatFeedbackHandler();
 
 	// 처치 시 호출
+	UFUNCTION()
 	void OnKill();
 
 	// 캐릭터 팀원이 바인딩할 델리게이트

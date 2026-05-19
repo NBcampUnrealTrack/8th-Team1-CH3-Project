@@ -15,6 +15,14 @@ UCombatManager::UCombatManager()
 	HitDetector = CreateDefaultSubobject<UHitDetector>(TEXT("HitDetector"));
 	DamageProcessor = CreateDefaultSubobject<UDamageProcessor>(TEXT("DamageProcessor"));
 	FeedbackHandler = CreateDefaultSubobject<UCombatFeedbackHandler>(TEXT("FeedbackHandler"));
+
+	static ConstructorHelpers::FObjectFinder<UDamageDataAsset> RifleAsset(
+		TEXT("/Game/Systems/DA/DA_Damage_Rifle"));
+	if (RifleAsset.Succeeded()) RifleData = RifleAsset.Object;
+
+	static ConstructorHelpers::FObjectFinder<UDamageDataAsset> PistolAsset(
+		TEXT("/Game/Systems/DA/DA_Damage_Pistol"));
+	if (PistolAsset.Succeeded()) PistolData = PistolAsset.Object;
 }
 
 void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection, ECombatWeaponType WeaponType,
@@ -60,6 +68,9 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 	const bool bHitPlayer   = HitActor->ActorHasTag("Player");
 	const bool bOwnerIsEnemy = GetOwner()->ActorHasTag("Enemy");
 
+	UE_LOG(LogTemp, Warning, TEXT("[CombatManager] Hit: %s | bHitEnemy=%d bHitPlayer=%d bOwnerIsEnemy=%d"),
+		*HitActor->GetName(), bHitEnemy, bHitPlayer, bOwnerIsEnemy);
+
 	// 3. 환경 오브젝트 → 피격 소음만
 	if (!bHitEnemy && !bHitPlayer)
 	{
@@ -75,6 +86,9 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 	if (!bOwnerIsEnemy && bHitPlayer) return;
 
 	// 5. 데미지 계산
+	DamageProcessor->RifleData  = RifleData;
+	DamageProcessor->PistolData = PistolData;
+
 	FCombatDamageInfo DamageInfo;
 	DamageInfo.BaseDamage = BaseDamage;
 	DamageInfo.Distance   = HitResult.Distance;
