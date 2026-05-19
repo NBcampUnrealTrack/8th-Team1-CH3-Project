@@ -1,4 +1,5 @@
 #include "BossEnemy.h"
+#include "BossPrecisionWidget.h"
 #include "Components/WidgetComponent.h"
 #include "ThrowableActor.h"
 #include "CombatManager.h"
@@ -18,6 +19,21 @@ ABossEnemy::ABossEnemy()
     PrecisionWarningWidgetComp->SetWidgetSpace(EWidgetSpace::Screen);
     PrecisionWarningWidgetComp->SetDrawSize(FVector2D(200.f, 60.f));
     PrecisionWarningWidgetComp->SetVisibility(false);
+}
+
+void ABossEnemy::Tick(float DeltaTime)
+{
+    Super::Tick(DeltaTime);
+
+    if (bIsAiming && PrecisionAimDuration > 0.f)
+    {
+        PrecisionAimElapsed += DeltaTime;
+        const float Progress = FMath::Clamp(PrecisionAimElapsed / PrecisionAimDuration, 0.f, 1.f);
+        if (UBossPrecisionWidget* W = GetPrecisionWidget())
+        {
+            W->UpdateWarningProgress(Progress);
+        }
+    }
 }
 
 void ABossEnemy::BeginPlay()
@@ -240,24 +256,42 @@ void ABossEnemy::StartPrecisionCycle()
         &ABossEnemy::StartPrecisionAim, PrecisionInterval, true, PrecisionInterval);
 }
 
+UBossPrecisionWidget* ABossEnemy::GetPrecisionWidget() const
+{
+    if (!PrecisionWarningWidgetComp) return nullptr;
+    return Cast<UBossPrecisionWidget>(PrecisionWarningWidgetComp->GetUserWidgetObject());
+}
+
 void ABossEnemy::StartPrecisionAim()
 {
     if (bIsDead || CurrentAlertLevel != EAlertLevel::Combat || !IsValid(BossTarget)) return;
 
-    if (PrecisionWarningWidgetComp)
+    if (UBossPrecisionWidget* W = GetPrecisionWidget())
+    {
+        W->StartWarning();
+    }
+    else if (PrecisionWarningWidgetComp)
     {
         PrecisionWarningWidgetComp->SetVisibility(true);
     }
 
+    PrecisionAimElapsed = 0.f;
+    bIsAiming = true;
     GetWorldTimerManager().SetTimer(PrecisionFireHandle, this,
         &ABossEnemy::ExecutePrecisionFire, PrecisionAimDuration, false);
 }
 
 void ABossEnemy::ExecutePrecisionFire()
 {
+    bIsAiming = false;
+
     if (bIsDead || !IsValid(BossTarget)) return;
 
-    if (PrecisionWarningWidgetComp)
+    if (UBossPrecisionWidget* W = GetPrecisionWidget())
+    {
+        W->StopWarning();
+    }
+    else if (PrecisionWarningWidgetComp)
     {
         PrecisionWarningWidgetComp->SetVisibility(false);
     }
