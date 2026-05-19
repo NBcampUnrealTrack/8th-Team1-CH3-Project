@@ -4,7 +4,7 @@
 #include "UObject/Interface.h"
 #include "MissionInteractableInterface.generated.h"
 
-UINTERFACE(MinimalAPI)
+UINTERFACE(MinimalAPI, Blueprintable, BlueprintType)
 class UMissionInteractableInterface : public UInterface
 {
 	GENERATED_BODY()
