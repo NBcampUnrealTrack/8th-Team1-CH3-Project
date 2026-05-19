@@ -125,6 +125,8 @@ void APlayerCharacter::LoadCheckpoint(const FPlayerCheckpointData& CheckpointDat
 		HealthComponent->SetHealth(HealthComponent->GetMaxHealth());
 	}
 	
+	Tags.Add(TEXT("Player"));
+	
 	bHasRifle = false;
 }
 
