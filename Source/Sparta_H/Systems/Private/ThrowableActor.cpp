@@ -4,6 +4,8 @@
 #include "Perception/AISense_Hearing.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
 
 AThrowableActor::AThrowableActor()
 {
@@ -31,12 +33,33 @@ void AThrowableActor::HandleOnHit(UPrimitiveComponent* HitComponent, AActor* Oth
 {
 	if (ThrowableType == ECombatWeaponType::Grenade)
 	{
+		const FVector ExplosionLocation = GetActorLocation();
+
+		// 폭발 이펙트 재생
+		if (ExplosionEffect)
+		{
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+				GetWorld(), ExplosionEffect, ExplosionLocation,
+				FRotator::ZeroRotator, FVector::OneVector, true, true);
+		}
+		if (ExplosionSound)
+		{
+			UGameplayStatics::PlaySoundAtLocation(this, ExplosionSound, ExplosionLocation);
+		}
+
+		// Instigator 팀으로 피해 대상 결정: 적이 던졌으면 플레이어를, 플레이어가 던졌으면 적을 타격
+		const bool bThrownByEnemy = GetInstigator() && GetInstigator()->ActorHasTag("Enemy");
+		const FName TargetTag = bThrownByEnemy ? FName("Player") : FName("Enemy");
+
+		UE_LOG(LogTemp, Log, TEXT("[Grenade] 폭발 | 위치=(%.0f,%.0f,%.0f) | 반경=%.0f | 타겟팀=%s"),
+			ExplosionLocation.X, ExplosionLocation.Y, ExplosionLocation.Z, ExplosionRadius, *TargetTag.ToString());
+
 		// 범위 안 액터 탐색
 		TArray<FOverlapResult> Overlaps;
 		FCollisionShape Sphere = FCollisionShape::MakeSphere(ExplosionRadius);
 		GetWorld()->OverlapMultiByChannel(
 			Overlaps,
-			GetActorLocation(),
+			ExplosionLocation,
 			FQuat::Identity,
 			ECC_Pawn,
 			Sphere
@@ -46,9 +69,9 @@ void AThrowableActor::HandleOnHit(UPrimitiveComponent* HitComponent, AActor* Oth
 		{
 			AActor* Target = Overlap.GetActor();
 			if (!IsValid(Target)) continue;
-			if (!Target->ActorHasTag("Enemy")) continue;
+			if (!Target->ActorHasTag(TargetTag)) continue;
 
-			const float Distance = FVector::Dist(GetActorLocation(), Target->GetActorLocation()) / 100.f;
+			const float Distance = FVector::Dist(ExplosionLocation, Target->GetActorLocation()) / 100.f;
 
 			float Multiplier = 0.f;
 			if (Distance <= 2.f) Multiplier = 1.0f;
@@ -59,6 +82,8 @@ void AThrowableActor::HandleOnHit(UPrimitiveComponent* HitComponent, AActor* Oth
 			if (Multiplier <= 0.f) continue;
 
 			const float FinalDamage = ExplosionDamage * Multiplier;
+			UE_LOG(LogTemp, Log, TEXT("[Grenade] 피해 → %s | 거리=%.1fm | 배율=%.1f | 데미지=%.0f"),
+				*Target->GetName(), Distance, Multiplier, FinalDamage);
 			UGameplayStatics::ApplyDamage(Target, FinalDamage, nullptr, this, nullptr);
 		}
 	}

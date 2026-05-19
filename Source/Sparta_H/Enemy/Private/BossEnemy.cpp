@@ -1,4 +1,5 @@
 #include "BossEnemy.h"
+#include "Kismet/GameplayStatics.h"
 #include "NavigationSystem.h"
 #include "BehaviorTree/BehaviorTreeComponent.h"
 #include "BossPrecisionWidget.h"
@@ -291,20 +292,46 @@ void ABossEnemy::ThrowGrenade()
         UE_LOG(LogTemp, Warning, TEXT("[Boss] GrenadeMontage 미설정 — 즉시 플래그 해제"));
     }
 
-    const FVector Origin = GetActorLocation() + FVector(0.f, 0.f, 50.f);
-    const FVector ThrowDir = (BossTarget->GetActorLocation() - Origin).GetSafeNormal();
+    const FVector Origin = GetActorLocation() + FVector(0.f, 0.f, 100.f);
+    const FVector TargetLocation = BossTarget->GetActorLocation();
+    const FVector ThrowDir = (TargetLocation - Origin).GetSafeNormal();
 
     FActorSpawnParameters SpawnParams;
     SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+    SpawnParams.Instigator = this; // 보스가 던진 것임을 표시 → 플레이어에게 피해
 
     AThrowableActor* Grenade = GetWorld()->SpawnActor<AThrowableActor>(
         GrenadeClass, Origin, ThrowDir.Rotation(), SpawnParams);
 
     if (Grenade)
     {
-        Grenade->Launch(ThrowDir, GrenadeThrowSpeed);
-        UE_LOG(LogTemp, Log, TEXT("[Boss] 수류탄 발사 완료 | 방향=(%.1f, %.1f, %.1f)"),
-            ThrowDir.X, ThrowDir.Y, ThrowDir.Z);
+        // SuggestProjectileVelocity_CustomArc으로 중력을 고려한 아크 궤적 계산
+        FVector LaunchVelocity;
+        const bool bFoundArc = UGameplayStatics::SuggestProjectileVelocity_CustomArc(
+            this, LaunchVelocity, Origin, TargetLocation,
+            0.f,  // 기본 중력 사용
+            0.4f  // 아크 값: 0=직선, 1=고각도, 0.4=자연스러운 투척
+        );
+
+        if (bFoundArc)
+        {
+            // 계산 속도가 너무 느리면 GrenadeThrowSpeed로 스케일업 (방향은 유지)
+            const float CalcSpeed = LaunchVelocity.Size();
+            const float FinalSpeed = FMath::Max(CalcSpeed, GrenadeThrowSpeed);
+            const FVector FinalVelocity = LaunchVelocity.GetSafeNormal() * FinalSpeed;
+
+            Grenade->ProjectileMovement->Velocity = FinalVelocity;
+            Grenade->ProjectileMovement->InitialSpeed = FinalSpeed;
+            Grenade->ProjectileMovement->MaxSpeed = FinalSpeed;
+            UE_LOG(LogTemp, Log, TEXT("[Boss] 수류탄 발사 (아크) | 속도=%.0f | 방향=(%.2f,%.2f,%.2f)"),
+                FinalSpeed, FinalVelocity.GetSafeNormal().X, FinalVelocity.GetSafeNormal().Y, FinalVelocity.GetSafeNormal().Z);
+        }
+        else
+        {
+            Grenade->Launch(ThrowDir, GrenadeThrowSpeed);
+            UE_LOG(LogTemp, Warning, TEXT("[Boss] 아크 계산 실패 — 직선 발사 | 방향=(%.2f,%.2f,%.2f)"),
+                ThrowDir.X, ThrowDir.Y, ThrowDir.Z);
+        }
     }
     else
     {
