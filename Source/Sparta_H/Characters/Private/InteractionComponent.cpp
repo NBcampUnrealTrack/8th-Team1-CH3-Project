@@ -75,7 +75,4 @@ void UInteractionComponent::PerformInteraction(UCameraComponent* Camera)
 void UInteractionComponent::ResetInteractionCooldown()
 {
 	bIsCooldown = false;
-    
-	// 타이머 핸들 깔끔하게 정리 (선택 사항이지만 권장)
-	GetWorld()->GetTimerManager().ClearTimer(CooldownTimerHandle);
 }

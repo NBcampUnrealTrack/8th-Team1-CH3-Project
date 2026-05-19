@@ -2,7 +2,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "MissionInteractableInterface.h"
 #include "HostageCharacter.generated.h"
+
+class APlayerCharacter;
 
 UENUM(BlueprintType)
 enum class EHostageState : uint8
@@ -13,7 +16,7 @@ enum class EHostageState : uint8
 };
 
 UCLASS()
-class SPARTA_H_API AHostageCharacter : public ACharacter
+class SPARTA_H_API AHostageCharacter : public ACharacter, public IMissionInteractableInterface
 {
 	GENERATED_BODY()
 
@@ -28,19 +31,21 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hostage")
 	bool bIsSit = true; 
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hostage")
+	bool bIsInteracted = false; 
 
 protected:
 	virtual void BeginPlay() override;
 
 public:
-	// 키보드 입력을 가로채기 위한 내장 함수
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-    
-	UFUNCTION(BlueprintCallable, Category = "Hostage")
-	void OnInteract(AActor* Interactor);
+	// --- [IMissionInteractableInterface 구현부] ---
+	//뒤에 'override' 키워드를 붙여 부모 인터페이스의 함수를 재정의함을 명시합니다.
+	virtual void Interact_Implementation(class APlayerCharacter* Interactor) override;
+	virtual bool CanInteract_Implementation(class APlayerCharacter* Interactor) const override;
+	virtual FString GetInteractionText_Implementation() const override;
 
 	void ChangeState(EHostageState NewState);
-
-private:
-	void OnFKeyPressed();
+	
+	FTimerHandle StandUpTimerHandle;
 };
