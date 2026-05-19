@@ -3,6 +3,7 @@
 #include "CombatManager.h"
 #include "BlackboardKeys.h"
 #include "Perception/AIPerceptionComponent.h"
+#include "Perception/AISenseConfig_Sight.h"
 #include "Perception/AISense_Sight.h"
 #include "Perception/AISense_Hearing.h"
 #include "AIController.h"
@@ -25,6 +26,10 @@ void ABossEnemy::BeginPlay()
 void ABossEnemy::InitializeStats()
 {
     Super::InitializeStats(); // DA_Enemy_Boss → MaxHealth=500, WeaponDamage=35
+
+    SightConfig->PeripheralVisionAngleDegrees = 180.f; // FOV 360도 (Half-angle)
+    AIPerceptionComp->ConfigureSense(*SightConfig);
+    AIPerceptionComp->RequestStimuliListenerUpdate();
 }
 
 // ─── Perception ──────────────────────────────────────────────────────────────
