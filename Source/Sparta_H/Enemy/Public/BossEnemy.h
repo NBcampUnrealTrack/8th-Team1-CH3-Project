@@ -69,7 +69,7 @@ protected:
     TSubclassOf<AThrowableActor> GrenadeClass;
 
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Attack")
-    float GrenadeInterval = 20.f;
+    float GrenadeInterval = 10.f;
 
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Attack")
     float GrenadeThrowSpeed = 1200.f;
