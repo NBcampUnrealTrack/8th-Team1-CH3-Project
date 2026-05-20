@@ -19,6 +19,8 @@ class SPARTA_H_API UCombatManager : public UActorComponent
 public:
 	UCombatManager();
 
+	virtual void InitializeComponent() override;
+
 	UPROPERTY()
 	UHitDetector* HitDetector;
 
