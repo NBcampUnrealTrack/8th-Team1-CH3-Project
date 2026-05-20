@@ -2,8 +2,11 @@
 #include "H_HUDWidget.h"
 #include "UI/Public/H_FailWidget.h"
 #include "UI/Public/H_ClearWidget.h"
+#include "UI/Public/H_WeaponListWidget.h"
+#include "Characters/Public/PlayerCharacter.h"
 #include "Blueprint/UserWidget.h"
 #include "EnhancedInputSubsystems.h"
+#include "EnhancedInputComponent.h"
 #include "Kismet/GameplayStatics.h"
 
 AH_PlayerController::AH_PlayerController()
@@ -24,6 +27,8 @@ AH_PlayerController::AH_PlayerController()
 	EquipSlotAction = nullptr;
 	EquipNextWeaponAction = nullptr;
 	EquipPreviousWeaponAction = nullptr;
+
+	ShowWeaponListAction = nullptr;
 }
 
 void AH_PlayerController::BeginPlay()
@@ -49,6 +54,76 @@ void AH_PlayerController::BeginPlay()
 		if (HUDWidgetInstance)
 		{
 			HUDWidgetInstance->AddToViewport();
+		}
+	}
+}
+
+void AH_PlayerController::SetupInputComponent()
+{
+	Super::SetupInputComponent();
+
+	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(InputComponent))
+	{
+		// Modified: Tab 키 무기 목록 토글 바인딩 (일시정지 중에도 작동해야 함)
+		if (ShowWeaponListAction)
+		{
+			EnhancedInputComponent->BindAction(ShowWeaponListAction, ETriggerEvent::Started, this, &AH_PlayerController::OnToggleWeaponList);
+		}
+	}
+}
+
+void AH_PlayerController::OnToggleWeaponList()
+{
+	ToggleWeaponList();
+}
+
+void AH_PlayerController::ToggleWeaponList()
+{
+	// Modified: 무기 목록 위젯 토글 및 게임 일시정지 처리
+	bIsWeaponListOpen = !bIsWeaponListOpen;
+
+	if (bIsWeaponListOpen)
+	{
+		if (!WeaponListWidgetInstance && WeaponListWidgetClass)
+		{
+			WeaponListWidgetInstance = CreateWidget<UH_WeaponListWidget>(this, WeaponListWidgetClass);
+		}
+
+		if (WeaponListWidgetInstance)
+		{
+			APlayerCharacter* PC = Cast<APlayerCharacter>(GetPawn());
+			if (PC)
+			{
+				// 캐릭터의 소지 무기 목록을 가져와 UI 갱신
+				WeaponListWidgetInstance->RefreshWeaponList(PC->GetEquippedWeapons());
+			}
+
+			WeaponListWidgetInstance->AddToViewport();
+			
+			// 마우스 활성화 및 게임 입력 제한
+			FInputModeGameAndUI InputMode;
+			InputMode.SetWidgetToFocus(WeaponListWidgetInstance->TakeWidget());
+			InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+			SetInputMode(InputMode);
+			bShowMouseCursor = true;
+
+			// 게임 일시 정지
+			UGameplayStatics::SetGamePaused(GetWorld(), true);
+		}
+	}
+	else
+	{
+		if (WeaponListWidgetInstance)
+		{
+			WeaponListWidgetInstance->RemoveFromParent();
+			
+			// 마우스 비활성화 및 게임 전용 입력 모드 복구
+			FInputModeGameOnly InputMode;
+			SetInputMode(InputMode);
+			bShowMouseCursor = false;
+
+			// 게임 일시 정지 해제
+			UGameplayStatics::SetGamePaused(GetWorld(), false);
 		}
 	}
 }

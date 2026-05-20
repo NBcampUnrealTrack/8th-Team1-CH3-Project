@@ -57,14 +57,26 @@ public:
 	// G 키 — 투척물(수류탄/돌맹이) 장착 토글
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input|Weapon")
 	UInputAction* ThrowableAction;
+
+	// Tab 키 — 무기 목록 UI 표시
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input|UI")
+	UInputAction* ShowWeaponListAction;
 	
 	// 에디터에서 지정할 위젯 클래스
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UH_HUDWidget> HUDWidgetClass;
 
+	// 무기 목록 위젯 클래스
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<class UH_WeaponListWidget> WeaponListWidgetClass;
+
 	// 생성된 위젯 인스턴스
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
 	TObjectPtr<UH_HUDWidget> HUDWidgetInstance;
+
+	// 무기 목록 위젯 인스턴스
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
+	TObjectPtr<class UH_WeaponListWidget> WeaponListWidgetInstance;
 
 	/** 미션 실패 위젯 클래스 **/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
@@ -82,7 +94,20 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Game")
 	void ShowClearMenu(float ClearTime, int32 KillCount);
 
+	// UI 토글 처리 함수
+	// Modified: 무기 목록 UI 토글 로직 및 상태 변수 추가
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void ToggleWeaponList();
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
+	bool bIsWeaponListOpen = false;
 
 protected:
 	virtual void BeginPlay() override;
+
+	// 입력 바인딩용 함수
+	// Modified: 토글 전용 핸들러로 통합
+	void OnToggleWeaponList();
+
+	virtual void SetupInputComponent() override;
 };

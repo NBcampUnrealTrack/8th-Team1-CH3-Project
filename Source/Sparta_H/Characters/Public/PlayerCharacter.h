@@ -51,6 +51,12 @@ struct FPlayerCheckpointData
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FRotator Rotation = FRotator::ZeroRotator;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 KillCount = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float ElapsedTime = 0.0f;
 };
 
 UCLASS()
@@ -162,6 +168,10 @@ public:
 	/** Weapon System **/
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	UCombatManager* GetCombatManager() const { return CombatManager; }
+
+	// 소지 중인 전체 무기 데이터 목록 반환
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
+	TArray<UWeaponDataAsset*> GetEquippedWeapons() const { return EquippedWeapons; }
 
 	// 인덱스로 슬롯 무기 장착. 잘못된 인덱스/같은 무기/재장전·교체 중이면 무시
 	UFUNCTION(BlueprintCallable, Category = "Weapon")

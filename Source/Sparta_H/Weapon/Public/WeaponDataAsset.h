@@ -40,6 +40,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Stats")
 	float Damage = 0.0f;
 
+	// 거리 별 대미지 배율 (X: 거리(cm), Y: 배율(0.0~1.0))
+	// 거리 별 대미지 배율 정보 추가
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Stats")
+	UCurveFloat* DamageFalloffCurve;
+
+	// 부위 별 대미지 배율
+	// 부위 별 대미지 배율 정보 추가
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Stats")
+	TMap<FName, float> BodyPartMultipliers;
+
 	// 발사 간격(초). 풀오토에서 다음 발사까지의 쿨다운으로 사용
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Stats")
 	float FireRate = 0.0f;
