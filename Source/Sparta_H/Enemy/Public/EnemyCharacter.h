@@ -66,6 +66,8 @@ public:
     // 소환 등 특수 상황에서 머리 위에 !! 아이콘을 Duration초 동안 표시
     UFUNCTION(BlueprintCallable, Category = "AI|UI")
     void ShowExclamationIcon(float Duration);
+    
+    virtual void OnConstruction(const FTransform& Transform) override;
 
 protected:
     virtual void BeginPlay() override;
@@ -126,6 +128,9 @@ protected:
 
     UPROPERTY(EditAnywhere, Category = "AI|VFX")
     class UNiagaraSystem* MuzzleFlashEffect;
+    
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Patrol")
+    bool bUseRandomPatrol = true;
 
 private:
     // ---------------------------------------------------------------
