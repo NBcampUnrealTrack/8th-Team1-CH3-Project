@@ -13,9 +13,9 @@
 UCombatManager::UCombatManager()
 {
 	PrimaryComponentTick.bCanEverTick = false;
+	bWantsInitializeComponent = true;
 
 	HitDetector = CreateDefaultSubobject<UHitDetector>(TEXT("HitDetector"));
-	DamageProcessor = CreateDefaultSubobject<UDamageProcessor>(TEXT("DamageProcessor"));
 	FeedbackHandler = CreateDefaultSubobject<UCombatFeedbackHandler>(TEXT("FeedbackHandler"));
 
 	static ConstructorHelpers::FObjectFinder<UDamageDataAsset> RifleAsset(
@@ -25,6 +25,15 @@ UCombatManager::UCombatManager()
 	static ConstructorHelpers::FObjectFinder<UDamageDataAsset> PistolAsset(
 		TEXT("/Game/Systems/DA/DA_Damage_Pistol"));
 	if (PistolAsset.Succeeded()) PistolData = PistolAsset.Object;
+}
+
+void UCombatManager::InitializeComponent()
+{
+	Super::InitializeComponent();
+	if (!IsValid(DamageProcessor))
+	{
+		DamageProcessor = NewObject<UDamageProcessor>(this, TEXT("DamageProcessor"));
+	}
 }
 
 void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection, ECombatWeaponType WeaponType,
@@ -89,6 +98,11 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 	if (!bOwnerIsEnemy && bHitPlayer) return;
 
 	// 5. 데미지 계산
+	if (!IsValid(DamageProcessor))
+	{
+		UE_LOG(LogTemp, Error, TEXT("[CombatManager] DamageProcessor null — lazily creating"));
+		DamageProcessor = NewObject<UDamageProcessor>(this, TEXT("DamageProcessor"));
+	}
 	DamageProcessor->BoneHead  = BoneHead;
 	DamageProcessor->BoneTorso = BoneTorso;
 	DamageProcessor->BoneLimb  = BoneLimb;
