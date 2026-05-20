@@ -23,41 +23,43 @@
 
 AEnemyCharacter::AEnemyCharacter()
 {
-	GetMesh()->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));
+    GetMesh()->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));
 
-	AIPerceptionComp = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("PerceptionComp"));
-	SightConfig = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("SightConfig"));
-	HearingConfig = CreateDefaultSubobject<UAISenseConfig_Hearing>(TEXT("HearingConfig"));
-	CombatManagerComp = CreateDefaultSubobject<UCombatManager>(TEXT("CombatManager"));
+    AIPerceptionComp = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("PerceptionComp"));
+    SightConfig = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("SightConfig"));
+    HearingConfig = CreateDefaultSubobject<UAISenseConfig_Hearing>(TEXT("HearingConfig"));
+    CombatManagerComp = CreateDefaultSubobject<UCombatManager>(TEXT("CombatManager"));
 
-	WeaponMeshComp = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
-	WeaponMeshComp->SetupAttachment(GetMesh(), TEXT("GripPoint"));
+    WeaponMeshComp = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
+    WeaponMeshComp->SetupAttachment(GetMesh(), TEXT("GripPoint"));
 
-	AlertIconWidgetComp = CreateDefaultSubobject<UWidgetComponent>(TEXT("AlertIconWidget"));
-	AlertIconWidgetComp->SetupAttachment(GetRootComponent());
-	AlertIconWidgetComp->SetWidgetSpace(EWidgetSpace::Screen);
-	AlertIconWidgetComp->SetDrawSize(FVector2D(64.f, 64.f));
-	AlertIconWidgetComp->SetVisibility(false);
+    AlertIconWidgetComp = CreateDefaultSubobject<UWidgetComponent>(TEXT("AlertIconWidget"));
+    AlertIconWidgetComp->SetupAttachment(GetRootComponent());
+    AlertIconWidgetComp->SetWidgetSpace(EWidgetSpace::Screen);
+    AlertIconWidgetComp->SetDrawSize(FVector2D(64.f, 64.f));
+    AlertIconWidgetComp->SetVisibility(false);
 
-	if (SightConfig)
-	{
-		SightConfig->DetectionByAffiliation.bDetectEnemies = true;
-		SightConfig->DetectionByAffiliation.bDetectFriendlies = true;
-		SightConfig->DetectionByAffiliation.bDetectNeutrals = true;
-		AIPerceptionComp->ConfigureSense(*SightConfig);
-	}
+    if (SightConfig)
+    {
+       SightConfig->DetectionByAffiliation.bDetectEnemies = true;
+       SightConfig->DetectionByAffiliation.bDetectFriendlies = true;
+       SightConfig->DetectionByAffiliation.bDetectNeutrals = true;
+       AIPerceptionComp->ConfigureSense(*SightConfig);
+    }
 
-	if (HearingConfig)
-	{
-		HearingConfig->HearingRange = IdleStats.HearingRange;
-		HearingConfig->DetectionByAffiliation.bDetectEnemies = true;
-		HearingConfig->DetectionByAffiliation.bDetectFriendlies = true;
-		HearingConfig->DetectionByAffiliation.bDetectNeutrals = true;
-		AIPerceptionComp->ConfigureSense(*HearingConfig);
-	}
+    if (HearingConfig)
+    {
+       HearingConfig->HearingRange = IdleStats.HearingRange;
+       HearingConfig->DetectionByAffiliation.bDetectEnemies = true;
+       HearingConfig->DetectionByAffiliation.bDetectFriendlies = true;
+       HearingConfig->DetectionByAffiliation.bDetectNeutrals = true;
+       AIPerceptionComp->ConfigureSense(*HearingConfig);
+    }
 
-	AIPerceptionComp->SetDominantSense(SightConfig->GetSenseImplementation());
-	bUseControllerRotationYaw = true;
+    AIPerceptionComp->SetDominantSense(SightConfig->GetSenseImplementation());
+    
+    // 기본 상태에서는 Yaw 강제 고정을 끕니다. (MovementComponent가 회전을 제어하도록 위임)
+    bUseControllerRotationYaw = false; 
 }
 
 void AEnemyCharacter::BeginPlay()
@@ -86,7 +88,6 @@ void AEnemyCharacter::BeginPlay()
     if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
     {
         MoveComp->bUseRVOAvoidance = true;
-        // 캡슐 반경(~42)의 약 2.5배 — 접촉 전에 미리 회피 시작
         MoveComp->AvoidanceConsiderationRadius = 110.0f;
         MoveComp->bOrientRotationToMovement = true;
     }
@@ -101,16 +102,12 @@ void AEnemyCharacter::BeginPlay()
     }
 }
 
-// ---------------------------------------------------------------
-// 타입별 스탯 초기화
-// ---------------------------------------------------------------
 void AEnemyCharacter::InitializeStats()
 {
     Super::InitializeStats();
     WeaponDamage = Damage;
 }
 
-// 1초마다 확률 검사 (기획: Visibility * SpotProb >= Rand)
 void AEnemyCharacter::ProcessSpotCheck()
 {
     if (!SuspectedTarget)
@@ -130,19 +127,14 @@ void AEnemyCharacter::ProcessSpotCheck()
     }
     else
     {
-        // 1초마다 0.15씩 증가 (약 2~3초 안에 확정 발견되도록)
         SpotProb += 0.15f; 
     }
 }
 
-// ---------------------------------------------------------------
-// 머리 위 아이콘 갱신
-// ---------------------------------------------------------------
 void AEnemyCharacter::UpdateAlertIcon(EAlertLevel NewLevel)
 {
     if (!AlertIconWidgetComp) return;
 
-    // Idle / CCTV / Lost : 즉시 숨김 + 타이머 취소
     if (NewLevel == EAlertLevel::Idle   ||
         NewLevel == EAlertLevel::CCTV   ||
         NewLevel == EAlertLevel::Lost)
@@ -152,7 +144,6 @@ void AEnemyCharacter::UpdateAlertIcon(EAlertLevel NewLevel)
         return;
     }
 
-    // Suspicious(??) / Combat(!!) : 아이콘 표시 후 IconHideDelay초 뒤 숨김
     UEnemyAlertWidget* AlertWidget = Cast<UEnemyAlertWidget>(AlertIconWidgetComp->GetUserWidgetObject());
     if (AlertWidget)
     {
@@ -192,9 +183,6 @@ void AEnemyCharacter::ShowExclamationIcon(float Duration)
     GetWorldTimerManager().SetTimer(IconHideTimerHandle, this, &AEnemyCharacter::HideAlertIcon, Duration, false);
 }
 
-// ---------------------------------------------------------------
-// Perception 수치 런타임 갱신
-// ---------------------------------------------------------------
 void AEnemyCharacter::ApplyPerceptionStats(const FAlertLevelStats& Stats)
 {
     if (SightConfig)
@@ -215,18 +203,13 @@ void AEnemyCharacter::ApplyPerceptionStats(const FAlertLevelStats& Stats)
     AIPerceptionComp->RequestStimuliListenerUpdate();
 }
 
-// ---------------------------------------------------------------
-// AlertLevel 변경 + Perception + 아이콘 + 타이머 + 주변 적 동기화
-// ---------------------------------------------------------------
 void AEnemyCharacter::OnAlertLevelChanged(EAlertLevel NewLevel)
 {
     if (bIsDead) return;
     if (CurrentAlertLevel == NewLevel) return;
 
-    // 1. C++ 내부 변수 업데이트
     CurrentAlertLevel = NewLevel;
 
-    // 2. 블랙보드에 실시간 기록 (이게 없으면 BT가 작동 안 함)
     if (AAIController* AIC = Cast<AAIController>(GetController()))
     {
         if (UBlackboardComponent* BB = AIC->GetBlackboardComponent())
@@ -242,9 +225,38 @@ void AEnemyCharacter::OnAlertLevelChanged(EAlertLevel NewLevel)
 
     Super::OnAlertLevelChanged(NewLevel);
 
+    AActor* TargetPlayer = nullptr;
+    if (AAIController* AIC = Cast<AAIController>(GetController()))
+    {
+        if (UBlackboardComponent* BB = AIC->GetBlackboardComponent())
+            TargetPlayer = Cast<AActor>(BB->GetValueAsObject(BBKeys::TARGET_ACTOR));
+    }
+
+    // 💡 [핵심 픽스] 전투 진입 시 포커스와 회전 동기화를 이 곳에서 통제합니다.
+    bool bIsCombat = (NewLevel == EAlertLevel::Combat);
+    
     if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
     {
-        MoveComp->bOrientRotationToMovement = (NewLevel != EAlertLevel::Combat);
+        MoveComp->bOrientRotationToMovement = !bIsCombat; // 전투 중엔 이동 방향을 보지 않음 (게걸음)
+        MoveComp->bUseControllerDesiredRotation = bIsCombat; // 컨트롤러의 시선(포커스)을 몸이 부드럽게 따라감
+        
+        if (bIsCombat)
+        {
+            // 몸을 빠르게 틀 수 있도록 회전 속도를 확 올려줍니다.
+            MoveComp->RotationRate = FRotator(0.0f, 800.0f, 0.0f);
+        }
+    }
+
+    if (AAIController* AIC = Cast<AAIController>(GetController()))
+    {
+        if (bIsCombat && TargetPlayer)
+        {
+            AIC->SetFocus(TargetPlayer, EAIFocusPriority::Gameplay);
+        }
+        else
+        {
+            AIC->ClearFocus(EAIFocusPriority::Gameplay);
+        }
     }
 
     switch (NewLevel)
@@ -256,15 +268,6 @@ void AEnemyCharacter::OnAlertLevelChanged(EAlertLevel NewLevel)
         default: break;
     }
 
-    // 타겟 정보 가져오기
-    AActor* TargetPlayer = nullptr;
-    if (AAIController* AIC = Cast<AAIController>(GetController()))
-    {
-        if (UBlackboardComponent* BB = AIC->GetBlackboardComponent())
-            TargetPlayer = Cast<AActor>(BB->GetValueAsObject(BBKeys::TARGET_ACTOR));
-    }
-
-    // 상태별 타이머 및 알람 전파
     switch (NewLevel)
     {
     case EAlertLevel::Suspicious:
@@ -275,15 +278,19 @@ void AEnemyCharacter::OnAlertLevelChanged(EAlertLevel NewLevel)
         if (AAlertManager* AlertMgr = AAlertManager::GetInstance(this)) AlertMgr->NotifyCombatEntered(GetActorLocation());
         break;
     case EAlertLevel::Lost:
+        if (AAIController* AIC = Cast<AAIController>(GetController()))
+        {
+            if (UBlackboardComponent* BB = AIC->GetBlackboardComponent())
+            {
+                BB->ClearValue(BBKeys::TARGET_ACTOR);
+            }
+        }
         if (TargetPlayer) AlertNearbyEnemies(TargetPlayer, LostAlertRange, EAlertLevel::Suspicious);
         break;
     default: break;
     }
 }
 
-// ---------------------------------------------------------------
-// 주변 적 동기화
-// ---------------------------------------------------------------
 void AEnemyCharacter::AlertNearbyEnemies(AActor* TargetPlayer, float AlertRange, EAlertLevel NewLevel)
 {
     if (!TargetPlayer) return;
@@ -328,9 +335,6 @@ void AEnemyCharacter::AlertNearbyEnemies(AActor* TargetPlayer, float AlertRange,
     }
 }
 
-// ---------------------------------------------------------------
-// 자동 복귀 타이머 콜백
-// ---------------------------------------------------------------
 void AEnemyCharacter::OnSuspiciousRevertTimerExpired()
 {
     if (CurrentAlertLevel != EAlertLevel::Suspicious) return;
@@ -347,9 +351,6 @@ void AEnemyCharacter::OnSuspiciousRevertTimerExpired()
     }
 }
 
-// ---------------------------------------------------------------
-// Perception 콜백
-// ---------------------------------------------------------------
 void AEnemyCharacter::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
 {
     if (bIsDead || !Actor || Actor == this) return;
@@ -370,17 +371,15 @@ void AEnemyCharacter::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
 
             GetWorldTimerManager().ClearTimer(CombatToLostTimerHandle);
 
-            if (CurrentAlertLevel == EAlertLevel::Lost)
+            if (CurrentAlertLevel == EAlertLevel::Lost || CurrentAlertLevel < EAlertLevel::Combat)
             {
-                UE_LOG(LogTemp, Warning, TEXT("[%s] 4단계(Lost) 상태에서 플레이어 재발견! 3단계(Combat)로 복귀합니다."), *GetName());
-                OnAlertLevelChanged(EAlertLevel::Combat);
-                return;
-            }
-
-            // 1, 2단계일 경우 경계도 올리기
-            if (CurrentAlertLevel < EAlertLevel::Combat)
-            {
+                if (CurrentAlertLevel == EAlertLevel::Lost)
+                {
+                    UE_LOG(LogTemp, Warning, TEXT("[%s] 4단계(Lost) 상태에서 플레이어 포착! (확률 검사 시작)"), *GetName());
+                }
+                
                 OnAlertLevelChanged(EAlertLevel::Suspicious);
+                
                 if (!GetWorldTimerManager().IsTimerActive(SpotCheckTimerHandle))
                 {
                     SpotProb = 0.7f;
@@ -406,16 +405,13 @@ void AEnemyCharacter::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
     }
     else if (Stimulus.Type == UAISense::GetSenseID<UAISense_Hearing>())
     {
-        // 청각 감지 로직 기존 코드 유지
         if (Stimulus.WasSuccessfullySensed())
         {
             UE_LOG(LogTemp, Warning, TEXT("[%s] 청각 감지! 소음 위치=%s | 현재 경계=%d"),
                 *GetName(), *Stimulus.StimulusLocation.ToString(), (int32)CurrentAlertLevel);
 
-            // 소음 위치를 마지막 알려진 위치로 기록 → BT가 조사하러 이동
             BB->SetValueAsVector(BBKeys::LAST_KNOWN_LOCATION, Stimulus.StimulusLocation);
 
-            // Idle이면 Suspicious로 전환, Suspicious 이상이면 Combat으로 전환
             if (CurrentAlertLevel == EAlertLevel::Idle)
             {
                 OnAlertLevelChanged(EAlertLevel::Suspicious);
@@ -445,12 +441,8 @@ void AEnemyCharacter::StartFirePattern(AActor* TargetActor)
     if (AAIController* AIC = Cast<AAIController>(GetController()))
     {
         AIC->StopMovement();
+        // 시선 관리는 OnAlertLevelChanged에서 하지만, 확실히 하기 위해 다시 강제합니다.
         AIC->SetFocus(TargetActor, EAIFocusPriority::Gameplay);
-    }
-
-    if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
-    {
-        MoveComp->bOrientRotationToMovement = false;
     }
 
     UE_LOG(LogTemp, Warning, TEXT("[%s] 사격 패턴 시작! 타겟 액터: %s"), *GetName(), *TargetActor->GetName());
@@ -467,8 +459,7 @@ void AEnemyCharacter::ExecuteFireStep()
     {
         CurrentShotCount = 0;
         SuspectedTarget = nullptr;
-        if (AAIController* AIC = Cast<AAIController>(GetController())) AIC->ClearFocus(EAIFocusPriority::Gameplay);
-        if (UCharacterMovementComponent* MoveComp = GetCharacterMovement()) MoveComp->bOrientRotationToMovement = true;
+        // 전투 상태가 끝났을 때만 OnAlertLevelChanged 로직에 의해 포커스가 해제됩니다. 여기선 건드리지 않습니다.
         return;
     }
 
@@ -485,40 +476,42 @@ void AEnemyCharacter::ExecuteFireStep()
             UE_LOG(LogTemp, Log, TEXT("[%s] 발사 단계 성공. 0.4초 후 다음 탄 발사를 예약합니다. 대상: %s"), *GetName(), *TargetName);
             GetWorldTimerManager().SetTimer(FirePatternTimerHandle, this, &AEnemyCharacter::ExecuteFireStep, 0.4f, false);
         }
-        else if (Blocker && Blocker->ActorHasTag(TEXT("Enemy")))
+        else 
         {
-            // 아군 적이 사격선을 막고 있음 → 재배치
-            UE_LOG(LogTemp, Warning, TEXT("[%s] 아군(%s)에 막혀 재배치 시작"), *GetName(), *Blocker->GetName());
-            CurrentShotCount = 0;
-            bIsRepositioning = true;
-
-            if (AAIController* AIC = Cast<AAIController>(GetController()))
+            // 💡 [핵심 픽스] 각도 검사 분리: 못 쏜 이유가 각도(덜 돌아서) 때문인지 확인합니다.
+            const FVector DirToTarget = (SuspectedTarget->GetActorLocation() - GetActorLocation()).GetSafeNormal2D();
+            const float AngleToTarget = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(GetActorForwardVector(), DirToTarget)));
+            
+            if (AngleToTarget > FireAngleLimit)
             {
-                AIC->ClearFocus(EAIFocusPriority::Gameplay);
-                AIC->MoveToActor(SuspectedTarget, 600.f);
+                // 타겟이 시야각 밖에 있다면 사격을 취소하지 않고 0.1초 뒤 다시 체크합니다. (돌아볼 시간을 줌)
+                UE_LOG(LogTemp, Log, TEXT("[%s] 타겟이 시야각(%.1f도) 밖에 있어 사격 보류 및 몸 회전 대기 중..."), *GetName(), AngleToTarget);
+                GetWorldTimerManager().SetTimer(FirePatternTimerHandle, this, &AEnemyCharacter::ExecuteFireStep, 0.1f, false);
             }
-            if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
-                MoveComp->bOrientRotationToMovement = true;
+            else if (Blocker && Blocker->ActorHasTag(TEXT("Enemy")))
+            {
+                UE_LOG(LogTemp, Warning, TEXT("[%s] 아군(%s)에 막혀 재배치 시작"), *GetName(), *Blocker->GetName());
+                CurrentShotCount = 0;
+                bIsRepositioning = true;
 
-            GetWorldTimerManager().SetTimer(RepositionTimerHandle, this, &AEnemyCharacter::TryRepositionForShot, 0.5f, false);
-        }
-        else
-        {
-            // 거리/각도 초과 등 — 그냥 종료
-            UE_LOG(LogTemp, Warning, TEXT("[%s] 사격 조건 미충족으로 패턴 종료. 대상: %s"), *GetName(), *TargetName);
-            CurrentShotCount = 0;
-            if (AAIController* AIC = Cast<AAIController>(GetController())) AIC->ClearFocus(EAIFocusPriority::Gameplay);
-            if (UCharacterMovementComponent* MoveComp = GetCharacterMovement()) MoveComp->bOrientRotationToMovement = true;
+                if (AAIController* AIC = Cast<AAIController>(GetController()))
+                {
+                    AIC->MoveToActor(SuspectedTarget, 600.f);
+                }
+
+                GetWorldTimerManager().SetTimer(RepositionTimerHandle, this, &AEnemyCharacter::TryRepositionForShot, 0.5f, false);
+            }
+            else
+            {
+                UE_LOG(LogTemp, Warning, TEXT("[%s] 점사 도중 사격 조건을 상실하여 사격을 종료합니다. 대상: %s"), *GetName(), *TargetName);
+                CurrentShotCount = 0;
+            }
         }
     }
     else
     {
         UE_LOG(LogTemp, Log, TEXT("[%s] 3점사 발사 완료. 0.8초간 사격 쿨다운 제어에 들어갑니다. 대상: %s"), *GetName(), *TargetName);
         CurrentShotCount = 0;
-        
-        if (AAIController* AIC = Cast<AAIController>(GetController())) AIC->ClearFocus(EAIFocusPriority::Gameplay);
-        if (UCharacterMovementComponent* MoveComp = GetCharacterMovement()) MoveComp->bOrientRotationToMovement = true;
-
         GetWorldTimerManager().SetTimer(FirePatternTimerHandle, 0.8f, false);
     }
 }
@@ -539,17 +532,13 @@ void AEnemyCharacter::TryRepositionForShot()
         if (AAIController* AIC = Cast<AAIController>(GetController()))
         {
             AIC->StopMovement();
-            AIC->SetFocus(SuspectedTarget, EAIFocusPriority::Gameplay);
         }
-        if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
-            MoveComp->bOrientRotationToMovement = false;
 
         UE_LOG(LogTemp, Warning, TEXT("[%s] 시야 확보 완료 — 사격 재개"), *GetName());
         ExecuteFireStep();
     }
     else if (Blocker && Blocker->ActorHasTag(TEXT("Enemy")))
     {
-        // 아직 아군에 막혀 있음 — 계속 접근
         if (AAIController* AIC = Cast<AAIController>(GetController()))
             AIC->MoveToActor(SuspectedTarget, 600.f);
 
@@ -557,10 +546,7 @@ void AEnemyCharacter::TryRepositionForShot()
     }
     else
     {
-        // 아군이 아닌 이유로 막힘 (거리/각도) — 재배치 종료
         bIsRepositioning = false;
-        if (AAIController* AIC = Cast<AAIController>(GetController())) AIC->ClearFocus(EAIFocusPriority::Gameplay);
-        if (UCharacterMovementComponent* MoveComp = GetCharacterMovement()) MoveComp->bOrientRotationToMovement = true;
     }
 }
 
@@ -586,9 +572,14 @@ void AEnemyCharacter::Die()
     GetWorldTimerManager().ClearTimer(RepositionTimerHandle);
     bIsRepositioning = false;
 
-    if (AAIController* AIC = Cast<AAIController>(GetController())) AIC->StopMovement();
+    if (AAIController* AIC = Cast<AAIController>(GetController()))
+    {
+        AIC->ClearFocus(EAIFocusPriority::Gameplay);
+        AIC->StopMovement();
+        AIC->UnPossess();
+    }
+    
     if (UCharacterMovementComponent* MoveComp = GetCharacterMovement()) MoveComp->DisableMovement();
-    if (AAIController* AIC = Cast<AAIController>(GetController())) AIC->UnPossess();
 
     UAnimInstance* AnimInst = GetMesh() ? GetMesh()->GetAnimInstance() : nullptr;
     if (DeathMontage && AnimInst)
@@ -605,16 +596,12 @@ void AEnemyCharacter::Die()
     }
 }
 
-// ---------------------------------------------------------------
-// 사격 가시성 및 트레이스 디버그 라인 표현
-// ---------------------------------------------------------------
 bool AEnemyCharacter::CanShootTarget(AActor* TargetActor, AActor** OutBlocker)
 {
     if (!TargetActor) return false;
 
     if (OutBlocker) *OutBlocker = nullptr;
 
-    // 1. 거리 제한 검사
     const float Distance = FVector::Dist(GetActorLocation(), TargetActor->GetActorLocation());
     if (Distance > FireRange)
     {
@@ -622,7 +609,6 @@ bool AEnemyCharacter::CanShootTarget(AActor* TargetActor, AActor** OutBlocker)
         return false;
     }
 
-    // 2. 시야각 제한 검사
     const FVector DirectionToTarget = (TargetActor->GetActorLocation() - GetActorLocation()).GetSafeNormal2D();
     const float AngleToTarget = FMath::RadiansToDegrees(
         FMath::Acos(FVector::DotProduct(GetActorForwardVector(), DirectionToTarget))
@@ -633,19 +619,17 @@ bool AEnemyCharacter::CanShootTarget(AActor* TargetActor, AActor** OutBlocker)
         return false;
     }
 
-    // 3. 라인 트레이스 세팅 (자기 자신만 무시 — 아군 적은 사격선을 막을 수 있음)
     FHitResult HitResult;
     FCollisionQueryParams CollisionParams;
+    
     CollisionParams.AddIgnoredActor(this);
     if (WeaponMeshComp) CollisionParams.AddIgnoredComponent(WeaponMeshComp);
     if (GetCapsuleComponent()) CollisionParams.AddIgnoredComponent(GetCapsuleComponent());
 
-    // 4. 발사 시작 지점(총구)
     const FName MuzzleSocket = TEXT("Muzzle");
     FVector StartLocation = (WeaponMeshComp && WeaponMeshComp->DoesSocketExist(MuzzleSocket))
         ? WeaponMeshComp->GetSocketLocation(MuzzleSocket) : GetActorLocation() + FVector(0.f, 0.f, BaseEyeHeight);
 
-    // 5. 조준점(타겟) 보정: 플레이어 캡슐 정중앙으로 계산
     FVector TargetLocation = TargetActor->GetActorLocation();
     if (ACharacter* TargetChar = Cast<ACharacter>(TargetActor))
     {
@@ -656,18 +640,15 @@ bool AEnemyCharacter::CanShootTarget(AActor* TargetActor, AActor** OutBlocker)
         TargetLocation += FVector(0.f, 0.f, 80.f);
     }
 
-    // 6. ECC_Pawn 채널로 트레이스 (아군 적 캡슐 감지)
     const bool bHit = GetWorld()->LineTraceSingleByChannel(
         HitResult, StartLocation, TargetLocation,
-        ECC_Pawn,
+        ECC_Pawn, 
         CollisionParams
     );
 
-    // 7. 디버그 라인: 초록색(성공), 빨간색(충돌)
-    DrawDebugLine(GetWorld(), StartLocation, bHit ? HitResult.ImpactPoint : TargetLocation,
+    DrawDebugLine(GetWorld(), StartLocation, bHit ? HitResult.ImpactPoint : TargetLocation, 
                   bHit ? FColor::Red : FColor::Green, false, 2.0f, 0, 2.0f);
 
-    // 8. 명중 판정
     bool bCanShoot = bHit && (HitResult.GetActor() == TargetActor);
 
     if (!bCanShoot && OutBlocker)
@@ -685,23 +666,39 @@ bool AEnemyCharacter::FireAtTarget(AActor* TargetActor)
 
     const FName MuzzleSocket = TEXT("Muzzle");
     FVector AimStart = (WeaponMeshComp && WeaponMeshComp->DoesSocketExist(MuzzleSocket))
-        ? WeaponMeshComp->GetSocketLocation(MuzzleSocket)
-        : GetActorLocation() + FVector(0.f, 0.f, BaseEyeHeight);
-
+        ? WeaponMeshComp->GetSocketLocation(MuzzleSocket) : GetActorLocation() + FVector(0.f, 0.f, BaseEyeHeight);
+        
     FVector FinalTargetLocation = TargetActor->GetActorLocation();
     if (ACharacter* TargetChar = Cast<ACharacter>(TargetActor))
-        FinalTargetLocation.Z += TargetChar->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() * 0.7f;
+    {
+        FinalTargetLocation.Z += (TargetChar->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() * 0.7f);
+    }
     else
+    {
         FinalTargetLocation.Z += 80.f;
-
+    }
+    
     const FVector AimDirection = (FinalTargetLocation - AimStart).GetSafeNormal();
+
+    FHitResult TestHit;
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(this);
+    
+    bool bCanHit = GetWorld()->LineTraceSingleByChannel(TestHit, AimStart, FinalTargetLocation, ECC_Pawn, Params);
+
+    DrawDebugLine(GetWorld(), AimStart, bCanHit ? TestHit.ImpactPoint : FinalTargetLocation, 
+                  bCanHit ? FColor::Red : FColor::Green, false, 2.0f, 0, 2.0f);
 
     if (FireMontage) PlayAnimMontage(FireMontage);
     if (MuzzleFlashEffect && WeaponMeshComp) {
         UNiagaraFunctionLibrary::SpawnSystemAttached(MuzzleFlashEffect, WeaponMeshComp, TEXT("Muzzle"), FVector::ZeroVector, FRotator::ZeroRotator, EAttachLocation::SnapToTarget, true);
     }
 
-    CombatManagerComp->OnFire(AimStart, AimDirection, ECombatWeaponType::Rifle, WeaponDamage, true);
+    // CombatManagerComp->OnFire(AimStart, AimDirection, ECombatWeaponType::Rifle, WeaponDamage, true);
+
+    CombatManagerComp->OnFire(AimStart, AimDirection, ECombatWeaponType::Rifle, 1, true);
+
+    UE_LOG(LogTemp, Warning, TEXT("[%s] FireAtTarget 발사! 타겟: %s, 실제 적중여부: %d"), *GetName(), *TargetActor->GetName(), bCanHit);
 
     return true;
 }
@@ -711,6 +708,9 @@ void AEnemyCharacter::OnCombatToLostTimerExpired()
     if (bIsDead || CurrentAlertLevel != EAlertLevel::Combat) return;
 
     UE_LOG(LogTemp, Warning, TEXT("[%s] 플레이어를 2초간 놓쳐 4단계(Lost) 상태로 전환합니다."), *GetName());
+    
+    SuspectedTarget = nullptr;
+    
     OnAlertLevelChanged(EAlertLevel::Lost);
 }
 
