@@ -522,11 +522,6 @@ void AEnemyCharacter::StartFirePattern(AActor* TargetActor)
 		AIC->StopMovement();
 		AIC->SetFocus(TargetActor, EAIFocusPriority::Gameplay);
 	}
-    if (AAIController* AIC = Cast<AAIController>(GetController()))
-    {
-        AIC->StopMovement();
-        AIC->SetFocus(TargetActor, EAIFocusPriority::Gameplay);
-    }
 
     UE_LOG(LogTemp, Warning, TEXT("[%s] 사격 패턴 시작! 타겟 액터: %s"), *GetName(), *TargetActor->GetName());
     
@@ -542,6 +537,8 @@ void AEnemyCharacter::ExecuteFireStep()
     {
         CurrentShotCount = 0;
         SuspectedTarget = nullptr;
+        if (AAIController* AIC = Cast<AAIController>(GetController())) AIC->ClearFocus(EAIFocusPriority::Gameplay);
+        if (UCharacterMovementComponent* MoveComp = GetCharacterMovement()) MoveComp->bOrientRotationToMovement = true;
         return;
     }
 
