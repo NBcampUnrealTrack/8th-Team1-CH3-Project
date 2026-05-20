@@ -88,6 +88,10 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 	if (!bOwnerIsEnemy && bHitPlayer) return;
 
 	// 5. 데미지 계산
+	DamageProcessor->BoneHead  = BoneHead;
+	DamageProcessor->BoneTorso = BoneTorso;
+	DamageProcessor->BoneLimb  = BoneLimb;
+
 	FCombatDamageInfo DamageInfo;
 	DamageInfo.BaseDamage = BaseDamage;
 	DamageInfo.Distance   = HitResult.Distance;
