@@ -86,6 +86,10 @@ public:
 	//스프링 암
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components")
 	USpringArmComponent* SpringArm;
+	
+	// 카메라를 부착할 씬
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components")
+	USceneComponent* CameraRoot;
 
 	// 1인칭 카메라 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components")
@@ -98,21 +102,28 @@ public:
 	// 총기 착용 여부
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Equipment")
 	bool bIsEquipped = false;
+	
+	// 총기 발사 여부 및 애니메이션
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Equipment")
+	bool bIsFiring = false;
+	
+	
 
 	// 구르기 관련 , 일회성 동작이므로 몽타주 사용
 	bool bIsRolling = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	UAnimMontage* DiveRollMontage;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	float UpperBodyBlendWeight = 1.0f;
 	UFUNCTION()
 	void OnRollMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
 	//기울이기 관련
 	UPROPERTY(BlueprintReadOnly, Category = "Movement")
 	float LeanAmount = 0.f;
-	/** 기울임 시 카메라가 옆으로 이동할 최대 거리 (예: 100.0) **/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float MaxLeanOffset = 25.0f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float LeanSpeed = 3.5f;
 
 	float CameraZOffset = 0.0f;

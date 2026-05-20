@@ -34,6 +34,7 @@ AWeaponBase::AWeaponBase()
 	WeaponMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	AmmoComponent = CreateDefaultSubobject<UAmmoComponent>(TEXT("AmmoComponent"));
+	
 }
 
 void AWeaponBase::Initialize(UWeaponDataAsset* InWeaponData)
@@ -88,11 +89,22 @@ void AWeaponBase::Fire()
 
 	CurrentWeaponState = EWeaponState::Firing;
 	bCanFire = false;
-
 	APlayerCharacter* Character = Cast<APlayerCharacter>(GetOwner());
-	if (Character == nullptr) return;
-
-	Character->ApplyRecoil(WeaponData->RecoilData);
+	if (Character != nullptr)
+	{
+		if (USkeletalMeshComponent* CharacterMesh = Character->GetMesh())
+		{
+			if (UAnimInstance* AnimInstance = CharacterMesh->GetAnimInstance())
+			{
+				if (FireMontage1P)
+				{
+					AnimInstance->Montage_Play(FireMontage1P.Get(), 1.0f);
+				}
+			}
+		}
+		// 리코일 틱 - 몽타주와 같은 프레임
+		Character->ApplyRecoil(WeaponData->RecoilData);
+	}
 
 	FVector AimStart, AimDirection;
 	if (UCombatManager* CombatMgr = Character->GetCombatManager();
