@@ -33,8 +33,6 @@ AWeaponBase::AWeaponBase()
 
 	AmmoComponent = CreateDefaultSubobject<UAmmoComponent>(TEXT("AmmoComponent"));
 	
-	HandLocationOffset = FVector::ZeroVector;
-	HandRotationOffset = FRotator::ZeroRotator;
 }
 
 void AWeaponBase::Initialize(UWeaponDataAsset* InWeaponData)

@@ -28,27 +28,27 @@ APlayerCharacter::APlayerCharacter()
 	
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->SetupAttachment(RootComponent);
-	SpringArm->SetRelativeLocation(FVector(0.0f, 0.0f, 65.0f));
 	
-	SpringArm->bUsePawnControlRotation = true;
-	SpringArm->TargetArmLength = 0.0f; // 1인칭이므로 소켓 거리는 0
+	CameraRoot = CreateDefaultSubobject<USceneComponent>(TEXT("CameraRoot"));
+	CameraRoot->SetupAttachment(RootComponent);
 	
+	// 카메라를 카메라 루트에 부착
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
-	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
-	Camera->bUsePawnControlRotation = false;
+	Camera->SetupAttachment(CameraRoot);
+	
+	// 1인칭 FPS 필수: 마우스 움직임에 따라 카메라 회전
+	Camera->bUsePawnControlRotation = true;
 
-	// 2. 캐릭터 본체 회전 설정: 마우스 따라 몸이 돌지 않게 분리
+	// 캐릭터 본체 회전 설정: 양옆 회전만 제어
 	bUseControllerRotationYaw = true;
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
 	
-	
-	GetMesh()->SetupAttachment(Camera);
+	GetMesh()->SetupAttachment(RootComponent);
 	GetMesh()->SetCastShadow(false);
 	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = true;
-	GetCharacterMovement()->bCrouchMaintainsBaseLocation = true;
 
-	// 3. 이동 시 회전 설정
+	// 이동 시 회전 설정
 	GetCharacterMovement()->RotationRate = FRotator(0.f, 540.f, 0.f);
 
 	MoveSpeed = 600.f;
@@ -154,18 +154,36 @@ void APlayerCharacter::Tick(float DeltaTime)
 	}
 	
 	// 앉기 동작시 자연스러운 카메라 보간
-	if (Camera)
+	if (GetMesh() && CameraRoot)
 	{
-		const float BaseCameraZ = 75.0f; 
-	
-		CameraZOffset = FMath::FInterpTo(CameraZOffset, 0.0f, DeltaTime, CrouchBlendSpeed);
 		
-		static float CurrentLeanY = 0.0f;
-		float TargetY = LeanAmount * MaxLeanOffset;
-		CurrentLeanY = FMath::FInterpTo(CurrentLeanY, TargetY, DeltaTime, LeanSpeed);
+		FVector HeadRelativeLoc = GetMesh()->GetSocketTransform(TEXT("head"), ERelativeTransformSpace::RTS_Actor).GetLocation();
+		
+		float CurrentRootY = CameraRoot->GetRelativeLocation().Y;
+		
+		static float TimeAccumulator = 0.0f;
+		TimeAccumulator += DeltaTime;
 
-		// X, Y축은 칼같이 고정되고 오직 Z축(높이)만 부드럽게 움직입니다.
-		Camera->SetRelativeLocation(FVector(20.0f, CurrentLeanY, BaseCameraZ + CameraZOffset));
+		float MovementSpeed = 3.0f;  
+		float MovementRange = 2.0f; 
+		
+		float ZOffset = FMath::Sin(TimeAccumulator * MovementSpeed) * MovementRange;
+		float TargetZ = HeadRelativeLoc.Z + ZOffset;
+		
+		FVector TargetCameraLoc = FVector(HeadRelativeLoc.X + 10.0f, CurrentRootY, TargetZ);
+
+		// 카메라 루트 위치 적용
+		CameraRoot->SetRelativeLocation(TargetCameraLoc);
+		
+		// 기울이기(Lean) 효과는 CameraRoot 밑에 있는 Camera 자체의 Y축을 움직여서 구현합니다.
+		if (Camera)
+		{
+			static float CurrentLeanY = 0.0f;
+			float TargetY = LeanAmount * MaxLeanOffset;
+			CurrentLeanY = FMath::FInterpTo(CurrentLeanY, TargetY, DeltaTime, LeanSpeed);
+			
+			Camera->SetRelativeLocation(FVector(0.0f, CurrentLeanY, 0.0f));
+		}
 	}
 	
 }
@@ -351,6 +369,8 @@ void APlayerCharacter::Roll(const FInputActionValue& value)
 	{
 		return;
 	}
+	
+	UpperBodyBlendWeight = 0.0f;
 
 	// 몽타주 재생 명령
 	// PlayAnimMontage는 내부적으로 AnimInstance를 찾아 Montage_Play를 호출합니다.
@@ -377,6 +397,7 @@ void APlayerCharacter::OnRollMontageEnded(UAnimMontage* Montage, bool bInterrupt
 	if (Montage == DiveRollMontage)
 	{
 		bIsRolling = false;
+		UpperBodyBlendWeight = 1.0f;
 	}
 }
 
@@ -448,13 +469,10 @@ void APlayerCharacter::SpawnEquippedWeapons()
 		}
 
 		Weapon->Initialize(WeaponData);
-		Weapon->AttachToComponent(GetMesh(),
-		                          FAttachmentTransformRules::SnapToTargetIncludingScale,
-		                          FName(TEXT("GripPoint")));
+		Weapon->AttachToComponent(GetMesh(),FAttachmentTransformRules::SnapToTargetIncludingScale,
+									  WeaponData->AttachSocketName);
 		Weapon->SetActorHiddenInGame(true);
-		Weapon->SetActorRelativeLocation(Weapon->HandLocationOffset);
-		Weapon->SetActorRelativeRotation(Weapon->HandRotationOffset);
-
+		
 		SpawnedWeapons.Add(Weapon);
 	}
 }
@@ -571,10 +589,18 @@ void APlayerCharacter::OnEquipPreviousPressed(const FInputActionValue& /*Value*/
 
 void APlayerCharacter::OnFirePressed(const FInputActionValue& /*Value*/)
 {
+	if (bIsRolling || bIsDead) return; // 죽었거나 구르기 상태면 사격 차단
+	
+	if (GetCharacterMovement() && GetCharacterMovement()->IsFalling())
+	{
+		return; // 공중에 떠 있는 낙하/점프 상태라면 사격 차단
+	}
+	
 	if (CurrentWeapon == nullptr)
 	{
 		return;
 	}
+	bIsFiring = true;
 
 	// 투척 무기는 Started/Completed 로 처리 — Triggered 경로에서는 무시
 	if (UWeaponDataAsset* Data = CurrentWeapon->GetWeaponData())
@@ -592,6 +618,7 @@ void APlayerCharacter::OnFirePressed(const FInputActionValue& /*Value*/)
 	{
 		NoiseComponent->SetNoiseToMax();
 	}
+	bIsFiring = false;
 }
 
 void APlayerCharacter::OnReloadPressed(const FInputActionValue& /*Value*/)

@@ -104,4 +104,8 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Weapon|Throwable")
 	float TrajectoryProjectileRadius = 5.0f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
+	FName AttachSocketName = FName(TEXT("GripPoint"));
+	
 };
