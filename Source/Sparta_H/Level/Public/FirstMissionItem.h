@@ -19,6 +19,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "Mission")
 	FName TargetGoalID;
+	
+	UPROPERTY(EditAnywhere, Category = "Mission")
+	bool bUnlockRifleOnInteract = false;
 
 	bool bIsUsed = false;
 
