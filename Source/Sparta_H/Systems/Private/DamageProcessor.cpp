@@ -1,25 +1,25 @@
 #include "DamageProcessor.h"
 #include "DamageDataAsset.h"
 
-float UDamageProcessor::CalculateFinalDamage(const FCombatDamageInfo& Info)
+float UDamageProcessor::CalculateFinalDamage(const FCombatDamageInfo& Info, UDamageDataAsset* RifleDA, UDamageDataAsset* PistolDA)
 {
-    float DistMult = GetDistanceMultiplier(Info.Distance, Info.WeaponType);
+    float DistMult = GetDistanceMultiplier(Info.Distance, Info.WeaponType, RifleDA, PistolDA);
     float BoneMult = GetBoneMultiplier(Info.HitBone);
 
     return Info.BaseDamage * DistMult * BoneMult;
 }
 
-float UDamageProcessor::GetDistanceMultiplier(float Distance, ECombatWeaponType WeaponType)
+float UDamageProcessor::GetDistanceMultiplier(float Distance, ECombatWeaponType WeaponType, UDamageDataAsset* RifleDA, UDamageDataAsset* PistolDA)
 {
     UDamageDataAsset* SelectedData = nullptr;
 
     switch (WeaponType)
     {
     case ECombatWeaponType::Rifle:
-        SelectedData = RifleData;
+        SelectedData = RifleDA;
         break;
     case ECombatWeaponType::Pistol:
-        SelectedData = PistolData;
+        SelectedData = PistolDA;
         break;
     case ECombatWeaponType::Knife:
         return 1.0f;

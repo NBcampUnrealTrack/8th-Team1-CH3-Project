@@ -549,7 +549,6 @@ bool AEnemyCharacter::CanShootTarget(AActor* TargetActor)
     FVector StartLocation = (WeaponMeshComp && WeaponMeshComp->DoesSocketExist(MuzzleSocket))
         ? WeaponMeshComp->GetSocketLocation(MuzzleSocket) : GetActorLocation() + FVector(0.f, 0.f, BaseEyeHeight);
 
-<<<<<<< HEAD
     // 5. 조준점(타겟) 보정: 플레이어 캡슐 정중앙으로 계산
     FVector TargetLocation = TargetActor->GetActorLocation();
     if (ACharacter* TargetChar = Cast<ACharacter>(TargetActor))
@@ -561,41 +560,24 @@ bool AEnemyCharacter::CanShootTarget(AActor* TargetActor)
         TargetLocation += FVector(0.f, 0.f, 80.f);
     }
 
-    // 6. 💡 ECC_Pawn 채널을 사용 (아까 설정한 Pawn 콜리전 채널)
+    // 6. ECC_Pawn 채널로 트레이스
     const bool bHit = GetWorld()->LineTraceSingleByChannel(
         HitResult, StartLocation, TargetLocation,
-        ECC_Pawn, 
+        ECC_Pawn,
         CollisionParams
     );
 
     // 7. 디버그 라인: 초록색(성공), 빨간색(충돌)
-    DrawDebugLine(GetWorld(), StartLocation, bHit ? HitResult.ImpactPoint : TargetLocation, 
+    DrawDebugLine(GetWorld(), StartLocation, bHit ? HitResult.ImpactPoint : TargetLocation,
                   bHit ? FColor::Red : FColor::Green, false, 2.0f, 0, 2.0f);
 
     // 8. 명중 판정 (트레이스가 타겟에 닿았는지 확인)
     bool bCanShoot = bHit && (HitResult.GetActor() == TargetActor);
 
-    UE_LOG(LogTemp, Log, TEXT("[%s] CanShootTarget 결과: %d | 적중 액터: %s"), 
+    UE_LOG(LogTemp, Log, TEXT("[%s] CanShootTarget 결과: %d | 적중 액터: %s"),
            *GetName(), bCanShoot, HitResult.GetActor() ? *HitResult.GetActor()->GetName() : TEXT("None"));
 
     return bCanShoot;
-=======
-    const bool bBlocked = GetWorld()->LineTraceSingleByChannel(
-        HitResult, StartLocation, TargetActor->GetActorLocation(),
-        ECC_Visibility, CollisionParams
-    );
-
-    // 아무것도 막히지 않으면 시야 확보 → 사격 가능
-    // 뭔가 막혔는데 타겟이 아니면(벽 등) → 사격 불가
-    if (bBlocked && HitResult.GetActor() != TargetActor)
-    {
-        UE_LOG(LogTemp, Log, TEXT("[%s] CanShoot FAIL — 장애물에 막힘 (맞은 것: %s)"),
-            *GetName(), *HitResult.GetActor()->GetName());
-        return false;
-    }
-
-    return true;
->>>>>>> Dev
 }
 
 bool AEnemyCharacter::FireAtTarget(AActor* TargetActor)
@@ -604,36 +586,16 @@ bool AEnemyCharacter::FireAtTarget(AActor* TargetActor)
 
     const FName MuzzleSocket = TEXT("Muzzle");
     FVector AimStart = (WeaponMeshComp && WeaponMeshComp->DoesSocketExist(MuzzleSocket))
-<<<<<<< HEAD
-        ? WeaponMeshComp->GetSocketLocation(MuzzleSocket) : GetActorLocation() + FVector(0.f, 0.f, BaseEyeHeight);
-        
-    FVector FinalTargetLocation = TargetActor->GetActorLocation();
-    if (ACharacter* TargetChar = Cast<ACharacter>(TargetActor))
-=======
         ? WeaponMeshComp->GetSocketLocation(MuzzleSocket)
         : GetActorLocation() + FVector(0.f, 0.f, BaseEyeHeight);
-    const FVector AimDirection = (TargetActor->GetActorLocation() + FVector(0.f, 0.f, 80.f) - AimStart).GetSafeNormal();
 
-    if (FireMontage)
->>>>>>> Dev
-    {
-        FinalTargetLocation.Z += (TargetChar->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() * 0.7f);
-    }
+    FVector FinalTargetLocation = TargetActor->GetActorLocation();
+    if (ACharacter* TargetChar = Cast<ACharacter>(TargetActor))
+        FinalTargetLocation.Z += TargetChar->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() * 0.7f;
     else
-    {
         FinalTargetLocation.Z += 80.f;
-    }
-    
+
     const FVector AimDirection = (FinalTargetLocation - AimStart).GetSafeNormal();
-
-    FHitResult TestHit;
-    FCollisionQueryParams Params;
-    Params.AddIgnoredActor(this);
-    
-    bool bCanHit = GetWorld()->LineTraceSingleByChannel(TestHit, AimStart, FinalTargetLocation, ECC_Pawn, Params);
-
-    DrawDebugLine(GetWorld(), AimStart, bCanHit ? TestHit.ImpactPoint : FinalTargetLocation, 
-                  bCanHit ? FColor::Red : FColor::Green, false, 2.0f, 0, 2.0f);
 
     if (FireMontage) PlayAnimMontage(FireMontage);
     if (MuzzleFlashEffect && WeaponMeshComp) {
@@ -641,8 +603,6 @@ bool AEnemyCharacter::FireAtTarget(AActor* TargetActor)
     }
 
     CombatManagerComp->OnFire(AimStart, AimDirection, ECombatWeaponType::Rifle, WeaponDamage, true);
-
-    UE_LOG(LogTemp, Warning, TEXT("[%s] FireAtTarget 발사! 타겟: %s, 실제 적중여부: %d"), *GetName(), *TargetActor->GetName(), bCanHit);
 
     return true;
 }
