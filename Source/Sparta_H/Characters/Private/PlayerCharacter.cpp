@@ -26,25 +26,26 @@
 APlayerCharacter::APlayerCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
-
+	
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->SetupAttachment(RootComponent);
-	SpringArm->SetRelativeLocation(FVector(0.0f, 0.0f, 65.0f));
-
-	SpringArm->bUsePawnControlRotation = true;
-	SpringArm->TargetArmLength = 0.0f; // 1인칭이므로 소켓 거리는 0
-
+	
+	CameraRoot = CreateDefaultSubobject<USceneComponent>(TEXT("CameraRoot"));
+	CameraRoot->SetupAttachment(RootComponent);
+	
+	// 카메라를 카메라 루트에 부착
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
-	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
-	Camera->bUsePawnControlRotation = false;
+	Camera->SetupAttachment(CameraRoot);
+	
+	// 1인칭 FPS 필수: 마우스 움직임에 따라 카메라 회전
+	Camera->bUsePawnControlRotation = true;
 
-	// 2. 캐릭터 본체 회전 설정: 마우스 따라 몸이 돌지 않게 분리
+	// 캐릭터 본체 회전 설정: 양옆 회전만 제어
 	bUseControllerRotationYaw = true;
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
-
-
-	GetMesh()->SetupAttachment(Camera);
+	
+	GetMesh()->SetupAttachment(RootComponent);
 	GetMesh()->SetCastShadow(false);
 	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = true;
 	GetCharacterMovement()->bCrouchMaintainsBaseLocation = true;
@@ -222,21 +223,40 @@ void APlayerCharacter::Tick(float DeltaTime)
 	{
 		StopRun(FInputActionValue()); // 스태미나 고갈 시 강제 정지
 	}
-
+	
 	// 앉기 동작시 자연스러운 카메라 보간
-	if (Camera)
+	if (GetMesh() && CameraRoot)
 	{
-		const float BaseCameraZ = 75.0f;
+		
+		FVector HeadRelativeLoc = GetMesh()->GetSocketTransform(TEXT("head"), ERelativeTransformSpace::RTS_Actor).GetLocation();
+		
+		float CurrentRootY = CameraRoot->GetRelativeLocation().Y;
+		
+		static float TimeAccumulator = 0.0f;
+		TimeAccumulator += DeltaTime;
 
-		CameraZOffset = FMath::FInterpTo(CameraZOffset, 0.0f, DeltaTime, CrouchBlendSpeed);
+		float MovementSpeed = 3.0f;  
+		float MovementRange = 2.0f; 
+		
+		float ZOffset = FMath::Sin(TimeAccumulator * MovementSpeed) * MovementRange;
+		float TargetZ = HeadRelativeLoc.Z + ZOffset;
+		
+		FVector TargetCameraLoc = FVector(HeadRelativeLoc.X + 10.0f, CurrentRootY, TargetZ);
 
-		static float CurrentLeanY = 0.0f;
-		float TargetY = LeanAmount * MaxLeanOffset;
-		CurrentLeanY = FMath::FInterpTo(CurrentLeanY, TargetY, DeltaTime, LeanSpeed);
-
-		// X, Y축은 칼같이 고정되고 오직 Z축(높이)만 부드럽게 움직입니다.
-		Camera->SetRelativeLocation(FVector(20.0f, CurrentLeanY, BaseCameraZ + CameraZOffset));
+		// 카메라 루트 위치 적용
+		CameraRoot->SetRelativeLocation(TargetCameraLoc);
+		
+		// 기울이기(Lean) 효과는 CameraRoot 밑에 있는 Camera 자체의 Y축을 움직여서 구현합니다.
+		if (Camera)
+		{
+			static float CurrentLeanY = 0.0f;
+			float TargetY = LeanAmount * MaxLeanOffset;
+			CurrentLeanY = FMath::FInterpTo(CurrentLeanY, TargetY, DeltaTime, LeanSpeed);
+			
+			Camera->SetRelativeLocation(FVector(0.0f, CurrentLeanY, 0.0f));
+		}
 	}
+	
 }
 
 // 캐릭터 상호작용 
@@ -338,6 +358,7 @@ void APlayerCharacter::Move(const FInputActionValue& value)
 
 		AddMovementInput(RightDirection, MoveInput.Y);
 		AddMovementInput(ForwardDirection, MoveInput.X);
+		
 	}
 }
 
@@ -419,6 +440,8 @@ void APlayerCharacter::Roll(const FInputActionValue& value)
 	{
 		return;
 	}
+	
+	UpperBodyBlendWeight = 0.0f;
 
 	// 몽타주 재생 명령
 	// PlayAnimMontage는 내부적으로 AnimInstance를 찾아 Montage_Play를 호출합니다.
@@ -445,6 +468,7 @@ void APlayerCharacter::OnRollMontageEnded(UAnimMontage* Montage, bool bInterrupt
 	if (Montage == DiveRollMontage)
 	{
 		bIsRolling = false;
+		UpperBodyBlendWeight = 1.0f;
 	}
 }
 
@@ -484,6 +508,12 @@ void APlayerCharacter::Jump()
 // 무기 관련
 void APlayerCharacter::SpawnEquippedWeapons()
 {
+	UWorld* World = GetWorld();
+	if (World == nullptr || WeaponBaseClass == nullptr)
+	{
+		return;
+	}
+
 	SpawnedWeapons.Reserve(EquippedWeapons.Num());
 	for (UWeaponDataAsset* WeaponData : EquippedWeapons)
 	{
@@ -508,10 +538,10 @@ AWeaponBase* APlayerCharacter::SpawnAndAttachWeapon(UWeaponDataAsset* Data)
 	if (Weapon == nullptr) return nullptr;
 
 	Weapon->Initialize(Data);
-	Weapon->AttachToComponent(GetMesh(),
-	                          FAttachmentTransformRules::SnapToTargetIncludingScale,
-	                          FName(TEXT("GripPoint")));
+	Weapon->AttachToComponent(GetMesh(),FAttachmentTransformRules::SnapToTargetIncludingScale,
+									  Data->AttachSocketName);
 	Weapon->SetActorHiddenInGame(true);
+		
 	return Weapon;
 }
 
@@ -565,6 +595,8 @@ void APlayerCharacter::EquipWeaponByIndex(int32 NewWeaponIndex)
 
 	CurrentWeapon = NewWeapon;
 	CurrentWeaponIndex = NewWeaponIndex;
+
+	CurrentWeapon->SetWeaponState(EWeaponState::Swapping);
 	CurrentWeapon->SetActorHiddenInGame(false);
 	// 교체 몽타주 도입 시 Swapping 상태로 전이 후 종료 콜백에서 Idle 복귀할 것
 	CurrentWeapon->SetWeaponState(EWeaponState::Idle);
@@ -580,11 +612,17 @@ void APlayerCharacter::EquipWeaponByIndex(int32 NewWeaponIndex)
 		case EWeaponType::Rifle:
 			SetCrosshairState(ECrosshairState::Rifle);
 			break;
+		case EWeaponType::Knife:
+			SetCrosshairState(ECrosshairState::Default);
+			break;
 		default:
 			SetCrosshairState(ECrosshairState::Default);
 			break;
 		}
 	}
+
+	// 교체 몽타주 도입 시 이 라인을 종료 콜백으로 옮길 것
+	CurrentWeapon->SetWeaponState(EWeaponState::Idle);
 }
 
 void APlayerCharacter::EquipNextWeapon()
@@ -640,10 +678,18 @@ void APlayerCharacter::OnEquipPreviousPressed(const FInputActionValue& /*Value*/
 
 void APlayerCharacter::OnFirePressed(const FInputActionValue& /*Value*/)
 {
+	if (bIsRolling || bIsDead) return; // 죽었거나 구르기 상태면 사격 차단
+	
+	if (GetCharacterMovement() && GetCharacterMovement()->IsFalling())
+	{
+		return; // 공중에 떠 있는 낙하/점프 상태라면 사격 차단
+	}
+	
 	if (CurrentWeapon == nullptr)
 	{
 		return;
 	}
+	bIsFiring = true;
 
 	UWeaponDataAsset* Data = CurrentWeapon->GetWeaponData();
 
@@ -655,7 +701,6 @@ void APlayerCharacter::OnFirePressed(const FInputActionValue& /*Value*/)
 			return;
 		}
 	}
-
 	CurrentWeapon->Fire();
 
 	// 사격 시 즉시 최대 소음 발생
@@ -664,6 +709,7 @@ void APlayerCharacter::OnFirePressed(const FInputActionValue& /*Value*/)
 	{
 		NoiseComponent->SetNoiseToMax();
 	}
+	bIsFiring = false;
 }
 
 void APlayerCharacter::OnReloadPressed(const FInputActionValue& /*Value*/)
