@@ -20,6 +20,8 @@
 AWeaponBase::AWeaponBase()
 {
 	PrimaryActorTick.bCanEverTick = true;
+	// 차징 무기만 사용하므로 평소엔 Tick 끈 상태로 시작 (BeginThrowCharge에서 On, Release/Cancel에서 Off)
+	PrimaryActorTick.bStartWithTickEnabled = false;
 
 	WeaponRoot = CreateDefaultSubobject<USceneComponent>(TEXT("WeaponRoot"));
 	RootComponent = WeaponRoot;
@@ -87,44 +89,19 @@ void AWeaponBase::Fire()
 	CurrentWeaponState = EWeaponState::Firing;
 	bCanFire = false;
 
-	// 캐릭터 본체 메시에 발사 몽타주 재생 — 풀바디 1인칭 구조라 ACharacter::GetMesh()를 사용
-	if (APlayerCharacter* Character = Cast<APlayerCharacter>(GetOwner()))
+	APlayerCharacter* Character = Cast<APlayerCharacter>(GetOwner());
+	if (Character == nullptr) return;
+
+	Character->ApplyRecoil(WeaponData->RecoilData);
+
+	FVector AimStart, AimDirection;
+	if (UCombatManager* CombatMgr = Character->GetCombatManager();
+			CombatMgr != nullptr && GetAimStartAndDirection(AimStart, AimDirection))
 	{
-		if (USkeletalMeshComponent* CharacterMesh = Character->GetMesh())
-		{
-			if (UAnimInstance* AnimInstance = CharacterMesh->GetAnimInstance())
-			{
-				if (FireMontage1P)
-				{
-					AnimInstance->Montage_Play(FireMontage1P.Get(), 1.0f);
-				}
-			}
-		}
-
-		// 리코일 틱 - 몽타주와 같은 프레임
-		Character->ApplyRecoil(WeaponData->RecoilData);
-	}
-
-	// 카메라 시점 기준 라인 트레이스 - 크로스헤어가 가리키는 정확한 지점에 명중하도록.
-	// (총구 소켓 기준은 카메라와 어긋나서 정조준 시 빗나감)
-	if (APlayerCharacter* Character = Cast<APlayerCharacter>(GetOwner()))
-	{
-		if (UCombatManager* CombatMgr = Character->GetCombatManager())
-		{
-			if (const APlayerController* PC = Cast<APlayerController>(Character->GetController()))
-			{
-				if (PC->PlayerCameraManager != nullptr)
-				{
-					const FVector AimStart = PC->PlayerCameraManager->GetCameraLocation();
-					const FVector AimDirection = PC->PlayerCameraManager->GetCameraRotation().Vector();
-					const ECombatWeaponType CombatType = ToCombatWeaponType(WeaponData->WeaponType);
-
-					CombatMgr->OnFire(AimStart, AimDirection, CombatType, WeaponData->Damage,
-					                  WeaponData->bShouldTriggerAIAggro,
-					                  ImpactVFX.LoadSynchronous());
-				}
-			}
-		}
+		const ECombatWeaponType CombatType = ToCombatWeaponType(WeaponData->WeaponType);
+		CombatMgr->OnFire(AimStart, AimDirection, CombatType, WeaponData->Damage,
+						  WeaponData->bShouldTriggerAIAggro,
+						  ImpactVFX.LoadSynchronous());
 	}
 
 	// 총구 화염 — 무기 메시 소켓에 부착해 스폰. 무기가 Hidden 상태로 토글돼도 부모 메시 따라 자연스럽게 사라짐
@@ -178,11 +155,14 @@ void AWeaponBase::Reload()
 		return;
 	}
 
-	// 발사 쿨다운 진행 중이면 정리하고 재장전 시작
-	if (UWorld* World = GetWorld())
+	UWorld* World = GetWorld();
+	if (World == nullptr)
 	{
-		World->GetTimerManager().ClearTimer(FireCooldownTimerHandle);
+		return;
 	}
+
+	// 발사 쿨다운 진행 중이면 정리하고 재장전 시작
+	World->GetTimerManager().ClearTimer(FireCooldownTimerHandle);
 
 	CurrentWeaponState = EWeaponState::Reloading;
 	bCanFire = false;
@@ -204,11 +184,21 @@ void AWeaponBase::Reload()
 
 	// ReloadTime <= 0 이면 한 프레임만 차단 후 즉시 복귀
 	const float Duration = FMath::Max(WeaponData->ReloadTime, KINDA_SMALL_NUMBER);
-	if (UWorld* World = GetWorld())
-	{
-		World->GetTimerManager().SetTimer(ReloadTimerHandle, this, &AWeaponBase::OnReloadCompleted
-		                                  , Duration, false);
-	}
+	World->GetTimerManager().SetTimer(ReloadTimerHandle, this, &AWeaponBase::OnReloadCompleted,
+	                                  Duration, false);
+}
+
+bool AWeaponBase::GetAimStartAndDirection(FVector& OutStart, FVector& OutDirection) const
+{
+	const APlayerCharacter* Character = Cast<APlayerCharacter>(GetOwner());
+	if (Character == nullptr) return false;
+
+	const APlayerController* PC = Cast<APlayerController>(Character->GetController());
+	if (PC == nullptr || PC->PlayerCameraManager == nullptr) return false;
+
+	OutStart = PC->PlayerCameraManager->GetCameraLocation();
+	OutDirection = PC->PlayerCameraManager->GetCameraRotation().Vector();
+	return true;
 }
 
 void AWeaponBase::OnFireCooldownEnded()
@@ -286,6 +276,7 @@ void AWeaponBase::BeginThrowCharge()
 
 	bIsChargingThrow = true;
 	CurrentChargeAlpha = 0.0f;
+	SetActorTickEnabled(true);
 }
 
 void AWeaponBase::ReleaseThrow()
@@ -299,27 +290,21 @@ void AWeaponBase::ReleaseThrow()
 	bIsChargingThrow = false;
 	const float ChargedAlpha = CurrentChargeAlpha;
 	CurrentChargeAlpha = 0.0f;
+	SetActorTickEnabled(false);
 
 	if (WeaponData == nullptr || WeaponData->ThrowableClass == nullptr)
 	{
 		return;
 	}
 
-	APlayerCharacter* Character = Cast<APlayerCharacter>(GetOwner());
-	if (Character == nullptr)
+	FVector AimStart, Direction;
+	if (!GetAimStartAndDirection(AimStart, Direction))
 	{
 		return;
 	}
 
-	const APlayerController* PC = Cast<APlayerController>(Character->GetController());
-	if (PC == nullptr || PC->PlayerCameraManager == nullptr)
-	{
-		return;
-	}
-
-	const FVector Direction = PC->PlayerCameraManager->GetCameraRotation().Vector();
 	// 캐릭터 캡슐 앞쪽에서 스폰 — 카메라 위치 그대로면 메시와 충돌 가능
-	const FVector SpawnLocation = PC->PlayerCameraManager->GetCameraLocation() + Direction * 100.0f;
+	const FVector SpawnLocation = AimStart + Direction * 100.0f;
 	const float Speed = FMath::Lerp(WeaponData->MinThrowSpeed, WeaponData->MaxThrowSpeed, ChargedAlpha);
 
 	FActorSpawnParameters Params;
@@ -367,6 +352,7 @@ void AWeaponBase::CancelThrowCharge()
 	}
 	bIsChargingThrow = false;
 	CurrentChargeAlpha = 0.0f;
+	SetActorTickEnabled(false);
 }
 
 void AWeaponBase::OnThrowCooldownEnded()
@@ -381,20 +367,13 @@ void AWeaponBase::UpdateTrajectoryPreview()
 		return;
 	}
 
-	const APlayerCharacter* Character = Cast<APlayerCharacter>(GetOwner());
-	if (Character == nullptr)
+	FVector AimStart, Direction;
+	if (!GetAimStartAndDirection(AimStart, Direction))
 	{
 		return;
 	}
 
-	const APlayerController* PC = Cast<APlayerController>(Character->GetController());
-	if (PC == nullptr || PC->PlayerCameraManager == nullptr)
-	{
-		return;
-	}
-
-	const FVector Direction = PC->PlayerCameraManager->GetCameraRotation().Vector();
-	const FVector StartLocation = PC->PlayerCameraManager->GetCameraLocation() + Direction * 100.0f;
+	const FVector StartLocation = AimStart + Direction * 100.0f;
 	const float Speed = FMath::Lerp(WeaponData->MinThrowSpeed, WeaponData->MaxThrowSpeed, CurrentChargeAlpha);
 
 	FPredictProjectilePathParams PredictParams;
