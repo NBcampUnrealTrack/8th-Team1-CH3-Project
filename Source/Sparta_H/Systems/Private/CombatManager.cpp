@@ -88,9 +88,6 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 	if (!bOwnerIsEnemy && bHitPlayer) return;
 
 	// 5. 데미지 계산
-	DamageProcessor->RifleData  = RifleData;
-	DamageProcessor->PistolData = PistolData;
-
 	FCombatDamageInfo DamageInfo;
 	DamageInfo.BaseDamage = BaseDamage;
 	DamageInfo.Distance   = HitResult.Distance;
@@ -118,7 +115,7 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 			}
 		}
 	}
-	const float FinalDamage = DamageProcessor->CalculateFinalDamage(DamageInfo);
+	const float FinalDamage = DamageProcessor->CalculateFinalDamage(DamageInfo, RifleData, PistolData);
 
 	// 6. 킬 피드백 등록 (적 피격 시에만)
 	if (bHitEnemy)

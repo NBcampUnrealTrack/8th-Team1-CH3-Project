@@ -33,7 +33,7 @@ AEnemyCharacter::AEnemyCharacter()
     WeaponMeshComp->SetupAttachment(GetMesh(), TEXT("GripPoint"));
 
     AlertIconWidgetComp = CreateDefaultSubobject<UWidgetComponent>(TEXT("AlertIconWidget"));
-    AlertIconWidgetComp->SetupAttachment(GetMesh(), TEXT("head"));
+    AlertIconWidgetComp->SetupAttachment(GetRootComponent());
     AlertIconWidgetComp->SetWidgetSpace(EWidgetSpace::Screen);
     AlertIconWidgetComp->SetDrawSize(FVector2D(64.f, 64.f));
     AlertIconWidgetComp->SetVisibility(false);
@@ -64,6 +64,8 @@ void AEnemyCharacter::BeginPlay()
     Super::BeginPlay();
     AIPerceptionComp->OnTargetPerceptionUpdated.AddDynamic(this, &AEnemyCharacter::OnTargetPerceived);
     ApplyPerceptionStats(IdleStats);
+
+    AlertIconWidgetComp->SetRelativeLocation(FVector(0.f, 0.f, AlertIconHeightOffset));
     
     if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
     {
@@ -516,14 +518,22 @@ bool AEnemyCharacter::CanShootTarget(AActor* TargetActor)
 
     // 1. 거리 제한 검사
     const float Distance = FVector::Dist(GetActorLocation(), TargetActor->GetActorLocation());
-    if (Distance > FireRange) return false;
+    if (Distance > FireRange)
+    {
+        UE_LOG(LogTemp, Log, TEXT("[%s] CanShoot FAIL — 거리 초과 (%.0f / %.0f)"), *GetName(), Distance, FireRange);
+        return false;
+    }
 
     // 2. 시야각 제한 검사
     const FVector DirectionToTarget = (TargetActor->GetActorLocation() - GetActorLocation()).GetSafeNormal2D();
     const float AngleToTarget = FMath::RadiansToDegrees(
         FMath::Acos(FVector::DotProduct(GetActorForwardVector(), DirectionToTarget))
     );
-    if (AngleToTarget > FireAngleLimit) return false;
+    if (AngleToTarget > FireAngleLimit)
+    {
+        UE_LOG(LogTemp, Log, TEXT("[%s] CanShoot FAIL — 각도 초과 (%.1f° / %.1f°)"), *GetName(), AngleToTarget, FireAngleLimit);
+        return false;
+    }
 
     // 3. 라인 트레이스 세팅
     FHitResult HitResult;
@@ -550,21 +560,21 @@ bool AEnemyCharacter::CanShootTarget(AActor* TargetActor)
         TargetLocation += FVector(0.f, 0.f, 80.f);
     }
 
-    // 6. 💡 ECC_Pawn 채널을 사용 (아까 설정한 Pawn 콜리전 채널)
+    // 6. ECC_Pawn 채널로 트레이스
     const bool bHit = GetWorld()->LineTraceSingleByChannel(
         HitResult, StartLocation, TargetLocation,
-        ECC_Pawn, 
+        ECC_Pawn,
         CollisionParams
     );
 
     // 7. 디버그 라인: 초록색(성공), 빨간색(충돌)
-    DrawDebugLine(GetWorld(), StartLocation, bHit ? HitResult.ImpactPoint : TargetLocation, 
+    DrawDebugLine(GetWorld(), StartLocation, bHit ? HitResult.ImpactPoint : TargetLocation,
                   bHit ? FColor::Red : FColor::Green, false, 2.0f, 0, 2.0f);
 
     // 8. 명중 판정 (트레이스가 타겟에 닿았는지 확인)
     bool bCanShoot = bHit && (HitResult.GetActor() == TargetActor);
 
-    UE_LOG(LogTemp, Log, TEXT("[%s] CanShootTarget 결과: %d | 적중 액터: %s"), 
+    UE_LOG(LogTemp, Log, TEXT("[%s] CanShootTarget 결과: %d | 적중 액터: %s"),
            *GetName(), bCanShoot, HitResult.GetActor() ? *HitResult.GetActor()->GetName() : TEXT("None"));
 
     return bCanShoot;
@@ -576,28 +586,16 @@ bool AEnemyCharacter::FireAtTarget(AActor* TargetActor)
 
     const FName MuzzleSocket = TEXT("Muzzle");
     FVector AimStart = (WeaponMeshComp && WeaponMeshComp->DoesSocketExist(MuzzleSocket))
-        ? WeaponMeshComp->GetSocketLocation(MuzzleSocket) : GetActorLocation() + FVector(0.f, 0.f, BaseEyeHeight);
-        
+        ? WeaponMeshComp->GetSocketLocation(MuzzleSocket)
+        : GetActorLocation() + FVector(0.f, 0.f, BaseEyeHeight);
+
     FVector FinalTargetLocation = TargetActor->GetActorLocation();
     if (ACharacter* TargetChar = Cast<ACharacter>(TargetActor))
-    {
-        FinalTargetLocation.Z += (TargetChar->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() * 0.7f);
-    }
+        FinalTargetLocation.Z += TargetChar->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() * 0.7f;
     else
-    {
         FinalTargetLocation.Z += 80.f;
-    }
-    
+
     const FVector AimDirection = (FinalTargetLocation - AimStart).GetSafeNormal();
-
-    FHitResult TestHit;
-    FCollisionQueryParams Params;
-    Params.AddIgnoredActor(this);
-    
-    bool bCanHit = GetWorld()->LineTraceSingleByChannel(TestHit, AimStart, FinalTargetLocation, ECC_Pawn, Params);
-
-    DrawDebugLine(GetWorld(), AimStart, bCanHit ? TestHit.ImpactPoint : FinalTargetLocation, 
-                  bCanHit ? FColor::Red : FColor::Green, false, 2.0f, 0, 2.0f);
 
     if (FireMontage) PlayAnimMontage(FireMontage);
     if (MuzzleFlashEffect && WeaponMeshComp) {
@@ -605,8 +603,6 @@ bool AEnemyCharacter::FireAtTarget(AActor* TargetActor)
     }
 
     CombatManagerComp->OnFire(AimStart, AimDirection, ECombatWeaponType::Rifle, WeaponDamage, true);
-
-    UE_LOG(LogTemp, Warning, TEXT("[%s] FireAtTarget 발사! 타겟: %s, 실제 적중여부: %d"), *GetName(), *TargetActor->GetName(), bCanHit);
 
     return true;
 }
