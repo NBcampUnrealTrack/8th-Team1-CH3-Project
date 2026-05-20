@@ -12,6 +12,7 @@
 #include "MissionDataAsset.h"
 #include "MissionInteractableInterface.h"
 #include "Kismet/GameplayStatics.h"
+#include "Systems/Public/H_GameFunctionLibrary.h"
 
 #include "HealthComponent.h"
 #include "InteractionComponent.h"
@@ -41,7 +42,8 @@ APlayerCharacter::APlayerCharacter()
 	bUseControllerRotationYaw = true;
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
-	
+
+
 	GetMesh()->SetupAttachment(Camera);
 	GetMesh()->SetCastShadow(false);
 	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = true;
@@ -65,6 +67,63 @@ APlayerCharacter::APlayerCharacter()
 	NoiseComponent = CreateDefaultSubobject<UNoiseComponent>(TEXT("NoiseComponent"));
 	InteractionComponent = CreateDefaultSubobject<UInteractionComponent>(TEXT("InteractionComponent"));
 	VisibilityComponent = CreateDefaultSubobject<UVisibilityComponent>(TEXT("VisibilityComponent"));
+}
+
+FPlayerCheckpointData APlayerCharacter::SaveCheckpoint()
+{
+	FPlayerCheckpointData Data;
+	Data.MissionIndex = CurrentMissionIndex;
+	Data.bHasRifle = bHasRifle;
+	Data.Location = GetActorLocation();
+	
+	// Modified: 액터의 회전 대신 컨트롤러의 회전(시점)을 저장하여 상하 시점까지 정확히 기억
+	if (Controller)
+	{
+		Data.Rotation = Controller->GetControlRotation();
+	}
+	else
+	{
+		Data.Rotation = GetActorRotation();
+	}
+	
+	// Modified: 처치 수 및 경과 시간 저장
+	Data.KillCount = KillCount;
+	Data.ElapsedTime = GetWorld()->GetTimeSeconds() - MissionStartTime;
+	
+	return Data;
+}
+
+void APlayerCharacter::LoadCheckpoint(const FPlayerCheckpointData& CheckpointData)
+{
+	CurrentMissionIndex = CheckpointData.MissionIndex;
+	bHasRifle = CheckpointData.bHasRifle;
+
+	// 위치 복구
+	SetActorLocation(CheckpointData.Location, false, nullptr, ETeleportType::TeleportPhysics);
+
+	// Modified: 컨트롤러의 회전값을 설정해야 시점이 올바르게 복구됨
+	if (Controller)
+	{
+		Controller->SetControlRotation(CheckpointData.Rotation);
+	}
+	else
+	{
+		SetActorRotation(CheckpointData.Rotation, ETeleportType::TeleportPhysics);
+	}
+
+	// Modified: 처치 수 및 시작 시간 복구 (현재 시간에서 경과 시간을 뺌)
+	KillCount = CheckpointData.KillCount;
+	MissionStartTime = GetWorld()->GetTimeSeconds() - CheckpointData.ElapsedTime;
+
+	// 미션 데이터 동기화 (UI 및 내부 상태 갱신)
+	UpdateMissionObjective();
+
+	// Modified: 사망 상태 해제 및 체력 최대치로 회복
+	bIsDead = false;
+	if (HealthComponent)
+	{
+		HealthComponent->SetHealth(HealthComponent->GetMaxHealth());
+	}
 	
 	Tags.Add(TEXT("Player"));
 	
@@ -118,6 +177,9 @@ void APlayerCharacter::BeginPlay()
 	// 미션 데이터 초기화
 	CurrentMissionIndex = 0;
 	UpdateMissionObjective();
+
+	// 예약된 로드 요청이 있다면 처리
+	UH_GameFunctionLibrary::HandlePendingLoad(this);
 }
 
 // Called every frame
@@ -127,8 +189,9 @@ void APlayerCharacter::Tick(float DeltaTime)
 
 	if (!RemainingRecoil.IsNearlyZero(0.001f))
 	{
-		FVector2D InsideInterp = FMath::Vector2DInterpTo(RemainingRecoil, FVector2D::ZeroVector, DeltaTime, RecoilSpeed);
-		
+		FVector2D InsideInterp =
+			FMath::Vector2DInterpTo(RemainingRecoil, FVector2D::ZeroVector, DeltaTime, RecoilSpeed);
+
 		FVector2D RecoilToApply = RemainingRecoil - InsideInterp;
 		
 		AddControllerYawInput(RecoilToApply.X);
@@ -441,7 +504,8 @@ void APlayerCharacter::SpawnEquippedWeapons()
 		}
 
 		TSubclassOf<AWeaponBase> ClassToSpawn = WeaponData->WeaponClass
-			? WeaponData->WeaponClass : WeaponBaseClass;
+			                                        ? WeaponData->WeaponClass
+			                                        : WeaponBaseClass;
 		AWeaponBase* Weapon = World->SpawnActor<AWeaponBase>(ClassToSpawn, SpawnParams);
 		if (Weapon == nullptr)
 		{
@@ -596,6 +660,7 @@ void APlayerCharacter::OnFirePressed(const FInputActionValue& /*Value*/)
 		NoiseComponent->SetNoiseToMax();
 	}
 }
+
 void APlayerCharacter::OnReloadPressed(const FInputActionValue& /*Value*/)
 {
 	if (CurrentWeapon != nullptr)
@@ -702,7 +767,8 @@ void APlayerCharacter::SpawnThrowableWeapon()
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
 	TSubclassOf<AWeaponBase> ClassToSpawn = CurrentThrowableData->WeaponClass
-		? CurrentThrowableData->WeaponClass : WeaponBaseClass;
+		                                        ? CurrentThrowableData->WeaponClass
+		                                        : WeaponBaseClass;
 	AWeaponBase* Spawned = World->SpawnActor<AWeaponBase>(ClassToSpawn, SpawnParams);
 	if (Spawned == nullptr)
 	{
@@ -804,7 +870,8 @@ void APlayerCharacter::NotifyEnemyKilled()
 
 	// 기존 타이머가 있다면 취소하고 새로 설정 (0.5초 후 원복)
 	GetWorldTimerManager().ClearTimer(KillConfirmTimerHandle);
-	GetWorldTimerManager().SetTimer(KillConfirmTimerHandle, this, &APlayerCharacter::ResetCrosshairToDefault, 0.5f, false);
+	GetWorldTimerManager().SetTimer(KillConfirmTimerHandle, this, &APlayerCharacter::ResetCrosshairToDefault, 0.5f,
+	                                false);
 }
 
 void APlayerCharacter::SetCrosshairState(ECrosshairState NewState)
