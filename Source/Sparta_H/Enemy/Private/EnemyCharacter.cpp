@@ -254,13 +254,12 @@ void AEnemyCharacter::OnAlertLevelChanged(EAlertLevel NewLevel)
             TargetPlayer = Cast<AActor>(BB->GetValueAsObject(BBKeys::TARGET_ACTOR));
     }
 
-    // 💡 [핵심 픽스] 전투 진입 시 포커스와 회전 동기화를 이 곳에서 통제합니다.
     bool bIsCombat = (NewLevel == EAlertLevel::Combat);
     
     if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
     {
-        MoveComp->bOrientRotationToMovement = !bIsCombat; // 전투 중엔 이동 방향을 보지 않음 (게걸음)
-        MoveComp->bUseControllerDesiredRotation = bIsCombat; // 컨트롤러의 시선(포커스)을 몸이 부드럽게 따라감
+        MoveComp->bOrientRotationToMovement = !bIsCombat;
+        MoveComp->bUseControllerDesiredRotation = bIsCombat;
         
         if (bIsCombat)
         {
