@@ -74,7 +74,21 @@ FPlayerCheckpointData APlayerCharacter::SaveCheckpoint()
 	Data.MissionIndex = CurrentMissionIndex;
 	Data.bHasRifle = bHasRifle;
 	Data.Location = GetActorLocation();
-	Data.Rotation = GetActorRotation();
+	
+	// 액터의 회전 대신 컨트롤러의 회전(시점)을 저장하여 상하 시점까지 정확히 기억
+	if (Controller)
+	{
+		Data.Rotation = Controller->GetControlRotation();
+	}
+	else
+	{
+		Data.Rotation = GetActorRotation();
+	}
+	
+	// 처치 수 및 경과 시간 저장
+	Data.KillCount = KillCount;
+	Data.ElapsedTime = GetWorld()->GetTimeSeconds() - MissionStartTime;
+	
 	return Data;
 }
 
@@ -83,9 +97,22 @@ void APlayerCharacter::LoadCheckpoint(const FPlayerCheckpointData& CheckpointDat
 	CurrentMissionIndex = CheckpointData.MissionIndex;
 	bHasRifle = CheckpointData.bHasRifle;
 
-	// 위치 및 회전 복구
-	SetActorLocationAndRotation(CheckpointData.Location, CheckpointData.Rotation, false, nullptr,
-	                            ETeleportType::TeleportPhysics);
+	// 위치 복구
+	SetActorLocation(CheckpointData.Location, false, nullptr, ETeleportType::TeleportPhysics);
+
+	// Modified: 컨트롤러의 회전값을 설정해야 시점이 올바르게 복구됨
+	if (Controller)
+	{
+		Controller->SetControlRotation(CheckpointData.Rotation);
+	}
+	else
+	{
+		SetActorRotation(CheckpointData.Rotation, ETeleportType::TeleportPhysics);
+	}
+
+	// Modified: 처치 수 및 시작 시간 복구 (현재 시간에서 경과 시간을 뺌)
+	KillCount = CheckpointData.KillCount;
+	MissionStartTime = GetWorld()->GetTimeSeconds() - CheckpointData.ElapsedTime;
 
 	// 미션 데이터 동기화 (UI 및 내부 상태 갱신)
 	UpdateMissionObjective();
@@ -96,8 +123,6 @@ void APlayerCharacter::LoadCheckpoint(const FPlayerCheckpointData& CheckpointDat
 	{
 		HealthComponent->SetHealth(HealthComponent->GetMaxHealth());
 	}
-	
-	bHasRifle = false;
 }
 
 // Called when the game starts or when spawned

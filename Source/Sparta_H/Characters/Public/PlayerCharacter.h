@@ -51,6 +51,12 @@ struct FPlayerCheckpointData
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FRotator Rotation = FRotator::ZeroRotator;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 KillCount = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float ElapsedTime = 0.0f;
 };
 
 UCLASS()
