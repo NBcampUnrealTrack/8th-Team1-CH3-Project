@@ -112,4 +112,5 @@ private:
 
     bool bIsPlayerInOuter = false;
     bool bIsPlayerInInner = false;
+    bool bInputBound = false;
 };

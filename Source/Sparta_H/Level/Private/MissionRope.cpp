@@ -108,9 +108,10 @@ void AMissionRope::Interact_Implementation(APlayerCharacter* Interactor)
     // 엔진 글로벌 타임 딜레이를 통한 슬로우 모션(배속 30%) 활성화
     UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 0.3f);
 
-    // 암전 종료 시점(1초 후)에 맞추어 2단계 연출(시점 전환) 타이머 등록
+    // 암전 종료 시점(실시간 1초 후)에 맞추어 2단계 연출(시점 전환) 타이머 등록
+    // 타이머는 게임 시간 기준이므로 딜레이션(0.3)으로 나눠 실제 1초에 맞춤
     FTimerHandle Handle;
-    GetWorldTimerManager().SetTimer(Handle, FTimerDelegate::CreateUFunction(this, FName("Step2_ShowHelicopter"), Interactor), 1.0f, false);
+    GetWorldTimerManager().SetTimer(Handle, FTimerDelegate::CreateUObject(this, &AMissionRope::Step2_ShowHelicopter, Interactor), 1.0f / 0.3f, false);
 }
 
 void AMissionRope::Step2_ShowHelicopter(APlayerCharacter* Interactor)
@@ -136,7 +137,7 @@ void AMissionRope::Step2_ShowHelicopter(APlayerCharacter* Interactor)
 
     // 시네마틱 종료 및 UI 호출을 위한 타이머 등록 (연출 시간 + 여유 시간 1초)
     FTimerHandle Handle;
-    GetWorldTimerManager().SetTimer(Handle, FTimerDelegate::CreateUFunction(this, FName("Step3_FinishMission"), Interactor), HelicopterViewDuration + 1.0f, false);
+    GetWorldTimerManager().SetTimer(Handle, FTimerDelegate::CreateUObject(this, &AMissionRope::Step3_FinishMission, Interactor), HelicopterViewDuration + 1.0f, false);
 }
 
 void AMissionRope::Step3_FinishMission(APlayerCharacter* Interactor)
