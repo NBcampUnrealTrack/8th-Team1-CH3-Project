@@ -72,7 +72,9 @@ void AEnemyCharacter::BeginPlay()
     if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
     {
         MoveComp->bUseRVOAvoidance = true;
-        MoveComp->bOrientRotationToMovement = true; 
+        // 캡슐 반경(~42)의 약 2.5배 — 접촉 전에 미리 회피 시작
+        MoveComp->AvoidanceConsiderationRadius = 110.0f;
+        MoveComp->bOrientRotationToMovement = true;
     }
 }
 
