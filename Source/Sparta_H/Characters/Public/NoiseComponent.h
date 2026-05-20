@@ -14,14 +14,13 @@ class SPARTA_H_API UNoiseComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
-public:	
-	// Sets default values for this component's properties
+public:
 	UNoiseComponent();
 
 protected:
 	virtual void BeginPlay() override;
 
-public:	
+public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	float GetCurrentNoise() const { return CurrentNoise; }
@@ -37,15 +36,29 @@ public:
 	FOnNoiseChanged OnNoiseChanged;
 
 private:
-	// 이번 프레임에 수동으로 노이즈가 업데이트되었는지 여부 (Tick에서의 즉시 보간 방지)
+	void ReportFootstepNoise();
+
 	bool bNoiseUpdatedThisFrame = false;
+	float FootstepReportAccum = 0.f;
 
 	UPROPERTY(EditAnywhere, Category = "Player|Stats")
 	float CurrentNoise = 0.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Player|Stats")
 	float MaxNoise = 100.0f;
-	
+
 	UPROPERTY(EditAnywhere, Category = "Player|Stats")
 	float NoiseInterpSpeed = 10.0f;
+
+	// 발소리 AI 감지: 최대 소음일 때 탐지 반경 (cm)
+	UPROPERTY(EditAnywhere, Category = "Player|Noise|AI")
+	float MaxFootstepHearingRange = 800.f;
+
+	// 발소리를 AI에 보고할 최소 소음 수치 (이 이하면 무시)
+	UPROPERTY(EditAnywhere, Category = "Player|Noise|AI")
+	float FootstepNoiseThreshold = 5.f;
+
+	// AI에 발소리를 보고하는 주기 (초)
+	UPROPERTY(EditAnywhere, Category = "Player|Noise|AI")
+	float FootstepReportInterval = 0.25f;
 };

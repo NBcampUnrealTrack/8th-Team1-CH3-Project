@@ -13,9 +13,9 @@
 UCombatManager::UCombatManager()
 {
 	PrimaryComponentTick.bCanEverTick = false;
+	bWantsInitializeComponent = true;
 
 	HitDetector = CreateDefaultSubobject<UHitDetector>(TEXT("HitDetector"));
-	DamageProcessor = CreateDefaultSubobject<UDamageProcessor>(TEXT("DamageProcessor"));
 	FeedbackHandler = CreateDefaultSubobject<UCombatFeedbackHandler>(TEXT("FeedbackHandler"));
 
 	static ConstructorHelpers::FObjectFinder<UDamageDataAsset> RifleAsset(
@@ -25,6 +25,15 @@ UCombatManager::UCombatManager()
 	static ConstructorHelpers::FObjectFinder<UDamageDataAsset> PistolAsset(
 		TEXT("/Game/Systems/DA/DA_Damage_Pistol"));
 	if (PistolAsset.Succeeded()) PistolData = PistolAsset.Object;
+}
+
+void UCombatManager::InitializeComponent()
+{
+	Super::InitializeComponent();
+	if (!IsValid(DamageProcessor))
+	{
+		DamageProcessor = NewObject<UDamageProcessor>(this, TEXT("DamageProcessor"));
+	}
 }
 
 void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection, ECombatWeaponType WeaponType,
@@ -41,6 +50,8 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 	{
 		return;
 	}
+
+	const bool bOwnerIsEnemy = GetOwner()->ActorHasTag("Enemy");
 
 	// 1. 발사 소음 (발사 위치) — 어그로 무기만
 	if (bTriggerAIAggro)
@@ -62,13 +73,12 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 			GetWorld(), ImpactVFX, HitResult.ImpactPoint,
 			HitResult.ImpactNormal.Rotation());
 	}
-	
+
 	AActor* HitActor = HitResult.GetActor();
 	if (!IsValid(HitActor)) return;
 
 	const bool bHitEnemy    = HitActor->ActorHasTag("Enemy");
 	const bool bHitPlayer   = HitActor->ActorHasTag("Player");
-	const bool bOwnerIsEnemy = GetOwner()->ActorHasTag("Enemy");
 
 	UE_LOG(LogTemp, Warning, TEXT("[CombatManager] Hit: %s | bHitEnemy=%d bHitPlayer=%d bOwnerIsEnemy=%d"),
 		*HitActor->GetName(), bHitEnemy, bHitPlayer, bOwnerIsEnemy);
@@ -88,6 +98,11 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 	if (!bOwnerIsEnemy && bHitPlayer) return;
 
 	// 5. 데미지 계산
+	if (!IsValid(DamageProcessor))
+	{
+		UE_LOG(LogTemp, Error, TEXT("[CombatManager] DamageProcessor null — lazily creating"));
+		DamageProcessor = NewObject<UDamageProcessor>(this, TEXT("DamageProcessor"));
+	}
 	DamageProcessor->BoneHead  = BoneHead;
 	DamageProcessor->BoneTorso = BoneTorso;
 	DamageProcessor->BoneLimb  = BoneLimb;

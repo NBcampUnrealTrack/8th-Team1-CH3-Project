@@ -62,6 +62,9 @@ APlayerCharacter::APlayerCharacter()
 	// BP에서 미지정 시 베이스 클래스로 폴백 (무기별 특수 로직이 없으면 그대로 사용)
 	WeaponBaseClass = AWeaponBase::StaticClass();
 
+	// 적의 ECC_Visibility 트레이스(총알)에 피격되도록 설정 — 기본 Pawn 프리셋은 Visibility를 무시함
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+
 	// 컴포넌트 추가
 	HealthComponent = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComponent"));
 	StaminaComponent = CreateDefaultSubobject<UStaminaComponent>(TEXT("StaminaComponent"));

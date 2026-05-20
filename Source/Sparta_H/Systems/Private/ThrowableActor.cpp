@@ -100,8 +100,8 @@ void AThrowableActor::HandleOnHit(UPrimitiveComponent* HitComponent, AActor* Oth
 			GetWorld(),
 			GetActorLocation(),
 			1.f,
-			nullptr,
-			500.f, // 5m
+			GetInstigator(),
+			RockNoiseRange,
 			FName("Rock")
 		);
 	}

@@ -40,6 +40,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	ECombatWeaponType ThrowableType = ECombatWeaponType::Grenade;
 
+	UPROPERTY(EditAnywhere, Category = "Combat|Noise")
+	float RockNoiseRange = 2000.f;
+
 	// 폭발 Niagara 이펙트 (BP에서 할당)
 	UPROPERTY(EditDefaultsOnly, Category = "Combat|VFX")
 	UNiagaraSystem* ExplosionEffect;

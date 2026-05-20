@@ -15,7 +15,8 @@ public:
 	UHitDetector();
 
 	bool PerformLineTrace(const FVector& StartLocation, const FVector& Direction, float Distance,
-	                      FHitResult& OutHitResult);
+	                      FHitResult& OutHitResult,
+	                      const TArray<AActor*>& AdditionalIgnored = TArray<AActor*>());
 
 	static EHitBone IdentifyHitBone(FName BoneName);
 };

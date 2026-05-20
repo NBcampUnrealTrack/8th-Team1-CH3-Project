@@ -14,6 +14,7 @@ AHostageCharacter::AHostageCharacter()
     if (GetCharacterMovement())
     {
        GetCharacterMovement()->bUseRVOAvoidance = true;
+       GetCharacterMovement()->AvoidanceConsiderationRadius = 110.0f;
     }
 }
 
