@@ -45,6 +45,11 @@ void AFirstMissionItem::BeginPlay()
 void AFirstMissionItem::Interact_Implementation(APlayerCharacter* Interactor)
 {
 	if (bIsUsed || !Interactor) return;
+	
+	if (bUnlockRifleOnInteract)
+	{
+		Interactor->bHasRifle = true;
+	}
 
 	Interactor->CompleteCurrentObjective();
 	bIsUsed = true;
