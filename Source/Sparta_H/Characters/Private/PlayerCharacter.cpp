@@ -12,6 +12,7 @@
 #include "MissionDataAsset.h"
 #include "MissionInteractableInterface.h"
 #include "Kismet/GameplayStatics.h"
+#include "Systems/Public/H_GameFunctionLibrary.h"
 
 #include "HealthComponent.h"
 #include "InteractionComponent.h"
@@ -75,7 +76,7 @@ FPlayerCheckpointData APlayerCharacter::SaveCheckpoint()
 	Data.bHasRifle = bHasRifle;
 	Data.Location = GetActorLocation();
 	
-	// 액터의 회전 대신 컨트롤러의 회전(시점)을 저장하여 상하 시점까지 정확히 기억
+	// Modified: 액터의 회전 대신 컨트롤러의 회전(시점)을 저장하여 상하 시점까지 정확히 기억
 	if (Controller)
 	{
 		Data.Rotation = Controller->GetControlRotation();
@@ -85,7 +86,7 @@ FPlayerCheckpointData APlayerCharacter::SaveCheckpoint()
 		Data.Rotation = GetActorRotation();
 	}
 	
-	// 처치 수 및 경과 시간 저장
+	// Modified: 처치 수 및 경과 시간 저장
 	Data.KillCount = KillCount;
 	Data.ElapsedTime = GetWorld()->GetTimeSeconds() - MissionStartTime;
 	
@@ -123,6 +124,8 @@ void APlayerCharacter::LoadCheckpoint(const FPlayerCheckpointData& CheckpointDat
 	{
 		HealthComponent->SetHealth(HealthComponent->GetMaxHealth());
 	}
+	
+	bHasRifle = false;
 }
 
 // Called when the game starts or when spawned
@@ -172,6 +175,9 @@ void APlayerCharacter::BeginPlay()
 	// 미션 데이터 초기화
 	CurrentMissionIndex = 0;
 	UpdateMissionObjective();
+
+	// 예약된 로드 요청이 있다면 처리
+	UH_GameFunctionLibrary::HandlePendingLoad(this);
 }
 
 // Called every frame
