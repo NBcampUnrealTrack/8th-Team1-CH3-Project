@@ -198,6 +198,7 @@ void AEnemyCharacter::ApplyPerceptionStats(const FAlertLevelStats& Stats)
 void AEnemyCharacter::OnAlertLevelChanged(EAlertLevel NewLevel)
 {
     if (bIsDead) return;
+    if (CurrentAlertLevel == NewLevel) return;
 
     // 1. C++ 내부 변수 업데이트
     CurrentAlertLevel = NewLevel;

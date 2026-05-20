@@ -4,6 +4,8 @@
 #include "NoiseComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/Pawn.h"
+#include "Perception/AISense_Hearing.h"
 
 // Sets default values for this component's properties
 UNoiseComponent::UNoiseComponent()
@@ -56,6 +58,36 @@ void UNoiseComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActor
 		CurrentNoise = NewNoise;
 		OnNoiseChanged.Broadcast(CurrentNoise, MaxNoise);
 	}
+
+	FootstepReportAccum += DeltaTime;
+	if (FootstepReportAccum >= FootstepReportInterval)
+	{
+		FootstepReportAccum = 0.f;
+		if (CurrentNoise >= FootstepNoiseThreshold)
+		{
+			ReportFootstepNoise();
+		}
+	}
+}
+
+void UNoiseComponent::ReportFootstepNoise()
+{
+	APawn* OwnerPawn = Cast<APawn>(GetOwner());
+	if (!OwnerPawn) return;
+
+	// 발소리 최대치는 30.0f (속도 기반)이므로 MaxNoise(100)가 아닌 30 기준으로 정규화
+	static constexpr float MaxFootstepNoise = 30.f;
+	const float LoudnessRatio = FMath::Clamp(CurrentNoise / MaxFootstepNoise, 0.f, 1.f);
+	const float EffectiveRange = MaxFootstepHearingRange * LoudnessRatio;
+	UE_LOG(LogTemp, Log, TEXT("[Footstep] 발소리 AI 보고 | Noise=%.1f | Range=%.0f"), CurrentNoise, EffectiveRange);
+	UAISense_Hearing::ReportNoiseEvent(
+		GetWorld(),
+		OwnerPawn->GetActorLocation(),
+		LoudnessRatio,
+		OwnerPawn,
+		EffectiveRange,
+		FName("Footstep")
+	);
 }
 
 void UNoiseComponent::AddNoise(float Amount)
