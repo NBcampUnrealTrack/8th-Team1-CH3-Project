@@ -45,8 +45,7 @@ public:
 
     virtual void OnAlertLevelChanged(EAlertLevel NewLevel) override;
 
-    UFUNCTION(BlueprintCallable, Category = "AI|Combat")
-    bool CanShootTarget(AActor* TargetActor);
+    bool CanShootTarget(AActor* TargetActor, AActor** OutBlocker = nullptr);
 
     // 3점사 패턴 시작 함수 (Behavior Tree 등에서 호출)
     UFUNCTION(BlueprintCallable, Category = "AI|Combat")
@@ -56,10 +55,10 @@ public:
     bool FireAtTarget(AActor* TargetActor);
     
     UFUNCTION(BlueprintCallable, Category = "AI|Patrol")
-    FVector GetPatrolWorldLocationA() const { return PatrolWorldLocationA; }
+    FVector GetPatrolWorldLocationA() const { return PatrolSpawnLocation + PatrolOffsetA; }
 
     UFUNCTION(BlueprintCallable, Category = "AI|Patrol")
-    FVector GetPatrolWorldLocationB() const { return PatrolWorldLocationB; }
+    FVector GetPatrolWorldLocationB() const { return PatrolSpawnLocation + PatrolOffsetB; }
 
     UFUNCTION(BlueprintCallable, Category = "AI")
     UBehaviorTree* GetEnemyBT() const { return EnemyBT; }
@@ -111,16 +110,16 @@ protected:
     // AlertLevel별 Perception 수치 (기획서 기본값)
     // ---------------------------------------------------------------
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|AlertStats")
-    FAlertLevelStats IdleStats       = { 60.f,  600.f,  400.f, 400.f };
+    FAlertLevelStats IdleStats       = { 60.f,  600.f,  3000.f, 400.f };
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|AlertStats")
-    FAlertLevelStats SuspiciousStats = { 180.f, 1500.f,  800.f, 600.f };
+    FAlertLevelStats SuspiciousStats = { 180.f, 1500.f, 5000.f, 600.f };
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|AlertStats")
-    FAlertLevelStats CombatStats     = { 180.f, 2000.f, 1000.f, 800.f };
+    FAlertLevelStats CombatStats     = { 180.f, 2000.f, 8000.f, 800.f };
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|AlertStats")
-    FAlertLevelStats LostStats       = { 100.f, 2000.f, 1000.f, 800.f };
+    FAlertLevelStats LostStats       = { 100.f, 2000.f, 8000.f, 800.f };
 
     UPROPERTY(EditAnywhere, Category = "AI")
     class UBehaviorTree* EnemyBT;
@@ -133,7 +132,7 @@ private:
     // 전투 수치
     // ---------------------------------------------------------------
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Combat", meta = (AllowPrivateAccess = "true"))
-    float FireRange = 4000.0f;
+    float FireRange = 2000.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Combat", meta = (AllowPrivateAccess = "true"))
     float FireAngleLimit = 90.0f;
@@ -153,6 +152,11 @@ private:
     int32 CurrentShotCount = 0;           // 현재 발사 횟수
     FTimerHandle FirePatternTimerHandle;  // 0.4초/0.8초 제어용
     void ExecuteFireStep();               // 실제 한 발씩 쏘는 단계
+
+    // --- 시야 확보 재배치 ---
+    bool bIsRepositioning = false;
+    FTimerHandle RepositionTimerHandle;
+    void TryRepositionForShot();          // 시야 막힘 시 이동 후 재시도
     
     // ---------------------------------------------------------------
     // AlertRange
@@ -199,12 +203,14 @@ private:
 
     void OnDetectionTimerExpired();
     
-    // 패트롤하기 위해서 A지점과 B지점 설정
+    // 패트롤 오프셋 (스폰 위치 기준 상대 좌표, 에디터에서 조정 가능)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Patrol", meta = (AllowPrivateAccess = "true"))
-    FVector PatrolWorldLocationA;
+    FVector PatrolOffsetA = FVector(300.f, 0.f, 0.f);
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Patrol", meta = (AllowPrivateAccess = "true"))
-    FVector PatrolWorldLocationB;
+    FVector PatrolOffsetB = FVector(-300.f, 0.f, 0.f);
+
+    FVector PatrolSpawnLocation;
     
     // 20초 동안 플레이어를 놓쳤을 때 호출될 함수
     void OnCombatToLostTimerExpired();

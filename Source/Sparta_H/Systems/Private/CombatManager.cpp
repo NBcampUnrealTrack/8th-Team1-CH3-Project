@@ -42,6 +42,8 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 		return;
 	}
 
+	const bool bOwnerIsEnemy = GetOwner()->ActorHasTag("Enemy");
+
 	// 1. 발사 소음 (발사 위치) — 어그로 무기만
 	if (bTriggerAIAggro)
 	{
@@ -62,13 +64,12 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 			GetWorld(), ImpactVFX, HitResult.ImpactPoint,
 			HitResult.ImpactNormal.Rotation());
 	}
-	
+
 	AActor* HitActor = HitResult.GetActor();
 	if (!IsValid(HitActor)) return;
 
 	const bool bHitEnemy    = HitActor->ActorHasTag("Enemy");
 	const bool bHitPlayer   = HitActor->ActorHasTag("Player");
-	const bool bOwnerIsEnemy = GetOwner()->ActorHasTag("Enemy");
 
 	UE_LOG(LogTemp, Warning, TEXT("[CombatManager] Hit: %s | bHitEnemy=%d bHitPlayer=%d bOwnerIsEnemy=%d"),
 		*HitActor->GetName(), bHitEnemy, bHitPlayer, bOwnerIsEnemy);

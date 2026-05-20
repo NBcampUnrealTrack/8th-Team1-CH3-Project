@@ -436,7 +436,7 @@ void ABossEnemy::ExecutePrecisionFire()
 
     CombatManagerComp->OnFire(AimStart, AimDir, ECombatWeaponType::Rifle, PrecisionDamage, true);
 }
-
+   
 // ─── Reinforcement ───────────────────────────────────────────────────────────
 void ABossEnemy::SpawnReinforcement()
 {
