@@ -7,11 +7,15 @@ UHitDetector::UHitDetector()
 }
 
 bool UHitDetector::PerformLineTrace(const FVector& StartLocation, const FVector& Direction, float Distance,
-                                    FHitResult& OutHitResult)
+                                    FHitResult& OutHitResult, const TArray<AActor*>& AdditionalIgnored)
 {
 	FVector EndLocation = StartLocation + Direction * Distance;
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(GetOwner());
+	for (AActor* Actor : AdditionalIgnored)
+	{
+		if (IsValid(Actor)) Params.AddIgnoredActor(Actor);
+	}
 
 	bool bHit = GetWorld()->LineTraceSingleByChannel(OutHitResult, StartLocation, EndLocation, ECC_Visibility, Params);
 

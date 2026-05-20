@@ -18,7 +18,8 @@
 #include "BlackboardKeys.h"
 #include "CombatManager.h"
 #include "NiagaraFunctionLibrary.h"
-#include "GameFramework/Character.h" 
+#include "GameFramework/Character.h"
+#include "Kismet/GameplayStatics.h"
 
 AEnemyCharacter::AEnemyCharacter()
 {
@@ -404,6 +405,7 @@ void AEnemyCharacter::StartFirePattern(AActor* TargetActor)
 {
     if (bIsDead || !TargetActor || TargetActor == this) return;
     if (TargetActor->GetName().Contains(TEXT("Hostage"))) return;
+    if (TargetActor->ActorHasTag(TEXT("Enemy"))) return;
 
     if (GetWorldTimerManager().IsTimerActive(FirePatternTimerHandle)) return;
     if (CurrentShotCount != 0) return;
@@ -430,9 +432,11 @@ void AEnemyCharacter::ExecuteFireStep()
 {
     FString TargetName = SuspectedTarget ? SuspectedTarget->GetName() : TEXT("None");
 
-    if (bIsDead || CurrentAlertLevel != EAlertLevel::Combat || !SuspectedTarget)
+    if (bIsDead || CurrentAlertLevel != EAlertLevel::Combat || !SuspectedTarget
+        || SuspectedTarget->ActorHasTag(TEXT("Enemy")))
     {
         CurrentShotCount = 0;
+        SuspectedTarget = nullptr;
         if (AAIController* AIC = Cast<AAIController>(GetController())) AIC->ClearFocus(EAIFocusPriority::Gameplay);
         if (UCharacterMovementComponent* MoveComp = GetCharacterMovement()) MoveComp->bOrientRotationToMovement = true;
         return;
@@ -538,11 +542,14 @@ bool AEnemyCharacter::CanShootTarget(AActor* TargetActor)
     // 3. 라인 트레이스 세팅
     FHitResult HitResult;
     FCollisionQueryParams CollisionParams;
-    
-    // 자기 자신(몸, 무기, 캡슐)은 무시
+
+    // 자기 자신(몸, 무기, 캡슐)과 같은 팀 적은 무시 — 적끼리 서로 시야를 차단하지 않도록
     CollisionParams.AddIgnoredActor(this);
     if (WeaponMeshComp) CollisionParams.AddIgnoredComponent(WeaponMeshComp);
     if (GetCapsuleComponent()) CollisionParams.AddIgnoredComponent(GetCapsuleComponent());
+    TArray<AActor*> AllEnemies;
+    UGameplayStatics::GetAllActorsWithTag(GetWorld(), TEXT("Enemy"), AllEnemies);
+    for (AActor* Enemy : AllEnemies) { CollisionParams.AddIgnoredActor(Enemy); }
 
     // 4. 발사 시작 지점(총구)
     const FName MuzzleSocket = TEXT("Muzzle");
