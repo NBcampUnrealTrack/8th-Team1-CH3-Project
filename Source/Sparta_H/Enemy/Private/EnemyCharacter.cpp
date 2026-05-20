@@ -210,6 +210,8 @@ void AEnemyCharacter::OnAlertLevelChanged(EAlertLevel NewLevel)
 
     UE_LOG(LogTemp, Warning, TEXT("[%s] 경계 레벨 변경: %d"), *GetName(), (int32)NewLevel);
     GetWorldTimerManager().ClearTimer(SuspiciousRevertTimerHandle);
+    GetWorldTimerManager().ClearTimer(RepositionTimerHandle);
+    bIsRepositioning = false;
 
     Super::OnAlertLevelChanged(NewLevel);
 
@@ -409,6 +411,7 @@ void AEnemyCharacter::StartFirePattern(AActor* TargetActor)
 
     if (GetWorldTimerManager().IsTimerActive(FirePatternTimerHandle)) return;
     if (CurrentShotCount != 0) return;
+    if (bIsRepositioning) return;
 
     SuspectedTarget = TargetActor;
 
@@ -446,17 +449,36 @@ void AEnemyCharacter::ExecuteFireStep()
     {
         UE_LOG(LogTemp, Log, TEXT("[%s] 점사 진행 중: 사격 조건을 검사합니다. 검사 대상: %s"), *GetName(), *TargetName);
 
-        if (CanShootTarget(SuspectedTarget))
+        AActor* Blocker = nullptr;
+        if (CanShootTarget(SuspectedTarget, &Blocker))
         {
             FireAtTarget(SuspectedTarget);
             CurrentShotCount++;
-            
+
             UE_LOG(LogTemp, Log, TEXT("[%s] 발사 단계 성공. 0.4초 후 다음 탄 발사를 예약합니다. 대상: %s"), *GetName(), *TargetName);
             GetWorldTimerManager().SetTimer(FirePatternTimerHandle, this, &AEnemyCharacter::ExecuteFireStep, 0.4f, false);
         }
+        else if (Blocker && Blocker->ActorHasTag(TEXT("Enemy")))
+        {
+            // 아군 적이 사격선을 막고 있음 → 재배치
+            UE_LOG(LogTemp, Warning, TEXT("[%s] 아군(%s)에 막혀 재배치 시작"), *GetName(), *Blocker->GetName());
+            CurrentShotCount = 0;
+            bIsRepositioning = true;
+
+            if (AAIController* AIC = Cast<AAIController>(GetController()))
+            {
+                AIC->ClearFocus(EAIFocusPriority::Gameplay);
+                AIC->MoveToActor(SuspectedTarget, 600.f);
+            }
+            if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+                MoveComp->bOrientRotationToMovement = true;
+
+            GetWorldTimerManager().SetTimer(RepositionTimerHandle, this, &AEnemyCharacter::TryRepositionForShot, 0.5f, false);
+        }
         else
         {
-            UE_LOG(LogTemp, Warning, TEXT("[%s] 점사 도중 사격 조건을 상실하여 루틴을 강제 종료합니다. 대상: %s"), *GetName(), *TargetName);
+            // 거리/각도 초과 등 — 그냥 종료
+            UE_LOG(LogTemp, Warning, TEXT("[%s] 사격 조건 미충족으로 패턴 종료. 대상: %s"), *GetName(), *TargetName);
             CurrentShotCount = 0;
             if (AAIController* AIC = Cast<AAIController>(GetController())) AIC->ClearFocus(EAIFocusPriority::Gameplay);
             if (UCharacterMovementComponent* MoveComp = GetCharacterMovement()) MoveComp->bOrientRotationToMovement = true;
@@ -471,6 +493,47 @@ void AEnemyCharacter::ExecuteFireStep()
         if (UCharacterMovementComponent* MoveComp = GetCharacterMovement()) MoveComp->bOrientRotationToMovement = true;
 
         GetWorldTimerManager().SetTimer(FirePatternTimerHandle, 0.8f, false);
+    }
+}
+
+void AEnemyCharacter::TryRepositionForShot()
+{
+    if (bIsDead || CurrentAlertLevel != EAlertLevel::Combat || !SuspectedTarget)
+    {
+        bIsRepositioning = false;
+        return;
+    }
+
+    AActor* Blocker = nullptr;
+    if (CanShootTarget(SuspectedTarget, &Blocker))
+    {
+        bIsRepositioning = false;
+
+        if (AAIController* AIC = Cast<AAIController>(GetController()))
+        {
+            AIC->StopMovement();
+            AIC->SetFocus(SuspectedTarget, EAIFocusPriority::Gameplay);
+        }
+        if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+            MoveComp->bOrientRotationToMovement = false;
+
+        UE_LOG(LogTemp, Warning, TEXT("[%s] 시야 확보 완료 — 사격 재개"), *GetName());
+        ExecuteFireStep();
+    }
+    else if (Blocker && Blocker->ActorHasTag(TEXT("Enemy")))
+    {
+        // 아직 아군에 막혀 있음 — 계속 접근
+        if (AAIController* AIC = Cast<AAIController>(GetController()))
+            AIC->MoveToActor(SuspectedTarget, 600.f);
+
+        GetWorldTimerManager().SetTimer(RepositionTimerHandle, this, &AEnemyCharacter::TryRepositionForShot, 0.5f, false);
+    }
+    else
+    {
+        // 아군이 아닌 이유로 막힘 (거리/각도) — 재배치 종료
+        bIsRepositioning = false;
+        if (AAIController* AIC = Cast<AAIController>(GetController())) AIC->ClearFocus(EAIFocusPriority::Gameplay);
+        if (UCharacterMovementComponent* MoveComp = GetCharacterMovement()) MoveComp->bOrientRotationToMovement = true;
     }
 }
 
@@ -493,6 +556,8 @@ void AEnemyCharacter::Die()
     Super::Die();
 
     GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    GetWorldTimerManager().ClearTimer(RepositionTimerHandle);
+    bIsRepositioning = false;
 
     if (AAIController* AIC = Cast<AAIController>(GetController())) AIC->StopMovement();
     if (UCharacterMovementComponent* MoveComp = GetCharacterMovement()) MoveComp->DisableMovement();
@@ -516,9 +581,11 @@ void AEnemyCharacter::Die()
 // ---------------------------------------------------------------
 // 사격 가시성 및 트레이스 디버그 라인 표현
 // ---------------------------------------------------------------
-bool AEnemyCharacter::CanShootTarget(AActor* TargetActor)
+bool AEnemyCharacter::CanShootTarget(AActor* TargetActor, AActor** OutBlocker)
 {
     if (!TargetActor) return false;
+
+    if (OutBlocker) *OutBlocker = nullptr;
 
     // 1. 거리 제한 검사
     const float Distance = FVector::Dist(GetActorLocation(), TargetActor->GetActorLocation());
@@ -539,17 +606,12 @@ bool AEnemyCharacter::CanShootTarget(AActor* TargetActor)
         return false;
     }
 
-    // 3. 라인 트레이스 세팅
+    // 3. 라인 트레이스 세팅 (자기 자신만 무시 — 아군 적은 사격선을 막을 수 있음)
     FHitResult HitResult;
     FCollisionQueryParams CollisionParams;
-
-    // 자기 자신(몸, 무기, 캡슐)과 같은 팀 적은 무시 — 적끼리 서로 시야를 차단하지 않도록
     CollisionParams.AddIgnoredActor(this);
     if (WeaponMeshComp) CollisionParams.AddIgnoredComponent(WeaponMeshComp);
     if (GetCapsuleComponent()) CollisionParams.AddIgnoredComponent(GetCapsuleComponent());
-    TArray<AActor*> AllEnemies;
-    UGameplayStatics::GetAllActorsWithTag(GetWorld(), TEXT("Enemy"), AllEnemies);
-    for (AActor* Enemy : AllEnemies) { CollisionParams.AddIgnoredActor(Enemy); }
 
     // 4. 발사 시작 지점(총구)
     const FName MuzzleSocket = TEXT("Muzzle");
@@ -567,7 +629,7 @@ bool AEnemyCharacter::CanShootTarget(AActor* TargetActor)
         TargetLocation += FVector(0.f, 0.f, 80.f);
     }
 
-    // 6. ECC_Pawn 채널로 트레이스
+    // 6. ECC_Pawn 채널로 트레이스 (아군 적 캡슐 감지)
     const bool bHit = GetWorld()->LineTraceSingleByChannel(
         HitResult, StartLocation, TargetLocation,
         ECC_Pawn,
@@ -578,8 +640,11 @@ bool AEnemyCharacter::CanShootTarget(AActor* TargetActor)
     DrawDebugLine(GetWorld(), StartLocation, bHit ? HitResult.ImpactPoint : TargetLocation,
                   bHit ? FColor::Red : FColor::Green, false, 2.0f, 0, 2.0f);
 
-    // 8. 명중 판정 (트레이스가 타겟에 닿았는지 확인)
+    // 8. 명중 판정
     bool bCanShoot = bHit && (HitResult.GetActor() == TargetActor);
+
+    if (!bCanShoot && OutBlocker)
+        *OutBlocker = HitResult.GetActor();
 
     UE_LOG(LogTemp, Log, TEXT("[%s] CanShootTarget 결과: %d | 적중 액터: %s"),
            *GetName(), bCanShoot, HitResult.GetActor() ? *HitResult.GetActor()->GetName() : TEXT("None"));

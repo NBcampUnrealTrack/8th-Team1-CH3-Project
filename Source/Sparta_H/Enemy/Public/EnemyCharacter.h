@@ -46,7 +46,7 @@ public:
     virtual void OnAlertLevelChanged(EAlertLevel NewLevel) override;
 
     UFUNCTION(BlueprintCallable, Category = "AI|Combat")
-    bool CanShootTarget(AActor* TargetActor);
+    bool CanShootTarget(AActor* TargetActor, AActor** OutBlocker = nullptr);
 
     // 3점사 패턴 시작 함수 (Behavior Tree 등에서 호출)
     UFUNCTION(BlueprintCallable, Category = "AI|Combat")
@@ -153,6 +153,11 @@ private:
     int32 CurrentShotCount = 0;           // 현재 발사 횟수
     FTimerHandle FirePatternTimerHandle;  // 0.4초/0.8초 제어용
     void ExecuteFireStep();               // 실제 한 발씩 쏘는 단계
+
+    // --- 시야 확보 재배치 ---
+    bool bIsRepositioning = false;
+    FTimerHandle RepositionTimerHandle;
+    void TryRepositionForShot();          // 시야 막힘 시 이동 후 재시도
     
     // ---------------------------------------------------------------
     // AlertRange
