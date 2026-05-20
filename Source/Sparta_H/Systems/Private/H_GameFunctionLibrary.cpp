@@ -9,7 +9,10 @@ bool UH_GameFunctionLibrary::bIsLoadPending = false;
 
 void UH_GameFunctionLibrary::RequestLoadAndRespawn(const UObject* WorldContextObject)
 {
-	if (!WorldContextObject) return;
+	if (!WorldContextObject)
+	{
+		return;
+	}
 
 	// 로드 요청 플래그를 설정하고 즉시 시도. 
 	// 레벨 이동 시에는 타이머가 취소되어 플래그가 유지되고, 이동이 없으면 다음 프레임에 플래그가 해제됨.
@@ -24,16 +27,19 @@ void UH_GameFunctionLibrary::RequestLoadAndRespawn(const UObject* WorldContextOb
 			bIsLoadPending = false;
 		});
 	}
-	
+
 	UE_LOG(LogTemp, Log, TEXT("Load and Respawn requested."));
 }
 
 void UH_GameFunctionLibrary::HandlePendingLoad(const UObject* WorldContextObject, bool bClearFlag)
 {
-	if (!bIsLoadPending || !WorldContextObject) return;
+	if (!bIsLoadPending || !WorldContextObject)
+	{
+		return;
+	}
 
 	const FString SAVE_SLOT = TEXT("SaveSlot");
-	const int32 USER_INDEX = 0;
+	constexpr int32 USER_INDEX = 0;
 
 	// 1. 세이브 데이터 존재 여부 확인
 	if (UGameplayStatics::DoesSaveGameExist(SAVE_SLOT, USER_INDEX))
@@ -90,12 +96,12 @@ void UH_GameFunctionLibrary::HandlePendingLoad(const UObject* WorldContextObject
 void UH_GameFunctionLibrary::RequestSaveGame(const UObject* WorldContextObject)
 {
 	const FString SAVE_SLOT = TEXT("SaveSlot");
-	const int32 USER_INDEX = 0;
+	constexpr int32 USER_INDEX = 0;
 
 	// 1. 플레이어 캐릭터 찾아오기
 	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(WorldContextObject, 0);
 	APlayerCharacter* PlayerChar = Cast<APlayerCharacter>(PlayerPawn);
-	
+
 	if (!PlayerChar)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Failed to find PlayerCharacter for saving."));
@@ -133,15 +139,20 @@ void UH_GameFunctionLibrary::RequestSaveGame(const UObject* WorldContextObject)
 
 void UH_GameFunctionLibrary::ClearAllEnemies(const UObject* WorldContextObject)
 {
-	if (!WorldContextObject) return;
+	if (!WorldContextObject)
+	{
+		return;
+	}
 
 	TArray<AActor*> FoundEnemies;
 	// 모든 ABaseEnemy 상속 클래스의 액터를 찾습니다.
 	UGameplayStatics::GetAllActorsOfClass(WorldContextObject, ABaseEnemy::StaticClass(), FoundEnemies);
 
+	static const FName CCTV_TAG = FName("CCTV");
+
 	for (AActor* Enemy : FoundEnemies)
 	{
-		if (IsValid(Enemy))
+		if (IsValid(Enemy) && !Enemy->ActorHasTag(CCTV_TAG))
 		{
 			Enemy->Destroy();
 		}
