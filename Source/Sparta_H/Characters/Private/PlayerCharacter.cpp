@@ -698,7 +698,6 @@ void APlayerCharacter::OnFirePressed(const FInputActionValue& /*Value*/)
 			return;
 		}
 	}
-
 	CurrentWeapon->Fire();
 
 	// 사격 시 즉시 최대 소음 발생

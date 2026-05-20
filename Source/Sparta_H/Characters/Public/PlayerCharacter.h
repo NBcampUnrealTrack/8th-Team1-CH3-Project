@@ -102,9 +102,11 @@ public:
 	// 총기 착용 여부
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Equipment")
 	bool bIsEquipped = false;
-	// 총기 발사 여부
+	
+	// 총기 발사 여부 및 애니메이션
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Equipment")
 	bool bIsFiring = false;
+	
 	
 
 	// 구르기 관련 , 일회성 동작이므로 몽타주 사용
