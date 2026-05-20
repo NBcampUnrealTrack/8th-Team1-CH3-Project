@@ -5,7 +5,7 @@
 
 void UH_WeaponDetailsWidget::UpdateWeaponDetails(UWeaponDataAsset* WeaponData)
 {
-	// Modified: 무기 데이터 에셋을 위젯 텍스트로 변환하여 표시
+	// Modified: 그래프 로직 제거 및 텍스트 방식 롤백
 	if (!WeaponData) return;
 
 	// 무기 이름
@@ -17,52 +17,60 @@ void UH_WeaponDetailsWidget::UpdateWeaponDetails(UWeaponDataAsset* WeaponData)
 	// 대미지
 	if (Text_Damage)
 	{
-		Text_Damage->SetText(FText::AsNumber(WeaponData->Damage));
+		FString DamageStr = FString::Printf(TEXT("대미지 : %.1f"), WeaponData->Damage);
+		Text_Damage->SetText(FText::FromString(DamageStr));
 	}
 
-	// 거리 별 대미지 배율 (대표값 예시: 10m, 50m)
+	// 거리 별 대미지 배율 (텍스트로 복구)
 	if (Text_DistanceMultiplier)
 	{
 		if (WeaponData->DamageFalloffCurve)
 		{
-			float Mult10m = WeaponData->DamageFalloffCurve->GetFloatValue(1000.0f); // 1000cm = 10m
-			float Mult50m = WeaponData->DamageFalloffCurve->GetFloatValue(5000.0f); // 5000cm = 50m
-			FString DistStr = FString::Printf(TEXT("10m: x%.1f / 50m: x%.1f"), Mult10m, Mult50m);
+			float x10 = WeaponData->DamageFalloffCurve->GetFloatValue(1000.0f);  
+			float x30 = WeaponData->DamageFalloffCurve->GetFloatValue(3000.0f);  
+			float x50 = WeaponData->DamageFalloffCurve->GetFloatValue(5000.0f);  
+			float x100 = WeaponData->DamageFalloffCurve->GetFloatValue(10000.0f); 
+
+			FString DistStr = FString::Printf(TEXT("거리별 배율: 10m(x%.1f), 30m(x%.1f), 50m(x%.1f), 100m(x%.1f)"), 
+											  x10, x30, x50, x100);
 			Text_DistanceMultiplier->SetText(FText::FromString(DistStr));
 		}
 		else
 		{
-			Text_DistanceMultiplier->SetText(FText::FromString(TEXT("고정 대미지")));
+			Text_DistanceMultiplier->SetText(FText::FromString(TEXT("거리별 배율: 고정")));
 		}
 	}
 
-	// 부위 별 대미지 배율 (Head, Body 배율 추출)
+	// 부위 별 대미지 배율
 	if (Text_BodyPartMultiplier)
 	{
-		float HeadMult = WeaponData->BodyPartMultipliers.Contains("Head") ? WeaponData->BodyPartMultipliers["Head"] : 1.0f;
+		float HeadMult = WeaponData->BodyPartMultipliers.Contains("Head") ? WeaponData->BodyPartMultipliers["Head"] : 3.0f;
 		float BodyMult = WeaponData->BodyPartMultipliers.Contains("Body") ? WeaponData->BodyPartMultipliers["Body"] : 1.0f;
-		FString PartStr = FString::Printf(TEXT("헤드: x%.1f / 바디: x%.1f"), HeadMult, BodyMult);
+		float LimbMult = WeaponData->BodyPartMultipliers.Contains("Limb") ? WeaponData->BodyPartMultipliers["Limb"] : 0.7f;
+		
+		FString PartStr = FString::Printf(TEXT("머리: x%.1f / 몸통: x%.1f / 팔·다리: x%.1f"), HeadMult, BodyMult, LimbMult);
 		Text_BodyPartMultiplier->SetText(FText::FromString(PartStr));
 	}
 
 	// 소음 범위
 	if (Text_SoundRange)
 	{
-		FString SoundStr = FString::Printf(TEXT("%.0fm"), WeaponData->SoundRange / 100.0f);
+		FString SoundStr = FString::Printf(TEXT("소음 범위 : %.0f m"), WeaponData->SoundRange / 100.0f);
 		Text_SoundRange->SetText(FText::FromString(SoundStr));
 	}
 
-	// 연사력 (초당 발사 수로 계산: 1 / FireRate)
+	// 연사력
 	if (Text_FireRate)
 	{
 		float RPS = (WeaponData->FireRate > 0.0f) ? (1.0f / WeaponData->FireRate) : 0.0f;
-		FString FireRateStr = FString::Printf(TEXT("%.1f RPM"), RPS * 60.0f); // 분당 발사 수(RPM)로 표시
+		FString FireRateStr = FString::Printf(TEXT("연사력 : %.1f RPM"), RPS * 60.0f); 
 		Text_FireRate->SetText(FText::FromString(FireRateStr));
 	}
 
 	// 장탄 수
 	if (Text_MaxAmmo)
 	{
-		Text_MaxAmmo->SetText(FText::AsNumber(WeaponData->MaxAmmoCount));
+		FString AmmoStr = FString::Printf(TEXT("장탄 수 : %d 발"), WeaponData->MaxAmmoCount);
+		Text_MaxAmmo->SetText(FText::FromString(AmmoStr));
 	}
 }

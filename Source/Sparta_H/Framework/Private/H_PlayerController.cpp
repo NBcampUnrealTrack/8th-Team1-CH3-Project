@@ -64,29 +64,25 @@ void AH_PlayerController::SetupInputComponent()
 
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(InputComponent))
 	{
-		// Modified: Tab 키 무기 목록 표시/숨기기 바인딩
+		// Modified: Tab 키 무기 목록 토글 바인딩 (일시정지 중에도 작동해야 함)
 		if (ShowWeaponListAction)
 		{
-			EnhancedInputComponent->BindAction(ShowWeaponListAction, ETriggerEvent::Started, this, &AH_PlayerController::OnShowWeaponList);
-			EnhancedInputComponent->BindAction(ShowWeaponListAction, ETriggerEvent::Completed, this, &AH_PlayerController::OnHideWeaponList);
+			EnhancedInputComponent->BindAction(ShowWeaponListAction, ETriggerEvent::Started, this, &AH_PlayerController::OnToggleWeaponList);
 		}
 	}
 }
 
-void AH_PlayerController::OnShowWeaponList()
+void AH_PlayerController::OnToggleWeaponList()
 {
-	ToggleWeaponList(true);
+	ToggleWeaponList();
 }
 
-void AH_PlayerController::OnHideWeaponList()
+void AH_PlayerController::ToggleWeaponList()
 {
-	ToggleWeaponList(false);
-}
+	// Modified: 무기 목록 위젯 토글 및 게임 일시정지 처리
+	bIsWeaponListOpen = !bIsWeaponListOpen;
 
-void AH_PlayerController::ToggleWeaponList(bool bShow)
-{
-	// Modified: 무기 목록 위젯 토글 및 입력 모드 처리
-	if (bShow)
+	if (bIsWeaponListOpen)
 	{
 		if (!WeaponListWidgetInstance && WeaponListWidgetClass)
 		{
@@ -110,6 +106,9 @@ void AH_PlayerController::ToggleWeaponList(bool bShow)
 			InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 			SetInputMode(InputMode);
 			bShowMouseCursor = true;
+
+			// 게임 일시 정지
+			UGameplayStatics::SetGamePaused(GetWorld(), true);
 		}
 	}
 	else
@@ -122,6 +121,9 @@ void AH_PlayerController::ToggleWeaponList(bool bShow)
 			FInputModeGameOnly InputMode;
 			SetInputMode(InputMode);
 			bShowMouseCursor = false;
+
+			// 게임 일시 정지 해제
+			UGameplayStatics::SetGamePaused(GetWorld(), false);
 		}
 	}
 }

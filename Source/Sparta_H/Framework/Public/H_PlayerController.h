@@ -95,15 +95,19 @@ public:
 	void ShowClearMenu(float ClearTime, int32 KillCount);
 
 	// UI 토글 처리 함수
-	UFUNCTION()
-	void ToggleWeaponList(bool bShow);
+	// Modified: 무기 목록 UI 토글 로직 및 상태 변수 추가
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void ToggleWeaponList();
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
+	bool bIsWeaponListOpen = false;
 
 protected:
 	virtual void BeginPlay() override;
 
 	// 입력 바인딩용 함수
-	void OnShowWeaponList();
-	void OnHideWeaponList();
+	// Modified: 토글 전용 핸들러로 통합
+	void OnToggleWeaponList();
 
 	virtual void SetupInputComponent() override;
 };

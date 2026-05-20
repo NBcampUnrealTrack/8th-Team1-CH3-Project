@@ -17,7 +17,7 @@ class SPARTA_H_API UH_WeaponDetailsWidget : public UUserWidget
 
 public:
 	// 무기 데이터를 기반으로 UI 내용을 갱신합니다.
-	// Modified: 무기 상세 정보 업데이트 함수 추가
+	// 무기 상세 정보 업데이트 함수 추가
 	UFUNCTION(BlueprintCallable, Category = "UI|Weapon")
 	void UpdateWeaponDetails(UWeaponDataAsset* WeaponData);
 
@@ -30,11 +30,9 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* Text_Damage;
 
-	// 거리 별 대미지 배율 (대표 거리 값 표시)
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* Text_DistanceMultiplier;
 
-	// 부위 별 대미지 배율 (주요 부위 배율 표시)
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* Text_BodyPartMultiplier;
 
