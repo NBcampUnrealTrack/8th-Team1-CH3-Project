@@ -71,13 +71,14 @@ void AElevator::OnOuterOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor*
         bIsPlayerInOuter = true;
         if (OuterPanel && OutlineOverlayMaterial) OuterPanel->SetOverlayMaterial(OutlineOverlayMaterial);
 
-        APlayerController* PC = Cast<APlayerController>(OtherActor->GetInstigatorController());
+        APlayerController* PC = Cast<APlayerController>(Cast<APawn>(OtherActor)->GetController());
         if (PC)
         {
             EnableInput(PC);
-            if (InputComponent)
+            if (!bInputBound && InputComponent)
             {
                 InputComponent->BindKey(EKeys::F, IE_Pressed, this, &AElevator::OnInteractKeyPressed);
+                bInputBound = true;
             }
         }
     }
@@ -89,7 +90,7 @@ void AElevator::OnOuterOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* O
     {
         bIsPlayerInOuter = false;
         if (OuterPanel) OuterPanel->SetOverlayMaterial(nullptr);
-        APlayerController* PC = Cast<APlayerController>(OtherActor->GetInstigatorController());
+        APlayerController* PC = Cast<APlayerController>(Cast<APawn>(OtherActor)->GetController());
         if (PC) DisableInput(PC);
     }
 }
@@ -101,13 +102,14 @@ void AElevator::OnInnerOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor*
         bIsPlayerInInner = true;
         if (InnerPanel && OutlineOverlayMaterial) InnerPanel->SetOverlayMaterial(OutlineOverlayMaterial);
 
-        APlayerController* PC = Cast<APlayerController>(OtherActor->GetInstigatorController());
+        APlayerController* PC = Cast<APlayerController>(Cast<APawn>(OtherActor)->GetController());
         if (PC)
         {
             EnableInput(PC);
-            if (InputComponent)
+            if (!bInputBound && InputComponent)
             {
                 InputComponent->BindKey(EKeys::F, IE_Pressed, this, &AElevator::OnInteractKeyPressed);
+                bInputBound = true;
             }
         }
     }
@@ -119,7 +121,7 @@ void AElevator::OnInnerOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* O
     {
         bIsPlayerInInner = false;
         if (InnerPanel) InnerPanel->SetOverlayMaterial(nullptr);
-        APlayerController* PC = Cast<APlayerController>(OtherActor->GetInstigatorController());
+        APlayerController* PC = Cast<APlayerController>(Cast<APawn>(OtherActor)->GetController());
         if (PC) DisableInput(PC);
     }
 }
