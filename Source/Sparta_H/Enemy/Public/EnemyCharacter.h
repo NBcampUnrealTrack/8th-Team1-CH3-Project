@@ -50,7 +50,7 @@ public:
 
     // 3점사 패턴 시작 함수 (Behavior Tree 등에서 호출)
     UFUNCTION(BlueprintCallable, Category = "AI|Combat")
-    void StartFirePattern(AActor* TargetActor);
+    virtual void StartFirePattern(AActor* TargetActor);
 
     UFUNCTION(BlueprintCallable, Category = "AI|Combat")
     bool FireAtTarget(AActor* TargetActor);
@@ -63,6 +63,10 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "AI")
     UBehaviorTree* GetEnemyBT() const { return EnemyBT; }
+
+    // 소환 등 특수 상황에서 머리 위에 !! 아이콘을 Duration초 동안 표시
+    UFUNCTION(BlueprintCallable, Category = "AI|UI")
+    void ShowExclamationIcon(float Duration);
 
 protected:
     virtual void BeginPlay() override;
@@ -96,6 +100,9 @@ protected:
     // ---------------------------------------------------------------
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI|UI")
     UWidgetComponent* AlertIconWidgetComp;
+
+    UPROPERTY(EditDefaultsOnly, Category = "AI|UI")
+    float AlertIconHeightOffset = 120.f;
 
     UFUNCTION()
     void OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus);

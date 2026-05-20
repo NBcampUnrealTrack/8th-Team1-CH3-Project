@@ -34,7 +34,7 @@ AEnemyCharacter::AEnemyCharacter()
 
     // 머리 위 아이콘 위젯 컴포넌트 생성
     AlertIconWidgetComp = CreateDefaultSubobject<UWidgetComponent>(TEXT("AlertIconWidget"));
-    AlertIconWidgetComp->SetupAttachment(GetMesh(), TEXT("head"));
+    AlertIconWidgetComp->SetupAttachment(GetRootComponent());
     AlertIconWidgetComp->SetWidgetSpace(EWidgetSpace::Screen);
     AlertIconWidgetComp->SetDrawSize(FVector2D(64.f, 64.f));
     AlertIconWidgetComp->SetVisibility(false);
@@ -65,6 +65,8 @@ void AEnemyCharacter::BeginPlay()
     Super::BeginPlay();
     AIPerceptionComp->OnTargetPerceptionUpdated.AddDynamic(this, &AEnemyCharacter::OnTargetPerceived);
     ApplyPerceptionStats(IdleStats);
+
+    AlertIconWidgetComp->SetRelativeLocation(FVector(0.f, 0.f, AlertIconHeightOffset));
     
     // BT 실행 및 블랙보드 초기화는 MyAIController::OnPossess에서 처리
     
@@ -150,6 +152,22 @@ void AEnemyCharacter::HideAlertIcon()
     }
 }
 
+void AEnemyCharacter::ShowExclamationIcon(float Duration)
+{
+    if (!AlertIconWidgetComp) return;
+
+    GetWorldTimerManager().ClearTimer(IconHideTimerHandle);
+
+    UEnemyAlertWidget* AlertWidget = Cast<UEnemyAlertWidget>(AlertIconWidgetComp->GetUserWidgetObject());
+    if (AlertWidget)
+    {
+        AlertWidget->OnAlertLevelUpdated(EAlertLevel::Combat);
+    }
+
+    AlertIconWidgetComp->SetVisibility(true);
+    GetWorldTimerManager().SetTimer(IconHideTimerHandle, this, &AEnemyCharacter::HideAlertIcon, Duration, false);
+}
+
 // ---------------------------------------------------------------
 // Perception 수치 런타임 갱신
 // ---------------------------------------------------------------
@@ -215,8 +233,6 @@ void AEnemyCharacter::OnAlertLevelChanged(EAlertLevel NewLevel)
         case EAlertLevel::Lost:       ApplyPerceptionStats(LostStats);       break;
         default: break;
     }
-
-    UpdateAlertIcon(NewLevel);
 
     // 타겟 정보 가져오기
     AActor* TargetPlayer = nullptr;
@@ -490,13 +506,21 @@ bool AEnemyCharacter::CanShootTarget(AActor* TargetActor)
     if (!TargetActor) return false;
 
     const float Distance = FVector::Dist(GetActorLocation(), TargetActor->GetActorLocation());
-    if (Distance > FireRange) return false;
+    if (Distance > FireRange)
+    {
+        UE_LOG(LogTemp, Log, TEXT("[%s] CanShoot FAIL — 거리 초과 (%.0f / %.0f)"), *GetName(), Distance, FireRange);
+        return false;
+    }
 
     const FVector DirectionToTarget = (TargetActor->GetActorLocation() - GetActorLocation()).GetSafeNormal();
     const float AngleToTarget = FMath::RadiansToDegrees(
         FMath::Acos(FVector::DotProduct(GetActorForwardVector(), DirectionToTarget))
     );
-    if (AngleToTarget > FireAngleLimit) return false;
+    if (AngleToTarget > FireAngleLimit)
+    {
+        UE_LOG(LogTemp, Log, TEXT("[%s] CanShoot FAIL — 각도 초과 (%.1f° / %.1f°)"), *GetName(), AngleToTarget, FireAngleLimit);
+        return false;
+    }
 
     FHitResult HitResult;
     FCollisionQueryParams CollisionParams;
@@ -507,12 +531,21 @@ bool AEnemyCharacter::CanShootTarget(AActor* TargetActor)
         ? WeaponMeshComp->GetSocketLocation(MuzzleSocket)
         : GetActorLocation() + FVector(0.f, 0.f, BaseEyeHeight);
 
-    const bool bHit = GetWorld()->LineTraceSingleByChannel(
+    const bool bBlocked = GetWorld()->LineTraceSingleByChannel(
         HitResult, StartLocation, TargetActor->GetActorLocation(),
         ECC_Visibility, CollisionParams
     );
 
-    return bHit && HitResult.GetActor() == TargetActor;
+    // 아무것도 막히지 않으면 시야 확보 → 사격 가능
+    // 뭔가 막혔는데 타겟이 아니면(벽 등) → 사격 불가
+    if (bBlocked && HitResult.GetActor() != TargetActor)
+    {
+        UE_LOG(LogTemp, Log, TEXT("[%s] CanShoot FAIL — 장애물에 막힘 (맞은 것: %s)"),
+            *GetName(), *HitResult.GetActor()->GetName());
+        return false;
+    }
+
+    return true;
 }
 
 bool AEnemyCharacter::FireAtTarget(AActor* TargetActor)
@@ -530,7 +563,7 @@ bool AEnemyCharacter::FireAtTarget(AActor* TargetActor)
     FVector AimStart = (WeaponMeshComp && WeaponMeshComp->DoesSocketExist(MuzzleSocket))
         ? WeaponMeshComp->GetSocketLocation(MuzzleSocket)
         : GetActorLocation() + FVector(0.f, 0.f, BaseEyeHeight);
-    const FVector AimDirection = (TargetActor->GetActorLocation() - AimStart).GetSafeNormal();
+    const FVector AimDirection = (TargetActor->GetActorLocation() + FVector(0.f, 0.f, 80.f) - AimStart).GetSafeNormal();
 
     if (FireMontage)
     {

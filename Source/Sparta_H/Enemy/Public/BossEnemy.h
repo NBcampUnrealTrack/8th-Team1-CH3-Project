@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "EnemyCharacter.h"
+#include "Components/WidgetComponent.h"
 #include "BossEnemy.generated.h"
 
 class AThrowableActor;
@@ -30,11 +31,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Boss")
     EBossPhase GetCurrentPhase() const { return CurrentPhase; }
     
-    UFUNCTION(BlueprintImplementableEvent, Category = "Boss")
-    void ShowBossAlert(const FString& Message, float Duration);
-
 protected:
     virtual void BeginPlay() override;
+    virtual void Tick(float DeltaTime) override;
     virtual void InitializeStats() override;
     virtual void Die() override;
 
@@ -61,6 +60,9 @@ protected:
     FTimerHandle BurstShotHandle;
     AActor* BossTarget = nullptr;
 
+    // 특수 공격(정밀사격, 수류탄) 중 버스트 차단용
+    bool bIsPerformingSpecialAttack = false;
+
     void StartBurstCycle();
     void ExecuteBurstStep();
 
@@ -74,6 +76,9 @@ protected:
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Attack")
     float GrenadeThrowSpeed = 1200.f;
 
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Animation")
+    TObjectPtr<UAnimMontage> GrenadeMontage;
+
     FTimerHandle GrenadeHandle;
     void ThrowGrenade();
 
@@ -85,14 +90,23 @@ protected:
     float PrecisionAimDuration = 1.5f;
 
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Attack")
-    float PrecisionInterval = 15.f;
+    float PrecisionInterval = 10.f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Animation")
+    TObjectPtr<UAnimMontage> PrecisionMontage;
 
     FTimerHandle PrecisionCycleHandle;
     FTimerHandle PrecisionFireHandle;
+    float PrecisionAimElapsed = 0.f;
+    bool bIsAiming = false;
 
     void StartPrecisionCycle();
     void StartPrecisionAim();
     void ExecutePrecisionFire();
+
+    // ─── Montage End ──────────────────────────────────────────────────────
+    UFUNCTION()
+    void OnSpecialMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 
     // ─── Reinforcement ────────────────────────────────────────────────────
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Reinforce")
@@ -104,6 +118,19 @@ protected:
     bool bHasSpawnedReinforcement = false;
     void SpawnReinforcement();
 
+    // ─── Precision Warning Widget (머리 위 경고) ──────────────────────────
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Boss|UI")
+    UWidgetComponent* PrecisionWarningWidgetComp;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|UI")
+    float PrecisionWidgetHeightOffset = 150.f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|UI")
+    FVector2D PrecisionWidgetDrawSize = FVector2D(200.f, 60.f);
+
+    UFUNCTION(BlueprintPure, Category = "Boss|UI")
+    class UBossPrecisionWidget* GetPrecisionWidget() const;
+
     // ─── Reward ───────────────────────────────────────────────────────────
     UPROPERTY(EditDefaultsOnly, Category = "Boss|Reward")
     TSubclassOf<AActor> RewardClass;
@@ -114,8 +141,19 @@ protected:
     UFUNCTION()
     void OnBossTargetPerceived(AActor* Actor, FAIStimulus Stimulus);
 
-private:
+    // BT의 StartFirePattern 호출 차단 — 보스는 C++ BurstCycle이 직접 처리
+    virtual void StartFirePattern(AActor* TargetActor) override;
 
-    static constexpr float Phase2HPRatio = 0.6f;
-    static constexpr float Phase3HPRatio = 0.3f;
+    // ─── Debug ────────────────────────────────────────────────────────────
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Phase")
+    float Phase2HPRatio = 0.6f;
+
+    UPROPERTY(EditDefaultsOnly, Category = "Boss|Phase")
+    float Phase3HPRatio = 0.3f;
+
+    UFUNCTION(BlueprintCallable, CallInEditor, Category = "Boss|Debug")
+    void Debug_ForcePhase2();
+
+    UFUNCTION(BlueprintCallable, CallInEditor, Category = "Boss|Debug")
+    void Debug_ForcePhase3();
 };
