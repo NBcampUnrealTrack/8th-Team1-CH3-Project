@@ -32,15 +32,18 @@ void UNoiseComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActor
 	}
 
 	ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
-	if (!OwnerCharacter) return;
+	if (!OwnerCharacter)
+	{
+		return;
+	}
 
 	float TargetNoise = 0.0f;
 	UCharacterMovementComponent* MovementComp = OwnerCharacter->GetCharacterMovement();
-	
+
 	if (MovementComp)
 	{
 		float VelocitySize = OwnerCharacter->GetVelocity().Size();
-		float MaxSpeed = MovementComp->MaxWalkSpeed;
+		float MaxSpeed = 600.f;
 		if (MaxSpeed > 0.0f)
 		{
 			// 속도에 비례하여 최대 30.0f의 소음 발생 (기존 로직 유지)
@@ -50,7 +53,7 @@ void UNoiseComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActor
 
 	// 부드러운 변화를 위해 보간 사용
 	float NewNoise = FMath::FInterpTo(CurrentNoise, TargetNoise, DeltaTime, NoiseInterpSpeed);
-	
+
 	if (!FMath::IsNearlyEqual(NewNoise, CurrentNoise))
 	{
 		CurrentNoise = NewNoise;
@@ -73,4 +76,3 @@ void UNoiseComponent::SetNoiseToMax()
 	bNoiseUpdatedThisFrame = true;
 	OnNoiseChanged.Broadcast(CurrentNoise, MaxNoise);
 }
-

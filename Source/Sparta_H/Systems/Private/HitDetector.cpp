@@ -14,6 +14,7 @@ bool UHitDetector::PerformLineTrace(const FVector& StartLocation, const FVector&
 	Params.AddIgnoredActor(GetOwner());
 
 	bool bHit = GetWorld()->LineTraceSingleByChannel(OutHitResult, StartLocation, EndLocation, ECC_Visibility, Params);
+	//bool bHit = GetWorld()->LineTraceSingleByChannel(OutHitResult, StartLocation, EndLocation, ECC_Pawn, Params);
 
 	const FVector DebugEnd = bHit ? OutHitResult.ImpactPoint : EndLocation;
 	const FColor LineColor = bHit ? FColor::Red : FColor::Green;

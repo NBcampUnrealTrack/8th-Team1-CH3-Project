@@ -34,6 +34,31 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCrosshairStateChangedDelegate, EC
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPlayerTakeDamage, float, DamageAmount);
 
 
+// 체크포인트 저장을 위한 구조체
+USTRUCT(BlueprintType)
+struct FPlayerCheckpointData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 MissionIndex = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bHasRifle = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector Location = FVector::ZeroVector;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FRotator Rotation = FRotator::ZeroRotator;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 KillCount = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float ElapsedTime = 0.0f;
+};
+
 UCLASS()
 class SPARTA_H_API APlayerCharacter : public ACharacter
 {
@@ -42,7 +67,22 @@ class SPARTA_H_API APlayerCharacter : public ACharacter
 public:
 	// Sets default values for this character's properties
 	APlayerCharacter();
+
+	// Modified: 라이플 보유 여부 플래그
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Status")
+	bool bHasRifle = false;
+
+	// IsRifle Getter
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	bool IsRifle() const {return bHasRifle;}
 	
+	/** 체크포인트 저장/로드 **/
+	UFUNCTION(BlueprintCallable, Category = "Checkpoint")
+	FPlayerCheckpointData SaveCheckpoint();
+
+	UFUNCTION(BlueprintCallable, Category = "Checkpoint")
+	void LoadCheckpoint(const FPlayerCheckpointData& CheckpointData);
+
 	//스프링 암
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Components")
 	USpringArmComponent* SpringArm;
@@ -83,9 +123,9 @@ public:
 	float MaxLeanOffset = 25.0f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float LeanSpeed = 3.5f;
-	
+
 	float CameraZOffset = 0.0f;
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera")
 	float CrouchBlendSpeed = 5.0f; // 카메라가 부드럽게 움직이는 속
 
@@ -138,6 +178,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	UCombatManager* GetCombatManager() const { return CombatManager; }
 
+	// 소지 중인 전체 무기 데이터 목록 반환
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
+	TArray<UWeaponDataAsset*> GetEquippedWeapons() const { return EquippedWeapons; }
+
 	// 인덱스로 슬롯 무기 장착. 잘못된 인덱스/같은 무기/재장전·교체 중이면 무시
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	void EquipWeaponByIndex(int32 NewWeaponIndex);
@@ -147,6 +191,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	void EquipPreviousWeapon();
+
+	// 해당 슬롯의 무기를 현재 상태에서 장착할 수 있는지 (라이플 가드 등)
+	bool CanEquipSlot(int32 Index) const;
+
+	// Direction +1(Next) / -1(Previous). 라이플 미보유 슬롯과 빈 슬롯 스킵
+	void CycleWeapon(int32 Direction);
 
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	AWeaponBase* GetCurrentWeapon() const { return CurrentWeapon; }
@@ -188,8 +238,8 @@ public:
 
 	// 미션 데이터로부터 현재 목표 텍스트 업데이트
 	void UpdateMissionObjective();
-	float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator,
-	                 AActor* DamageCauser);
+	virtual float TakeDamage(float DamageAmount, const FDamageEvent& DamageEvent, AController* EventInstigator,
+	                         AActor* DamageCauser) override;
 
 	// 미션 성공/실패 이벤트
 	UPROPERTY(BlueprintAssignable, Category = "Objective")
@@ -249,7 +299,7 @@ public:
 	FOnPlayerTakeDamage OnPlayerTakeDamage;
 
 	/** End of 플레이어 스탯 / 목표 **/
-	
+
 	/** 사망 시 호출될 함수 **/
 	UFUNCTION(BlueprintCallable)
 	void OnDeath();
@@ -257,7 +307,7 @@ public:
 	/** 사망 상태를 확인하는 플래그 (중복 사망 처리 방지) **/
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Status")
 	bool bIsDead = false;
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
 	TObjectPtr<class USoundBase> MoveSound;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
@@ -273,16 +323,15 @@ public:
 
 	/** 미션 시작 시간 **/
 	float MissionStartTime = 0.0f;
-	
+
 protected:
 	FVector2D TargetRecoil;
 	FVector2D CurrentRecoil;
 	FVector2D RemainingRecoil;
-	
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon|Recoil")
 	float RecoilSpeed;
 
-	
 private:
 	/** Weapon Input Callbacks **/
 	void OnEquipSlotPressed(const FInputActionValue& Value);
@@ -299,6 +348,9 @@ private:
 
 	// CurrentThrowableData 로 ThrowableWeapon 액터를 스폰. 이미 있으면 무시
 	void SpawnThrowableWeapon();
+
+	// DA로 무기 액터를 스폰해 본체 메시 GripPoint에 부착, Hidden 상태로 반환. 실패 시 nullptr
+	AWeaponBase* SpawnAndAttachWeapon(UWeaponDataAsset* Data);
 
 	// ThrowableWeapon 보유 수 0 도달 시 호출 — PreviousWeaponIndex 슬롯으로 복귀
 	UFUNCTION()
@@ -323,7 +375,7 @@ private:
 	TObjectPtr<AWeaponBase> CurrentWeapon;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
-	int32 CurrentWeaponIndex = 0;
+	int32 CurrentWeaponIndex = INDEX_NONE;
 
 	// G키로 들 투척 무기 기본 DA. 미션 진행에 따라 SetActiveThrowable 로 변경
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Throwable", meta = (AllowPrivateAccess = "true"))
@@ -345,7 +397,7 @@ public:
 	AWeaponBase* GetThrowableWeapon() const { return ThrowableWeapon; }
 
 	// G 누르기 직전 들고 있던 슬롯 인덱스. 0개 소진 시 자동 복귀용
-	int32 PreviousWeaponIndex = 0;
+	int32 PreviousWeaponIndex = INDEX_NONE;
 
 	// 회복이 남아있는 누적 pitch (양수 = 위로 튕긴 양)
 	float RecoilPitchAccum = 0.0f;

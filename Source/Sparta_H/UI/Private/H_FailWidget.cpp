@@ -2,6 +2,7 @@
 #include "Components/TextBlock.h"
 #include "Components/Button.h"
 #include "Kismet/GameplayStatics.h"
+#include "Systems/Public/H_GameFunctionLibrary.h"
 
 void UH_FailWidget::NativeConstruct()
 {
@@ -28,13 +29,22 @@ void UH_FailWidget::SetFailReasonText(const FText& FailReason)
 
 void UH_FailWidget::HandleOnRestartClicked()
 {
-	// 현재 레벨을 다시 시작 (리스폰 볼륨 시스템과 연동)
-	// bIsDead = false;
-	// Character->SetHealth(100.f);
+	// 새롭게 구현된 로드 및 리스폰 로직 호출 (체력 회복, 적 제거 포함)
+	UH_GameFunctionLibrary::RequestLoadAndRespawn(this);
+
+	// 위젯 제거 (부모 클래스의 RemoveFromParent 호출)
+	RemoveFromParent();
+
+	// 입력 모드를 게임 모드로 변경
+	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+	{
+		FInputModeGameOnly InputMode;
+		PC->SetInputMode(InputMode);
+		PC->bShowMouseCursor = false;
+	}
 }
 
 void UH_FailWidget::HandleOnMainMenuClicked()
 {
 	// 메인 메뉴로 이동 (메인 메뉴 맵 이름이 "MainMenu"라고 가정)
-	// UGameplayStatics::OpenLevel(this, FName("MainMenu"));
 }

@@ -34,6 +34,15 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Combat|Damage")
 	TObjectPtr<UDamageDataAsset> PistolData;
 
+	UPROPERTY(EditAnywhere, Category = "Combat|Damage")
+	float BoneHead = 3.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Combat|Damage")
+	float BoneTorso = 1.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Combat|Damage")
+	float BoneLimb = 0.7f;
+
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	float TraceRange = 20000.f;
 

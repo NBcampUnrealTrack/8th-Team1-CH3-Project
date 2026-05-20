@@ -7,6 +7,8 @@
 #include "Enemy/Public/BaseEnemy.h"
 #include "NiagaraFunctionLibrary.h"
 #include "GameFramework/Pawn.h"
+#include "GameFramework/Character.h"
+#include "Components/SkeletalMeshComponent.h"
 
 UCombatManager::UCombatManager()
 {
@@ -86,15 +88,38 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 	if (!bOwnerIsEnemy && bHitPlayer) return;
 
 	// 5. 데미지 계산
-	DamageProcessor->RifleData  = RifleData;
-	DamageProcessor->PistolData = PistolData;
+	DamageProcessor->BoneHead  = BoneHead;
+	DamageProcessor->BoneTorso = BoneTorso;
+	DamageProcessor->BoneLimb  = BoneLimb;
 
 	FCombatDamageInfo DamageInfo;
 	DamageInfo.BaseDamage = BaseDamage;
 	DamageInfo.Distance   = HitResult.Distance;
-	DamageInfo.HitBone    = bOwnerIsEnemy ? EHitBone::None : UHitDetector::IdentifyHitBone(HitResult.BoneName);
 	DamageInfo.WeaponType = WeaponType;
-	const float FinalDamage = DamageProcessor->CalculateFinalDamage(DamageInfo);
+	DamageInfo.HitBone    = EHitBone::None;
+
+	// 플레이어→적: 캡슐이 아닌 스켈레탈 메시 물리 바디에 직접 트레이스해 본 이름 획득
+	if (!bOwnerIsEnemy && bHitEnemy)
+	{
+		if (ACharacter* EnemyChar = Cast<ACharacter>(HitActor))
+		{
+			if (USkeletalMeshComponent* EnemyMesh = EnemyChar->GetMesh())
+			{
+				FHitResult BoneHit;
+				FCollisionQueryParams BoneParams;
+				BoneParams.AddIgnoredActor(GetOwner());
+				const FVector TraceEnd = AimStart + AimDirection * TraceRange;
+
+				if (EnemyMesh->LineTraceComponent(BoneHit, AimStart, TraceEnd, BoneParams))
+				{
+					DamageInfo.HitBone = UHitDetector::IdentifyHitBone(BoneHit.BoneName);
+					UE_LOG(LogTemp, Warning, TEXT("[CombatManager] Bone=%s -> HitBone=%d"),
+						*BoneHit.BoneName.ToString(), (int32)DamageInfo.HitBone);
+				}
+			}
+		}
+	}
+	const float FinalDamage = DamageProcessor->CalculateFinalDamage(DamageInfo, RifleData, PistolData);
 
 	// 6. 킬 피드백 등록 (적 피격 시에만)
 	if (bHitEnemy)
@@ -116,14 +141,21 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 void UCombatManager::EmitNoise(const FVector& NoiseLocation, float NoiseRange)
 {
 	APawn* OwnerPawn = Cast<APawn>(GetOwner());
-	if (!IsValid(OwnerPawn)) return;
+	if (!IsValid(OwnerPawn))
+	{
+		UE_LOG(LogTemp, Error, TEXT("[EmitNoise] OwnerPawn이 NULL — CombatManager 소유자가 Pawn이 아님"));
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[EmitNoise] 소음 발생 | Location=%s | Range=%.0f | Instigator=%s"),
+		*NoiseLocation.ToString(), NoiseRange, *OwnerPawn->GetName());
 
 	UAISense_Hearing::ReportNoiseEvent(
 		GetWorld(),
 		NoiseLocation,
-		1.f, // Loudness (0.0~1.0)
+		1.f,
 		OwnerPawn,
-		NoiseRange, // 무기별 Range를 여기에 전달
+		NoiseRange,
 		NAME_None
 	);
 }
