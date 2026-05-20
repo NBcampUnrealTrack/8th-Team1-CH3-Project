@@ -27,8 +27,10 @@ class SPARTA_H_API AWeaponBase : public AActor
 public:
 	AWeaponBase();
 
-	// 차징 중 궤적 갱신을 위해 Tick 활성 (생성자에서 bCanEverTick = true)
+	// 차징 중 궤적 갱신을 위해 Tick 활성 (생성자에서 bCanEverTick = true, 평소엔 끈 상태)
 	virtual void Tick(float DeltaTime) override;
+
+	// ─── 공통 ───
 
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	UWeaponDataAsset* GetWeaponData() const { return WeaponData; }
@@ -49,6 +51,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	void Initialize(UWeaponDataAsset* InWeaponData);
 
+	// ─── 발사 / 재장전 ───
+
 	// 1발 발사. 상태/탄약/쿨다운을 가드하고 1인칭 팔에 발사 몽타주 재생
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	void Fire();
@@ -57,54 +61,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	void Reload();
 
-private:
-	// FireRate 쿨다운 종료 시 Idle 복귀 + bCanFire 해제
-	void OnFireCooldownEnded();
+	// ─── 투척 ───
 
-	// ReloadTime 종료 시 탄창 채우고 Idle 복귀. Reload 도중 Swap 들어왔으면 Swap 상태 보존
-	void OnReloadCompleted();
-
-	// 빈 루트 — GripPoint 소켓에 스냅되는 기준점. 메시는 자식으로 달려 BP에서 오프셋 조정 가능
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<USceneComponent> WeaponRoot;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<USkeletalMeshComponent> WeaponMeshComponent;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UAmmoComponent> AmmoComponent;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UWeaponDataAsset> WeaponData;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
-	EWeaponState CurrentWeaponState = EWeaponState::Idle;
-
-	// FireRate 동안 다음 발사 차단. 풀오토/세미오토 모두 동일 쿨다운 사용
-	bool bCanFire = true;
-
-	FTimerHandle FireCooldownTimerHandle;
-	FTimerHandle ReloadTimerHandle;
-	
-private:
-	// ThrowCooldown 종료 시 bThrowOnCooldown 해제
-	void OnThrowCooldownEnded();
-
-	// 차징 중 매 프레임 호출 — PredictProjectilePath 결과를 DrawDebugLine 으로 그림
-	void UpdateTrajectoryPreview();
-
-	// 현재 보유 수. Initialize 시 DA->MaxStockCount 로 세팅 (음수면 무한)
-	int32 CurrentStock = 0;
-
-	bool bIsChargingThrow = false;
-	bool bThrowOnCooldown = false;
-
-	// 0~1 차징 진행도. ChargeDuration 동안 1.0 까지 증가
-	float CurrentChargeAlpha = 0.0f;
-
-	FTimerHandle ThrowCooldownTimerHandle;
-
-public:
 	// LMB 누름 — 차징 시작. CanThrow 실패 시 무시
 	UFUNCTION(BlueprintCallable, Category = "Weapon|Throwable")
 	void BeginThrowCharge();
@@ -131,7 +89,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Weapon|Throwable")
 	bool IsChargingThrow() const { return bIsChargingThrow; }
 
-	/** 쿨다운 관련 추가 **/
 	UFUNCTION(BlueprintCallable, Category = "Weapon|Throwable")
 	float GetThrowCooldownRemaining() const;
 
@@ -140,24 +97,16 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Weapon|Throwable")
 	FOnThrowableDepleted OnDepleted;
-	
-	// ───── 애니메이션 ─────
 
-	// 1인칭 팔(Mesh1P)에 재생할 발사 몽타주. 풀바디 임포트 애니는 팔 스켈레톤으로 리타게팅 후 몽타주화
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Animation")
-	TSoftObjectPtr<UAnimMontage> FireMontage1P;
+	// ─── 애니메이션 / 사운드 / VFX (BP에서 세팅) ───
 
 	// 1인칭 팔(Mesh1P)에 재생할 재장전 몽타주. 길이는 DA의 ReloadTime과 맞춰 세팅
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Animation")
 	TSoftObjectPtr<UAnimMontage> ReloadMontage1P;
 
-	// ───── 사운드 ─────
-
 	// 발사 시 재생할 사운드. 플레이어가 듣는 청각 피드백 — AI 어그로 노이즈(EmitNoise)와는 별개
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Audio")
 	TSoftObjectPtr<USoundBase> FireSound;
-
-	// ───── VFX ─────
 
 	// 발사 시 무기 메시의 MuzzleSocketName 위치에 스폰할 총구 화염 이펙트
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|VFX")
@@ -170,4 +119,59 @@ public:
 	// 무기 스켈레탈 메시에 만들어 둔 총구 소켓 이름. 메시별로 다를 수 있어 DA에서 지정
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|VFX")
 	FName MuzzleSocketName = TEXT("Muzzle");
+
+private:
+	// 카메라(에이밍) 시점의 시작 위치와 방향을 가져옴. 소유자/PC/CameraManager 중 하나라도 없으면 false
+	bool GetAimStartAndDirection(FVector& OutStart, FVector& OutDirection) const;
+
+	// FireRate 쿨다운 종료 시 Idle 복귀 + bCanFire 해제
+	void OnFireCooldownEnded();
+
+	// ReloadTime 종료 시 탄창 채우고 Idle 복귀. Reload 도중 Swap 들어왔으면 Swap 상태 보존
+	void OnReloadCompleted();
+
+	// ThrowCooldown 종료 시 bThrowOnCooldown 해제
+	void OnThrowCooldownEnded();
+
+	// 차징 중 매 프레임 호출 — PredictProjectilePath 결과를 DrawDebugLine 으로 그림
+	void UpdateTrajectoryPreview();
+
+	// ─── 컴포넌트 ───
+
+	// 빈 루트 — GripPoint 소켓에 스냅되는 기준점. 메시는 자식으로 달려 BP에서 오프셋 조정 가능
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USceneComponent> WeaponRoot;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USkeletalMeshComponent> WeaponMeshComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UAmmoComponent> AmmoComponent;
+
+	// ─── 런타임 상태 (발사/재장전) ───
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UWeaponDataAsset> WeaponData;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
+	EWeaponState CurrentWeaponState = EWeaponState::Idle;
+
+	// FireRate 동안 다음 발사 차단. 풀오토/세미오토 모두 동일 쿨다운 사용
+	bool bCanFire = true;
+
+	FTimerHandle FireCooldownTimerHandle;
+	FTimerHandle ReloadTimerHandle;
+
+	// ─── 런타임 상태 (투척) ───
+
+	// 현재 보유 수. Initialize 시 DA->MaxStockCount 로 세팅 (음수면 무한)
+	int32 CurrentStock = 0;
+
+	bool bIsChargingThrow = false;
+	bool bThrowOnCooldown = false;
+
+	// 0~1 차징 진행도. ChargeDuration 동안 1.0 까지 증가
+	float CurrentChargeAlpha = 0.0f;
+
+	FTimerHandle ThrowCooldownTimerHandle;
 };

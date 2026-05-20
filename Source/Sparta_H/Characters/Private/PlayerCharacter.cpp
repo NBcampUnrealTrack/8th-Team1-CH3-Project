@@ -26,14 +26,14 @@
 APlayerCharacter::APlayerCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
-	
+
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->SetupAttachment(RootComponent);
 	SpringArm->SetRelativeLocation(FVector(0.0f, 0.0f, 65.0f));
-	
+
 	SpringArm->bUsePawnControlRotation = true;
 	SpringArm->TargetArmLength = 0.0f; // 1인칭이므로 소켓 거리는 0
-	
+
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 	Camera->bUsePawnControlRotation = false;
@@ -124,10 +124,8 @@ void APlayerCharacter::LoadCheckpoint(const FPlayerCheckpointData& CheckpointDat
 	{
 		HealthComponent->SetHealth(HealthComponent->GetMaxHealth());
 	}
-	
+
 	Tags.Add(TEXT("Player"));
-	
-	bHasRifle = false;
 }
 
 // Called when the game starts or when spawned
@@ -143,7 +141,11 @@ void APlayerCharacter::BeginPlay()
 
 	if (!SpawnedWeapons.IsEmpty())
 	{
-		EquipWeaponByIndex(0);
+		UE_LOG(LogTemp, Warning, TEXT("StartWeapon: bHasRifle=%s, Index=%d"),
+				bHasRifle ? TEXT("true") : TEXT("false"),
+				bHasRifle ? 0 : 1);
+		const int32 StartWeaponIndex = bHasRifle ? 0 : 1;
+		EquipWeaponByIndex(StartWeaponIndex);
 	}
 
 	// G키 투척 무기는 SpawnedWeapons 배열과 별개로 1개 스폰. Hidden 유지
@@ -161,7 +163,7 @@ void APlayerCharacter::BeginPlay()
 	{
 		CombatManager->FeedbackHandler->OnKillDelegate.AddDynamic(this, &APlayerCharacter::NotifyEnemyKilled);
 	}
-	
+
 	//카메라 회전 각도 설정
 	if (APlayerController* PC = Cast<APlayerController>(GetController()))
 	{
@@ -193,17 +195,17 @@ void APlayerCharacter::Tick(float DeltaTime)
 			FMath::Vector2DInterpTo(RemainingRecoil, FVector2D::ZeroVector, DeltaTime, RecoilSpeed);
 
 		FVector2D RecoilToApply = RemainingRecoil - InsideInterp;
-		
+
 		AddControllerYawInput(RecoilToApply.X);
 		AddControllerPitchInput(RecoilToApply.Y);
-		
+
 		RemainingRecoil = InsideInterp;
 	}
 	else
 	{
 		RemainingRecoil = FVector2D::ZeroVector;
 	}
-	
+
 	// 반동 회복 로직
 	if (RecoilPitchAccum > KINDA_SMALL_NUMBER)
 	{
@@ -217,14 +219,14 @@ void APlayerCharacter::Tick(float DeltaTime)
 	{
 		StopRun(FInputActionValue()); // 스태미나 고갈 시 강제 정지
 	}
-	
+
 	// 앉기 동작시 자연스러운 카메라 보간
 	if (Camera)
 	{
-		const float BaseCameraZ = 75.0f; 
-	
+		const float BaseCameraZ = 75.0f;
+
 		CameraZOffset = FMath::FInterpTo(CameraZOffset, 0.0f, DeltaTime, CrouchBlendSpeed);
-		
+
 		static float CurrentLeanY = 0.0f;
 		float TargetY = LeanAmount * MaxLeanOffset;
 		CurrentLeanY = FMath::FInterpTo(CurrentLeanY, TargetY, DeltaTime, LeanSpeed);
@@ -232,7 +234,6 @@ void APlayerCharacter::Tick(float DeltaTime)
 		// X, Y축은 칼같이 고정되고 오직 Z축(높이)만 부드럽게 움직입니다.
 		Camera->SetRelativeLocation(FVector(20.0f, CurrentLeanY, BaseCameraZ + CameraZOffset));
 	}
-	
 }
 
 // 캐릭터 상호작용 
@@ -334,7 +335,6 @@ void APlayerCharacter::Move(const FInputActionValue& value)
 
 		AddMovementInput(RightDirection, MoveInput.Y);
 		AddMovementInput(ForwardDirection, MoveInput.X);
-		
 	}
 }
 
@@ -394,7 +394,7 @@ void APlayerCharacter::StartHide(const FInputActionValue& value)
 	if (GetCharacterMovement() && !GetCharacterMovement()->IsFalling())
 	{
 		CameraZOffset = 40.0f;
-		
+
 		Crouch(); // 엔진 내장 함수 루트 컴포넌트를 아래로 내려줌
 	}
 }
@@ -481,51 +481,57 @@ void APlayerCharacter::Jump()
 // 무기 관련
 void APlayerCharacter::SpawnEquippedWeapons()
 {
-	UWorld* World = GetWorld();
-	if (World == nullptr || WeaponBaseClass == nullptr)
-	{
-		return;
-	}
-
 	SpawnedWeapons.Reserve(EquippedWeapons.Num());
+	for (UWeaponDataAsset* WeaponData : EquippedWeapons)
+	{
+		// 빈 슬롯도 nullptr로 보존 — EquippedWeapons와 인덱스 정합 유지
+		SpawnedWeapons.Add(SpawnAndAttachWeapon(WeaponData));
+	}
+}
+
+AWeaponBase* APlayerCharacter::SpawnAndAttachWeapon(UWeaponDataAsset* Data)
+{
+	if (Data == nullptr || WeaponBaseClass == nullptr) return nullptr;
+	UWorld* World = GetWorld();
+	if (World == nullptr) return nullptr;
 
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = this;
 	SpawnParams.Instigator = this;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-	for (UWeaponDataAsset* WeaponData : EquippedWeapons)
-	{
-		// 빈 슬롯은 nullptr로 보존해 EquippedWeapons와 인덱스 정합 유지
-		if (WeaponData == nullptr)
-		{
-			SpawnedWeapons.Add(nullptr);
-			continue;
-		}
+	TSubclassOf<AWeaponBase> ClassToSpawn = Data->WeaponClass ? Data->WeaponClass : WeaponBaseClass;
+	AWeaponBase* Weapon = World->SpawnActor<AWeaponBase>(ClassToSpawn, SpawnParams);
+	if (Weapon == nullptr) return nullptr;
 
-		TSubclassOf<AWeaponBase> ClassToSpawn = WeaponData->WeaponClass
-			                                        ? WeaponData->WeaponClass
-			                                        : WeaponBaseClass;
-		AWeaponBase* Weapon = World->SpawnActor<AWeaponBase>(ClassToSpawn, SpawnParams);
-		if (Weapon == nullptr)
-		{
-			SpawnedWeapons.Add(nullptr);
-			continue;
-		}
+	Weapon->Initialize(Data);
+	Weapon->AttachToComponent(GetMesh(),
+	                          FAttachmentTransformRules::SnapToTargetIncludingScale,
+	                          FName(TEXT("GripPoint")));
+	Weapon->SetActorHiddenInGame(true);
+	return Weapon;
+}
 
-		Weapon->Initialize(WeaponData);
-		Weapon->AttachToComponent(GetMesh(),
-		                          FAttachmentTransformRules::SnapToTargetIncludingScale,
-		                          FName(TEXT("GripPoint")));
-		Weapon->SetActorHiddenInGame(true);
+bool APlayerCharacter::CanEquipSlot(int32 Index) const
+{
+	if (!EquippedWeapons.IsValidIndex(Index)) return false;
+	const UWeaponDataAsset* Data = EquippedWeapons[Index];
+	if (Data == nullptr) return false;
 
-		SpawnedWeapons.Add(Weapon);
-	}
+	// 라이플 미보유 상태에서는 라이플 타입 슬롯 차단
+	if (Data->WeaponType == EWeaponType::Rifle && !bHasRifle) return false;
+
+	return true;
 }
 
 void APlayerCharacter::EquipWeaponByIndex(int32 NewWeaponIndex)
 {
 	if (!SpawnedWeapons.IsValidIndex(NewWeaponIndex))
+	{
+		return;
+	}
+
+	if (!CanEquipSlot(NewWeaponIndex))
 	{
 		return;
 	}
@@ -556,9 +562,9 @@ void APlayerCharacter::EquipWeaponByIndex(int32 NewWeaponIndex)
 
 	CurrentWeapon = NewWeapon;
 	CurrentWeaponIndex = NewWeaponIndex;
-
-	CurrentWeapon->SetWeaponState(EWeaponState::Swapping);
 	CurrentWeapon->SetActorHiddenInGame(false);
+	// 교체 몽타주 도입 시 Swapping 상태로 전이 후 종료 콜백에서 Idle 복귀할 것
+	CurrentWeapon->SetWeaponState(EWeaponState::Idle);
 
 	// 무기 종류에 따라 크로스헤어 상태 업데이트
 	if (UWeaponDataAsset* WeaponData = CurrentWeapon->GetWeaponData())
@@ -571,41 +577,37 @@ void APlayerCharacter::EquipWeaponByIndex(int32 NewWeaponIndex)
 		case EWeaponType::Rifle:
 			SetCrosshairState(ECrosshairState::Rifle);
 			break;
-		case EWeaponType::Knife:
-			SetCrosshairState(ECrosshairState::Default);
-			break;
 		default:
 			SetCrosshairState(ECrosshairState::Default);
 			break;
 		}
 	}
-
-	// 교체 몽타주 도입 시 이 라인을 종료 콜백으로 옮길 것
-	CurrentWeapon->SetWeaponState(EWeaponState::Idle);
 }
 
 void APlayerCharacter::EquipNextWeapon()
 {
-	if (SpawnedWeapons.IsEmpty())
-	{
-		return;
-	}
-
-	const int32 NextWeaponIndex = (CurrentWeaponIndex + 1) % SpawnedWeapons.Num();
-	EquipWeaponByIndex(NextWeaponIndex);
+	CycleWeapon(+1);
 }
 
 void APlayerCharacter::EquipPreviousWeapon()
 {
-	if (SpawnedWeapons.IsEmpty())
-	{
-		return;
-	}
+	CycleWeapon(-1);
+}
 
-	// 음수 모듈로 회피용 + Num
+void APlayerCharacter::CycleWeapon(int32 Direction)
+{
 	const int32 Num = SpawnedWeapons.Num();
-	const int32 PrevIndex = (CurrentWeaponIndex - 1 + Num) % Num;
-	EquipWeaponByIndex(PrevIndex);
+	if (Num <= 0) return;
+
+	int32 Index = CurrentWeaponIndex;
+	for (int32 i = 0; i < Num; ++i)
+	{
+		// 음수 모듈로 회피용 + Num. CurrentWeaponIndex == INDEX_NONE 초기 상태도 안전
+		Index = (Index + Direction + Num) % Num;
+		if (!CanEquipSlot(Index)) continue;
+		if (SpawnedWeapons[Index] != nullptr) break;
+	}
+	EquipWeaponByIndex(Index);
 }
 
 void APlayerCharacter::OnEquipSlotPressed(const FInputActionValue& Value)
@@ -750,38 +752,12 @@ void APlayerCharacter::HandleThrowableDepleted()
 
 void APlayerCharacter::SpawnThrowableWeapon()
 {
-	if (ThrowableWeapon != nullptr || CurrentThrowableData == nullptr || WeaponBaseClass == nullptr)
-	{
-		return;
-	}
+	if (ThrowableWeapon != nullptr) return;
 
-	UWorld* World = GetWorld();
-	if (World == nullptr)
-	{
-		return;
-	}
+	AWeaponBase* Spawned = SpawnAndAttachWeapon(CurrentThrowableData);
+	if (Spawned == nullptr) return;
 
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.Owner = this;
-	SpawnParams.Instigator = this;
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-	TSubclassOf<AWeaponBase> ClassToSpawn = CurrentThrowableData->WeaponClass
-		                                        ? CurrentThrowableData->WeaponClass
-		                                        : WeaponBaseClass;
-	AWeaponBase* Spawned = World->SpawnActor<AWeaponBase>(ClassToSpawn, SpawnParams);
-	if (Spawned == nullptr)
-	{
-		return;
-	}
-
-	Spawned->Initialize(CurrentThrowableData);
-	Spawned->AttachToComponent(GetMesh(),
-	                           FAttachmentTransformRules::SnapToTargetIncludingScale,
-	                           FName(TEXT("GripPoint")));
-	Spawned->SetActorHiddenInGame(true);
 	Spawned->OnDepleted.AddDynamic(this, &APlayerCharacter::HandleThrowableDepleted);
-
 	ThrowableWeapon = Spawned;
 }
 
@@ -845,13 +821,13 @@ void APlayerCharacter::ApplyRecoil(const FRecoilData& Recoil)
 	// // 음수 pitch = 카메라 위로(pitch축 기준)
 	// AddControllerPitchInput(-Recoil.VerticalRecoil);
 	// AddControllerYawInput(FMath::RandRange(-Recoil.HorizontalRecoil, Recoil.HorizontalRecoil));
-	
+
 	float TargetPitch = -Recoil.VerticalRecoil;
 	float TargetYaw = FMath::RandRange(-Recoil.HorizontalRecoil, Recoil.HorizontalRecoil);
 
 	RemainingRecoil.X += TargetYaw;
 	RemainingRecoil.Y += TargetPitch;
-	
+
 	// Modified: 반동 발생 시 누적 회복량(Pitch)을 업데이트하여 회복 로직이 작동하도록 함
 	RecoilPitchAccum += Recoil.VerticalRecoil;
 	RecoilSpeed = Recoil.RecoilSpeed;
@@ -939,7 +915,7 @@ void APlayerCharacter::CompleteCurrentObjective()
 
 		// 클리어 UI 표시 요청
 		float ClearTime = GetWorld()->GetTimeSeconds() - MissionStartTime;
-		
+
 		APlayerController* TargetPC = Cast<APlayerController>(GetController());
 		if (TargetPC == nullptr)
 		{
@@ -1095,7 +1071,7 @@ void APlayerCharacter::UpdateMissionObjective()
 }
 
 float APlayerCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator,
-	AActor* DamageCauser)
+                                   AActor* DamageCauser)
 {
 	float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
