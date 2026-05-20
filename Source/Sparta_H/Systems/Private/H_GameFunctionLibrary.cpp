@@ -4,8 +4,34 @@
 #include "Systems/Public/H_SaveGame.h"
 #include "Enemy/Public/BaseEnemy.h"
 
+// 정적 변수 초기화
+bool UH_GameFunctionLibrary::bIsLoadPending = false;
+
 void UH_GameFunctionLibrary::RequestLoadAndRespawn(const UObject* WorldContextObject)
 {
+	if (!WorldContextObject) return;
+
+	// 로드 요청 플래그를 설정하고 즉시 시도. 
+	// 레벨 이동 시에는 타이머가 취소되어 플래그가 유지되고, 이동이 없으면 다음 프레임에 플래그가 해제됨.
+	bIsLoadPending = true;
+	HandlePendingLoad(WorldContextObject, false);
+
+	if (UWorld* World = WorldContextObject->GetWorld())
+	{
+		FTimerHandle TempHandle;
+		World->GetTimerManager().SetTimerForNextTick([]()
+		{
+			bIsLoadPending = false;
+		});
+	}
+	
+	UE_LOG(LogTemp, Log, TEXT("Load and Respawn requested."));
+}
+
+void UH_GameFunctionLibrary::HandlePendingLoad(const UObject* WorldContextObject, bool bClearFlag)
+{
+	if (!bIsLoadPending || !WorldContextObject) return;
+
 	const FString SAVE_SLOT = TEXT("SaveSlot");
 	const int32 USER_INDEX = 0;
 
@@ -26,11 +52,13 @@ void UH_GameFunctionLibrary::RequestLoadAndRespawn(const UObject* WorldContextOb
 				CheckpointData.bHasRifle = SaveData->bHasRifle;
 				CheckpointData.Location = SaveData->CurrentLocation;
 				CheckpointData.Rotation = SaveData->CurrentRotation;
+				CheckpointData.KillCount = SaveData->KillCount;
+				CheckpointData.ElapsedTime = SaveData->SavedElapsedTime;
 
-				// 5. 플레이어에게 로드 요청 (
+				// 5. 플레이어에게 로드 요청
 				PlayerChar->LoadCheckpoint(CheckpointData);
 
-				// 6.맵상의 모든 적 제거
+				// 6. 맵상의 모든 적 제거
 				ClearAllEnemies(WorldContextObject);
 
 				// 7. 게임 일시정지 해제 및 입력 모드 복구
@@ -43,12 +71,18 @@ void UH_GameFunctionLibrary::RequestLoadAndRespawn(const UObject* WorldContextOb
 					PC->bShowMouseCursor = false;
 				}
 
-				UE_LOG(LogTemp, Log, TEXT("Load and Respawn completed successfully."));
+				// 성공 시 호출자에 따라 플래그 초기화 여부 결정
+				if (bClearFlag)
+				{
+					bIsLoadPending = false;
+				}
+				UE_LOG(LogTemp, Log, TEXT("Load and Respawn applied."));
 			}
 		}
 	}
 	else
 	{
+		bIsLoadPending = false;
 		UE_LOG(LogTemp, Warning, TEXT("Save slot not found."));
 	}
 }
@@ -82,6 +116,8 @@ void UH_GameFunctionLibrary::RequestSaveGame(const UObject* WorldContextObject)
 		SaveData->bHasRifle = Checkpoint.bHasRifle;
 		SaveData->CurrentLocation = Checkpoint.Location;
 		SaveData->CurrentRotation = Checkpoint.Rotation;
+		SaveData->KillCount = Checkpoint.KillCount;
+		SaveData->SavedElapsedTime = Checkpoint.ElapsedTime;
 
 		// 5. 슬롯에 저장
 		if (UGameplayStatics::SaveGameToSlot(SaveData, SAVE_SLOT, USER_INDEX))

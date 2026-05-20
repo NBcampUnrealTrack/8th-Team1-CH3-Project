@@ -25,4 +25,11 @@ public:
 	/** 맵에 있는 모든 적을 찾아 제거 **/
 	UFUNCTION(BlueprintCallable, Category = "Game", meta = (WorldContext = "WorldContextObject"))
 	static void ClearAllEnemies(const UObject* WorldContextObject);
+
+	//레벨 전환 후 로드가 필요한지 확인하고 적용하는 함수
+	static void HandlePendingLoad(const UObject* WorldContextObject, bool bClearFlag = true);
+
+private:
+	// 로드 요청 상태를 저장하는 정적 변수
+	static bool bIsLoadPending;
 };
