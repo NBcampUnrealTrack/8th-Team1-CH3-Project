@@ -56,10 +56,10 @@ public:
     bool FireAtTarget(AActor* TargetActor);
     
     UFUNCTION(BlueprintCallable, Category = "AI|Patrol")
-    FVector GetPatrolWorldLocationA() const { return PatrolWorldLocationA; }
+    FVector GetPatrolWorldLocationA() const { return PatrolSpawnLocation + PatrolOffsetA; }
 
     UFUNCTION(BlueprintCallable, Category = "AI|Patrol")
-    FVector GetPatrolWorldLocationB() const { return PatrolWorldLocationB; }
+    FVector GetPatrolWorldLocationB() const { return PatrolSpawnLocation + PatrolOffsetB; }
 
     UFUNCTION(BlueprintCallable, Category = "AI")
     UBehaviorTree* GetEnemyBT() const { return EnemyBT; }
@@ -204,12 +204,14 @@ private:
 
     void OnDetectionTimerExpired();
     
-    // 패트롤하기 위해서 A지점과 B지점 설정
+    // 패트롤 오프셋 (스폰 위치 기준 상대 좌표, 에디터에서 조정 가능)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Patrol", meta = (AllowPrivateAccess = "true"))
-    FVector PatrolWorldLocationA;
+    FVector PatrolOffsetA = FVector(300.f, 0.f, 0.f);
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Patrol", meta = (AllowPrivateAccess = "true"))
-    FVector PatrolWorldLocationB;
+    FVector PatrolOffsetB = FVector(-300.f, 0.f, 0.f);
+
+    FVector PatrolSpawnLocation;
     
     // 20초 동안 플레이어를 놓쳤을 때 호출될 함수
     void OnCombatToLostTimerExpired();
