@@ -27,11 +27,11 @@ void ARespawnTrigger::BeginPlay()
 }
 
 void ARespawnTrigger::HandleOnComponentBeginOverlap(
-	UPrimitiveComponent* /*OverlappedComponent*/, 
+	UPrimitiveComponent* /*OverlappedComponent*/,
 	AActor* OtherActor,
-	UPrimitiveComponent* /*OtherComp*/, 
+	UPrimitiveComponent* /*OtherComp*/,
 	int32 /*OtherBodyIndex*/,
-	bool /*bFromSweep*/, 
+	bool /*bFromSweep*/,
 	const FHitResult& /*SweepResult*/)
 {
 	if (bHasTriggered)
@@ -51,6 +51,6 @@ void ARespawnTrigger::HandleOnComponentBeginOverlap(
 			Volume->TriggerInitialSpawn();
 		}
 	}
-	
+
 	bHasTriggered = true;
 }
