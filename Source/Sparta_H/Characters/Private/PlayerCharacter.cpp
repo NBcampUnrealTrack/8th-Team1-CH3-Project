@@ -866,6 +866,11 @@ void APlayerCharacter::ExecuteThrow()
 {
 	CurrentWeapon->ReleaseThrow();
 	bIsFiring = false;
+	
+	if (CurrentWeapon == ThrowableWeapon)
+	{
+		EquipWeaponByIndex(PreviousWeaponIndex);
+	}
 }
 
 void APlayerCharacter::OnThrowableEquipPressed(const FInputActionValue& /*Value*/)

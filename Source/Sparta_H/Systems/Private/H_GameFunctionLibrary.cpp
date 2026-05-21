@@ -60,6 +60,7 @@ void UH_GameFunctionLibrary::HandlePendingLoad(const UObject* WorldContextObject
 				CheckpointData.bHasRifle = SaveData->bHasRifle;
 				CheckpointData.Location = SaveData->CurrentLocation;
 				CheckpointData.Rotation = SaveData->CurrentRotation;
+				CheckpointData.Rotation.Pitch = 0.f;
 				CheckpointData.KillCount = SaveData->KillCount;
 				CheckpointData.ElapsedTime = SaveData->SavedElapsedTime;
 

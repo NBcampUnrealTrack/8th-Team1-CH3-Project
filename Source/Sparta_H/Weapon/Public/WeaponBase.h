@@ -7,6 +7,7 @@
 
 class UAnimMontage;
 class UNiagaraSystem;
+class UNiagaraComponent;
 class USoundBase;
 
 class USceneComponent;
@@ -192,4 +193,7 @@ private:
 	float CurrentChargeAlpha = 0.0f;
 
 	FTimerHandle ThrowCooldownTimerHandle;
+	
+	TArray<TObjectPtr<UNiagaraComponent>> TrajectoriesComponents;
+	void ClearTrajectoryComponents();
 };
