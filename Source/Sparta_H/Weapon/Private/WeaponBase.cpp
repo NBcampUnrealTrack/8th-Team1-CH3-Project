@@ -146,7 +146,8 @@ void AWeaponBase::Fire()
 			// Modified: Get() 사용하여 즉시 접근 (동기 로딩 제거), BaseDamage -> Damage로 수정
 			CombatMgr->OnFire(AimStart, AimDirection, CombatType, WeaponData->Damage,
 							  WeaponData->bShouldTriggerAIAggro,
-							  ImpactVFX.Get());
+							  ImpactVFX.Get(),
+							  WeaponData->SoundRange);
 		}
 	}
 

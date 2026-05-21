@@ -37,7 +37,7 @@ void UCombatManager::InitializeComponent()
 }
 
 void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection, ECombatWeaponType WeaponType,
-                            float BaseDamage, bool bTriggerAIAggro, UNiagaraSystem* ImpactVFX)
+                            float BaseDamage, bool bTriggerAIAggro, UNiagaraSystem* ImpactVFX, float SoundRange)
 {
 	// 칼은 별도 처리 (매니저 자체의 KnifeFront/KnifeBackDamage 사용)
 	if (WeaponType == ECombatWeaponType::Knife)
@@ -54,9 +54,11 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 	const bool bOwnerIsEnemy = GetOwner()->ActorHasTag("Enemy");
 
 	// 1. 발사 소음 (발사 위치) — 어그로 무기만
+	// SoundRange > 0이면 DA 값 사용, 아니면 WeaponType별 기본값 폴백
 	if (bTriggerAIAggro)
 	{
-		EmitNoise(AimStart, GetFireNoiseRange(WeaponType));
+		const float EffectiveSoundRange = SoundRange > 0.f ? SoundRange : GetFireNoiseRange(WeaponType);
+		EmitNoise(AimStart, EffectiveSoundRange);
 	}
 
 	// 2. 트레이스
