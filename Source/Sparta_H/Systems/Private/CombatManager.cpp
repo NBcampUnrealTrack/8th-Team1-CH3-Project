@@ -191,7 +191,6 @@ float UCombatManager::GetHitNoiseRange(ECombatWeaponType WeaponType) const
 {
 	switch (WeaponType)
 	{
-	case ECombatWeaponType::Pistol: return HitNoiseRangePistol;
 	case ECombatWeaponType::Rock: return HitNoiseRangeRock;
 	default: return 0.f;
 	}
