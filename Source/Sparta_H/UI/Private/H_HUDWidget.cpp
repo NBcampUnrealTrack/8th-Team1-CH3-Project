@@ -4,6 +4,9 @@
 #include "H_WeaponWidget.h"
 #include "H_MissionWidget.h"
 #include "H_TimerWidget.h"
+#include "HealthComponent.h"
+#include "StaminaComponent.h"
+#include "NoiseComponent.h"
 
 APlayerCharacter* UH_HUDWidget::GetOwningCharacter() const
 {
@@ -16,7 +19,10 @@ void UH_HUDWidget::NativeConstruct()
 	Super::NativeConstruct();
 
 	APlayerCharacter* Character = GetOwningCharacter();
-	if (!Character) return;
+	if (!Character)
+	{
+		return;
+	}
 
 	// 1. 각 스탯별 전용 델리게이트 바인딩 (데이터 혼선 방지)
 	Character->OnHealthChangedUI.AddDynamic(this, &UH_HUDWidget::UpdateHealth);
@@ -29,6 +35,20 @@ void UH_HUDWidget::NativeConstruct()
 	// 3. 초기 값 설정
 	UpdateWeaponUI(Character);
 	UpdateMissionUI();
+
+	// Modified: 게임 시작 시 현재 스탯 초기값을 UI에 즉시 반영 (게이지 0으로 시작하는 문제 해결)
+	if (UHealthComponent* HealthComp = Character->GetHealthComponent())
+	{
+		UpdateHealth(HealthComp->GetCurrentHealth(), HealthComp->GetMaxHealth());
+	}
+	if (UStaminaComponent* StaminaComp = Character->GetStaminaComponent())
+	{
+		UpdateStamina(StaminaComp->GetCurrentStamina(), StaminaComp->GetMaxStamina());
+	}
+	if (UNoiseComponent* NoiseComp = Character->GetNoiseComponent())
+	{
+		UpdateNoise(NoiseComp->GetCurrentNoise(), NoiseComp->GetMaxNoise());
+	}
 }
 
 void UH_HUDWidget::UpdateHealth(float Current, float Max)
