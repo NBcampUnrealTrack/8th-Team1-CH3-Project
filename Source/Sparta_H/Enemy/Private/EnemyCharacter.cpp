@@ -495,7 +495,14 @@ void AEnemyCharacter::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
 			{
 				SuspectedTarget = Actor;
 				BB->SetValueAsObject(BBKeys::TARGET_ACTOR, Actor);
+				// 이전 소음 위치로 가던 이동을 중단하고 Combat 전환 후 재탐색
+				AIC->StopMovement();
 				OnAlertLevelChanged(EAlertLevel::Combat);
+			}
+			else if (CurrentAlertLevel == EAlertLevel::Lost)
+			{
+				// Lost 상태에서 새 소음 감지 시 기존 이동을 중단해 BT가 최신 위치로 재탐색
+				AIC->StopMovement();
 			}
 		}
 	}
