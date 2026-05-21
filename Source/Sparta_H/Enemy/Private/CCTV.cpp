@@ -10,13 +10,11 @@
 #include "Engine/OverlapResult.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/StaticMeshComponent.h"
-#include "Engine/StaticMeshActor.h"
 #include "BlackboardKeys.h"
 
 ACCTV::ACCTV()
 {
     CurrentAlertLevel = EAlertLevel::CCTV;
-    BrokenCCTVMesh = nullptr;
 
     // 스켈레탈 메쉬 숨김 처리
     if (GetMesh())
@@ -87,41 +85,22 @@ void ACCTV::Die()
         AIPerceptionComp->Deactivate();
     }
 
-    // 부서진 CCTV 메시를 현재 위치/회전으로 스폰
-    if (BrokenCCTVMesh)
+    // 기존 메시에 피직스 켜서 낙하
+    if (CCTVMeshComp)
     {
-        UWorld* World = GetWorld();
-        if (World)
-        {
-            // 현재 회전에서 Pitch를 -90도로 설정 (아래를 보게)
-            FRotator BrokenRotation = GetActorRotation();
-            BrokenRotation.Roll= 60.0f;
+        CCTVMeshComp->SetSimulatePhysics(true);
+    }
 
-            const FVector SpawnLocation = GetActorLocation() + FVector(0.f, 0.f, -30.f);
-            AStaticMeshActor* BrokenActor = World->SpawnActor<AStaticMeshActor>(
-                AStaticMeshActor::StaticClass(),
-                SpawnLocation,
-                BrokenRotation
-            );
-
-            if (BrokenActor)
-            {
-                BrokenActor->GetStaticMeshComponent()->SetMobility(EComponentMobility::Movable);
-                BrokenActor->GetStaticMeshComponent()->SetStaticMesh(BrokenCCTVMesh);
-                // 에디터에서 줄인 원본 스케일 그대로 적용
-                BrokenActor->GetStaticMeshComponent()->SetWorldScale3D(CCTVMeshComp->GetComponentScale());
-                UE_LOG(LogTemp, Log, TEXT("CCTV [%s]: 파괴된 메시 스폰 완료."), *GetName());
-            }
-        }
+    // 캡슐 콜리전 비활성화
+    if (UCapsuleComponent* Capsule = GetCapsuleComponent())
+    {
+        Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     }
 
     UE_LOG(LogTemp, Warning, TEXT("CCTV [%s]: 파괴됨. 경보 전파 없음."), *GetName());
 
     // bIsDead = true, OnDeath 브로드캐스트
     Super::Die();
-
-    // 원본 액터 제거
-    Destroy();
 }
 
 void ACCTV::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
