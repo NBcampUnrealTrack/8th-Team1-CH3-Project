@@ -80,7 +80,7 @@ FPlayerCheckpointData APlayerCharacter::SaveCheckpoint()
 	Data.bHasRifle = bHasRifle;
 	Data.Location = GetActorLocation();
 
-	// Modified: 액터의 회전 대신 컨트롤러의 회전(시점)을 저장하여 상하 시점까지 정확히 기억
+	// 저장 시 컨트롤러의 회전을 우선하되, 컨트롤러가 없다면 액터 회전을 저장 (정규화 포함)
 	if (Controller)
 	{
 		Data.Rotation = Controller->GetControlRotation();
@@ -89,6 +89,7 @@ FPlayerCheckpointData APlayerCharacter::SaveCheckpoint()
 	{
 		Data.Rotation = GetActorRotation();
 	}
+	Data.Rotation.Normalize();
 
 	// 처치 수 및 경과 시간 저장
 	Data.KillCount = KillCount;
@@ -101,10 +102,10 @@ void APlayerCharacter::LoadCheckpoint(const FPlayerCheckpointData& CheckpointDat
 {
 	//상태 복구 전 사망 플래그 및 물리 상태 초기화 (이동 및 회전 버그 방지)
 	bIsDead = false;
+
 	if (GetCharacterMovement())
 	{
 		GetCharacterMovement()->StopMovementImmediately();
-		// Modified: 물리 엔진에 남아있는 이전 속도나 힘을 완벽히 초기화
 		GetCharacterMovement()->Velocity = FVector::ZeroVector;
 		GetCharacterMovement()->ClearAccumulatedForces();
 	}
@@ -112,15 +113,22 @@ void APlayerCharacter::LoadCheckpoint(const FPlayerCheckpointData& CheckpointDat
 	CurrentMissionIndex = CheckpointData.MissionIndex;
 	bHasRifle = CheckpointData.bHasRifle;
 
-	// 위치와 회전을 동시에 복구하며 텔레포트 (180도 뒤를 보는 현상 방지)
-	SetActorLocationAndRotation(CheckpointData.Location, CheckpointData.Rotation, false, nullptr,
-	                            ETeleportType::TeleportPhysics);
-
+	// Modified: 180도 회전 버그 수정을 위한 정밀 텔레포트 순서
+	// 1. 컨트롤러 회전을 먼저 설정하여 시점의 기준을 잡음
 	if (Controller)
 	{
-		// Modified: 컨트롤러 회전 설정 후 액터가 즉시 동기화되도록 강제 업데이트
 		Controller->SetControlRotation(CheckpointData.Rotation);
-		FaceRotation(Controller->GetControlRotation(), 0.f);
+	}
+
+	// 2. 위치와 회전을 동시에 복구 (컨트롤러와 동일한 회전값 사용)
+	// ETeleportType::None을 사용하여 물리 엔진이 위치를 강제로 덮어쓰지 않도록 함
+	SetActorLocationAndRotation(CheckpointData.Location, CheckpointData.Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+
+	// 3. 다시 한번 컨트롤러와 액터를 동기화 (레이스 컨디션 방지)
+	if (Controller)
+	{
+		Controller->SetControlRotation(CheckpointData.Rotation);
+		FaceRotation(CheckpointData.Rotation, 0.f);
 	}
 
 	KillCount = CheckpointData.KillCount;
@@ -136,12 +144,12 @@ void APlayerCharacter::LoadCheckpoint(const FPlayerCheckpointData& CheckpointDat
 	}
 
 	// Modified: 리스폰 후 UI 스탯을 즉시 갱신하도록 강제 호출 (0으로 표시되는 문제 해결)
-	HandleHealthChanged(HealthComponent ? HealthComponent->GetCurrentHealth() : 0.f,
-	                    HealthComponent ? HealthComponent->GetMaxHealth() : 100.f, nullptr);
-	HandleStaminaChanged(StaminaComponent ? StaminaComponent->GetCurrentStamina() : 100.f,
-	                     StaminaComponent ? StaminaComponent->GetMaxStamina() : 100.f);
-	HandleNoiseChanged(NoiseComponent ? NoiseComponent->GetCurrentNoise() : 0.f,
-	                   NoiseComponent ? NoiseComponent->GetMaxNoise() : 100.f);
+	HandleHealthChanged(HealthComponent ? HealthComponent->GetCurrentHealth() : 0.f, 
+						HealthComponent ? HealthComponent->GetMaxHealth() : 100.f, nullptr);
+	HandleStaminaChanged(StaminaComponent ? StaminaComponent->GetCurrentStamina() : 100.f, 
+						 StaminaComponent ? StaminaComponent->GetMaxStamina() : 100.f);
+	HandleNoiseChanged(NoiseComponent ? NoiseComponent->GetCurrentNoise() : 0.f, 
+					   NoiseComponent ? NoiseComponent->GetMaxNoise() : 100.f);
 
 	Tags.Add(TEXT("Player"));
 }
@@ -693,7 +701,7 @@ void APlayerCharacter::HandleStaminaChanged(float CurrentStamina, float MaxStami
 
 void APlayerCharacter::HandleNoiseChanged(float CurrentNoise, float MaxNoise)
 {
-	// UI에 전용 소음 변경 통보
+	// Modified: UI에 전용 소음 변경 통보가 정상적으로 전달되는지 확인
 	OnNoiseChangedUI.Broadcast(CurrentNoise, MaxNoise);
 }
 
@@ -783,10 +791,11 @@ void APlayerCharacter::OnFirePressed(const FInputActionValue& /*Value*/)
 	CurrentWeapon->Fire();
 
 	// 사격 시 즉시 최대 소음 발생
-	// Modified: 칼 무기는 소음을 최대로 만들지 않음
+	// Modified: 무기 종류에 따라 소음 수치 차등 적용 (권총 70, 소총 100) 및 AI 범위 동기화
 	if (NoiseComponent && Data && Data->WeaponType != EWeaponType::Knife)
 	{
-		NoiseComponent->SetNoiseToMax();
+		float FireNoiseAmount = (Data->WeaponType == EWeaponType::Pistol) ? 70.0f : 100.0f;
+		NoiseComponent->AddNoise(FireNoiseAmount);
 	}
 	bIsFiring = false;
 }

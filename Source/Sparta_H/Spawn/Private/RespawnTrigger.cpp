@@ -3,6 +3,7 @@
 #include "PlayerCharacter.h"
 #include "Components/BoxComponent.h"
 #include "Spawn/Public/BaseSpawnVolume.h"
+#include "Kismet/GameplayStatics.h"
 
 ARespawnTrigger::ARespawnTrigger()
 {
@@ -26,20 +27,44 @@ void ARespawnTrigger::BeginPlay()
 	}
 }
 
-// Modified: 트리거 상태 초기화 및 현재 영역 내 플레이어 존재 시 즉시 실행
+// 트리거 상태 초기화 및 현재 영역 내 플레이어 존재 시 즉시 실행
 void ARespawnTrigger::ResetTrigger()
 {
 	bHasTriggered = false;
 
-	// Modified: 체크포인트가 트리거 영역과 겹칠 경우, 리스폰 즉시 적을 스폰하도록 체크
 	if (TriggerBox)
 	{
+		// 1. 기본 오버랩 체크
 		TArray<AActor*> OverlappingActors;
 		TriggerBox->GetOverlappingActors(OverlappingActors, APlayerCharacter::StaticClass());
 		
-		if (OverlappingActors.Num() > 0)
+		bool bPlayerInside = (OverlappingActors.Num() > 0);
+
+		// 텔레포트 직후 오버랩이 즉시 갱신되지 않았을 경우를 대비해 거리/범위로 직접 체크
+		if (!bPlayerInside)
 		{
-			UE_LOG(LogTemp, Log, TEXT("RespawnTrigger: 플레이어가 이미 영역 내에 있음. 즉시 스폰 실행."));
+			APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
+			if (PlayerPawn && PlayerPawn->IsA(APlayerCharacter::StaticClass()))
+			{
+				const FVector PlayerLoc = PlayerPawn->GetActorLocation();
+				const FVector BoxLoc = TriggerBox->GetComponentLocation();
+				const FVector BoxExtent = TriggerBox->GetScaledBoxExtent();
+				
+				// AABB (Axis-Aligned Bounding Box) 충돌 체크 로직
+				const bool bInX = FMath::Abs(PlayerLoc.X - BoxLoc.X) <= BoxExtent.X;
+				const bool bInY = FMath::Abs(PlayerLoc.Y - BoxLoc.Y) <= BoxExtent.Y;
+				const bool bInZ = FMath::Abs(PlayerLoc.Z - BoxLoc.Z) <= BoxExtent.Z;
+
+				if (bInX && bInY && bInZ)
+				{
+					bPlayerInside = true;
+				}
+			}
+		}
+
+		if (bPlayerInside)
+		{
+			UE_LOG(LogTemp, Log, TEXT("RespawnTrigger: 플레이어가 영역 내에 있음이 감지됨 (직접 체크). 즉시 스폰 실행."));
 			ExecuteSpawn();
 		}
 	}
