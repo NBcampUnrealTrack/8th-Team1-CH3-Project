@@ -2,6 +2,7 @@
 #include "PlayerCharacter.h"
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 ADoor::ADoor()
 {
@@ -16,7 +17,6 @@ void ADoor::BeginPlay()
     {
         MainMesh->SetRelativeRotation(FRotator(0.f, ClosedYaw, 0.f));
         
-        // GlowMesh를 문(MainMesh)에 강제 부착
         if (GlowMesh)
         {
             GlowMesh->AttachToComponent(MainMesh, FAttachmentTransformRules::SnapToTargetIncludingScale);
@@ -29,7 +29,6 @@ void ADoor::BeginPlay()
             }
         }
 
-        // SensorBox를 문(MainMesh)에 강제 부착
         if (SensorBox)
         {
             SensorBox->AttachToComponent(MainMesh, FAttachmentTransformRules::KeepRelativeTransform);
@@ -86,4 +85,10 @@ void ADoor::ToggleDoor()
 { 
     bIsOpening = !bIsOpening; 
     SetActorTickEnabled(true); 
+
+    USoundBase* SoundToPlay = bIsOpening ? OpenSound : CloseSound;
+    if (SoundToPlay)
+    {
+        UGameplayStatics::PlaySoundAtLocation(this, SoundToPlay, GetActorLocation());
+    }
 }

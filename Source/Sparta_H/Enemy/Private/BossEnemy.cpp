@@ -319,7 +319,6 @@ void ABossEnemy::ThrowGrenade()
             const float CalcSpeed = LaunchVelocity.Size();
             const float FinalSpeed = FMath::Max(CalcSpeed, GrenadeThrowSpeed);
             const FVector FinalVelocity = LaunchVelocity.GetSafeNormal() * FinalSpeed;
-
             Grenade->ProjectileMovement->Velocity = FinalVelocity;
             Grenade->ProjectileMovement->InitialSpeed = FinalSpeed;
             Grenade->ProjectileMovement->MaxSpeed = FinalSpeed;

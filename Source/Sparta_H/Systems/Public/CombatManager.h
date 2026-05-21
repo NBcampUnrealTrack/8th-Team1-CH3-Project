@@ -73,8 +73,9 @@ public:
 	float FireNoiseRangeKnife = 10.f; // 0.1m
 
 	// 사격 처리 메인 함수. bTriggerAIAggro=false면 발사/피격 소음을 발생시키지 않음(소음 무기 등)
+	// SoundRange > 0이면 해당 값 사용, 0이면 WeaponType별 기본값 사용
 	void OnFire(const FVector& AimStart, const FVector& AimDirection, ECombatWeaponType WeaponType,
-	            float BaseDamage, bool bTriggerAIAggro, UNiagaraSystem* ImpactVFX = nullptr);
+	            float BaseDamage, bool bTriggerAIAggro, UNiagaraSystem* ImpactVFX = nullptr, float SoundRange = 0.f);
 
 	// 소음 발생 함수
 	void EmitNoise(const FVector& NoiseLocation, float NoiseRange);

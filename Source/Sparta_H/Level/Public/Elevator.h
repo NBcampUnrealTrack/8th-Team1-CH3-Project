@@ -100,6 +100,15 @@ private:
     UPROPERTY(EditAnywhere, Category = "Elevator|Sound")
     float ArrivalVolume = 0.3f;
 
+    UPROPERTY(EditAnywhere, Category = "Elevator|Sound")
+    USoundBase* DoorOpenSound; // 문이 열리기 시작할 때 재생할 효과음
+
+    UPROPERTY(EditAnywhere, Category = "Elevator|Sound")
+    USoundBase* StageDestinationBGM; // 이동 완료 후 재생할 목적지 BGM
+
+    UPROPERTY(EditAnywhere, Category = "Elevator|Sound")
+    float BGMFadeDuration = 3.0f; // BGM 페이드 전환 시간 설정
+
     EElevatorState CurrentState = EElevatorState::Idle;
     float DoorAlpha = 0.0f;
     float TargetDoorAlpha = 0.0f;
