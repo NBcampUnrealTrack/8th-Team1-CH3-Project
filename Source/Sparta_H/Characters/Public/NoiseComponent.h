@@ -29,6 +29,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Noise")
 	void AddNoise(float Amount);
 
+	// Modified: 소음을 특정 수치로 설정하는 함수 추가
+	UFUNCTION(BlueprintCallable, Category = "Noise")
+	void SetNoise(float Value);
+
 	UFUNCTION(BlueprintCallable, Category = "Noise")
 	void SetNoiseToMax();
 

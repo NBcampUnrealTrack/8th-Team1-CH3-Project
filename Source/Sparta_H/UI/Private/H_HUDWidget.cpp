@@ -7,6 +7,8 @@
 #include "HealthComponent.h"
 #include "StaminaComponent.h"
 #include "NoiseComponent.h"
+#include "WeaponBase.h"
+#include "AmmoComponent.h"
 
 APlayerCharacter* UH_HUDWidget::GetOwningCharacter() const
 {
@@ -83,6 +85,26 @@ void UH_HUDWidget::UpdateWeaponUI(APlayerCharacter* Character)
 	if (WeaponUI && Character)
 	{
 		WeaponUI->UpdateFromCharacter(Character);
+
+		// Modified: 현재 장착된 무기의 탄약 컴포넌트에 이벤트 바인딩 (실시간 탄수 업데이트용)
+		if (AWeaponBase* MainWeapon = Character->GetMainWeapon())
+		{
+			if (UAmmoComponent* AmmoComp = MainWeapon->GetAmmoComponent())
+			{
+				// 중복 바인딩 방지를 위해 먼저 제거 후 추가
+				AmmoComp->OnAmmoChanged.RemoveAll(this);
+				AmmoComp->OnAmmoChanged.AddDynamic(this, &UH_HUDWidget::HandleAmmoChanged);
+			}
+		}
+	}
+}
+
+// Modified: 탄약 변경 시 호출될 핸들러 구현 (UI 갱신만 수행)
+void UH_HUDWidget::HandleAmmoChanged(int32 CurrentAmmo, int32 MaxAmmo)
+{
+	if (WeaponUI)
+	{
+		WeaponUI->UpdateFromCharacter(GetOwningCharacter());
 	}
 }
 
