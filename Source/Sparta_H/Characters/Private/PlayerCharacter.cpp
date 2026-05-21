@@ -785,7 +785,26 @@ void APlayerCharacter::OnFireReleased(const FInputActionValue& /*Value*/)
 	{
 		return;
 	}
+	
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && ThrowableMontage && !bIsRolling && !bIsDead)
+	{
+		AnimInstance->Montage_JumpToSection(TEXT("Throw"), ThrowableMontage);
+	}
+	
+	FTimerHandle ThrowTimerHandle;
+	GetWorldTimerManager().SetTimer(
+		ThrowTimerHandle, 
+		this, 
+		&APlayerCharacter::ExecuteThrow, // 실제 던지기 로직을 담을 함수
+		1.0f, 
+		false
+	);
+	
+}
 
+void APlayerCharacter::ExecuteThrow()
+{
 	CurrentWeapon->ReleaseThrow();
 }
 
@@ -800,6 +819,13 @@ void APlayerCharacter::OnThrowableEquipPressed(const FInputActionValue& /*Value*
 	if (CurrentWeapon == ThrowableWeapon)
 	{
 		ThrowableWeapon->CancelThrowCharge();
+		
+		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+		if (AnimInstance && ThrowableMontage && AnimInstance->Montage_IsPlaying(ThrowableMontage))
+		{
+			AnimInstance->Montage_Stop(0.2f, ThrowableMontage);
+		}
+		
 		EquipWeaponByIndex(PreviousWeaponIndex);
 		return;
 	}
@@ -825,6 +851,12 @@ void APlayerCharacter::OnThrowableEquipPressed(const FInputActionValue& /*Value*
 	CurrentWeapon = ThrowableWeapon;
 	CurrentWeapon->SetActorHiddenInGame(false);
 	CurrentWeapon->SetWeaponState(EWeaponState::Idle);
+	
+	if (ThrowableMontage && !bIsRolling && !bIsDead)
+	{
+		// 💡 1.0f는 재생 속도이며, TEXT("Equip")은 시작할 섹션의 이름입니다.
+		PlayAnimMontage(ThrowableMontage, 1.0f, TEXT("Equip"));
+	}
 }
 
 void APlayerCharacter::HandleThrowableDepleted()

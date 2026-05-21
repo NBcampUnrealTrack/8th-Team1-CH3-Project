@@ -232,7 +232,11 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	UAnimMontage* DiveRollMontage;
-
+	
+	// 수류탄 준비 몽타주
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	UAnimMontage* ThrowableMontage;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	float UpperBodyBlendWeight = 1.0f;
 
@@ -249,6 +253,7 @@ public:
 	void SetCrosshairState(ECrosshairState NewState);
 
 	UFUNCTION() void ResetCrosshairToDefault();
+	void ExecuteThrow();
 
 	// ─── Status Handlers ───
 
