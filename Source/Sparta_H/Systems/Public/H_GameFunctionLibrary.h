@@ -26,6 +26,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Game", meta = (WorldContext = "WorldContextObject"))
 	static void ClearAllEnemies(const UObject* WorldContextObject);
 
+	// 모든 스폰 트리거 및 볼륨을 초기 상태로 되돌림
+	UFUNCTION(BlueprintCallable, Category = "Game", meta = (WorldContext = "WorldContextObject"))
+	static void ResetAllSpawnSystems(const UObject* WorldContextObject);
+
 	//레벨 전환 후 로드가 필요한지 확인하고 적용하는 함수
 	static void HandlePendingLoad(const UObject* WorldContextObject, bool bClearFlag = true);
 

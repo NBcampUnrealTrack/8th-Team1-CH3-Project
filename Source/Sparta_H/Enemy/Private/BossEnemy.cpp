@@ -445,70 +445,85 @@ void ABossEnemy::SpawnReinforcement()
     UE_LOG(LogTemp, Warning, TEXT("[Boss] 증원 스폰 시작 | 수=%d"), ReinforcementCount);
 
     FActorSpawnParameters SpawnParams;
-    SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+    // Removed: 기존의 AlwaysSpawn 방식은 끼임 문제를 발생시킴 (삭제됨)
+    // Modified: 끼임 방지를 위해 충돌 시 스폰하지 않도록 변경
+    SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
 
     for (int32 i = 0; i < ReinforcementCount; ++i)
     {
-        const FVector DesiredLocation = GetActorLocation() + FVector(
-            FMath::RandRange(-400.f, 400.f),
-            FMath::RandRange(-400.f, 400.f),
-            0.f);
-
-        // NavMesh 위 유효한 위치로 보정
-        FNavLocation NavLocation;
-        UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld());
-        const FVector SpawnLocation = (NavSys && NavSys->ProjectPointToNavigation(DesiredLocation, NavLocation, FVector(200.f, 200.f, 200.f)))
-            ? NavLocation.Location
-            : DesiredLocation;
-
-        if (!NavSys || NavLocation.Location == FVector::ZeroVector)
+        // 스폰 실패 시 재시도 로직 추가 및 Z축 오프셋 적용
+        bool bSpawned = false;
+        for (int32 Try = 0; Try < 5; ++Try)
         {
-            UE_LOG(LogTemp, Warning, TEXT("[Boss] 증원 %d번째 — NavMesh 위치 찾기 실패, 원래 위치로 스폰"), i + 1);
+            const FVector DesiredLocation = GetActorLocation() + FVector(
+                FMath::RandRange(-400.f, 400.f),
+                FMath::RandRange(-400.f, 400.f),
+                0.f);
+
+            // NavMesh 위 유효한 위치로 보정
+            FNavLocation NavLocation;
+            UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld());
+            FVector SpawnLocation = (NavSys && NavSys->ProjectPointToNavigation(DesiredLocation, NavLocation, FVector(200.f, 200.f, 200.f)))
+                ? NavLocation.Location
+                : DesiredLocation;
+
+            // 바닥에 끼는 것을 방지하기 위해 약간 위쪽에서 스폰
+            SpawnLocation.Z += 50.0f;
+
+            if (!NavSys || NavLocation.Location == FVector::ZeroVector)
+            {
+                UE_LOG(LogTemp, Warning, TEXT("[Boss] 증원 %d번째 — NavMesh 위치 찾기 실패 (시도 %d)"), i + 1, Try + 1);
+            }
+
+            AEnemyCharacter* Reinforcement = GetWorld()->SpawnActor<AEnemyCharacter>(
+                ReinforcementClass,
+                SpawnLocation,
+                FRotator::ZeroRotator,
+                SpawnParams);
+
+            if (Reinforcement)
+            {
+                bSpawned = true;
+                if (!IsValid(BossTarget)) break;
+
+                UE_LOG(LogTemp, Log, TEXT("[Boss] 증원 %d번째 스폰 완료 (시도 %d)"), i + 1, Try + 1);
+                Reinforcement->ShowExclamationIcon(3.f);
+
+                // BT 초기화 완료 후 Combat 진입하도록 다음 틱으로 지연
+                AActor* CapturedTarget = BossTarget;
+                GetWorld()->GetTimerManager().SetTimerForNextTick([Reinforcement, CapturedTarget]()
+                {
+                    if (!IsValid(Reinforcement) || !IsValid(CapturedTarget)) return;
+
+                    AAIController* AIC = Cast<AAIController>(Reinforcement->GetController());
+                    if (!AIC)
+                    {
+                        UE_LOG(LogTemp, Error, TEXT("[Boss] 증원 — AIController 없음! BP에 AIController 클래스 확인 필요"));
+                        return;
+                    }
+
+                    UBehaviorTreeComponent* BTComp = AIC->FindComponentByClass<UBehaviorTreeComponent>();
+                    if (!BTComp || !BTComp->IsRunning())
+                    {
+                        UE_LOG(LogTemp, Error, TEXT("[Boss] 증원 — BehaviorTree 실행 안 됨! BP_REnemyCharacter에 BT 애셋 할당 확인 필요"));
+                    }
+                    else
+                    {
+                        UE_LOG(LogTemp, Log, TEXT("[Boss] 증원 — BT 실행 중 확인"));
+                    }
+
+                    if (UBlackboardComponent* BB = AIC->GetBlackboardComponent())
+                    {
+                        BB->SetValueAsObject(BBKeys::TARGET_ACTOR, CapturedTarget);
+                        BB->SetValueAsVector(BBKeys::LAST_KNOWN_LOCATION, CapturedTarget->GetActorLocation());
+                    }
+
+                    Reinforcement->OnAlertLevelChanged(EAlertLevel::Combat);
+                    UE_LOG(LogTemp, Log, TEXT("[Boss] 증원 Combat 진입 완료 (지연 실행)"));
+                });
+                break;
+            }
         }
-
-        AEnemyCharacter* Reinforcement = GetWorld()->SpawnActor<AEnemyCharacter>(
-            ReinforcementClass,
-            SpawnLocation,
-            FRotator::ZeroRotator,
-            SpawnParams);
-
-        if (!Reinforcement || !IsValid(BossTarget)) continue;
-
-        UE_LOG(LogTemp, Log, TEXT("[Boss] 증원 %d번째 스폰 완료"), i + 1);
-        Reinforcement->ShowExclamationIcon(3.f);
-
-        // BT 초기화 완료 후 Combat 진입하도록 다음 틱으로 지연
-        AActor* CapturedTarget = BossTarget;
-        GetWorld()->GetTimerManager().SetTimerForNextTick([Reinforcement, CapturedTarget]()
-        {
-            if (!IsValid(Reinforcement) || !IsValid(CapturedTarget)) return;
-
-            AAIController* AIC = Cast<AAIController>(Reinforcement->GetController());
-            if (!AIC)
-            {
-                UE_LOG(LogTemp, Error, TEXT("[Boss] 증원 — AIController 없음! BP에 AIController 클래스 확인 필요"));
-                return;
-            }
-
-            UBehaviorTreeComponent* BTComp = AIC->FindComponentByClass<UBehaviorTreeComponent>();
-            if (!BTComp || !BTComp->IsRunning())
-            {
-                UE_LOG(LogTemp, Error, TEXT("[Boss] 증원 — BehaviorTree 실행 안 됨! BP_REnemyCharacter에 BT 애셋 할당 확인 필요"));
-            }
-            else
-            {
-                UE_LOG(LogTemp, Log, TEXT("[Boss] 증원 — BT 실행 중 확인"));
-            }
-
-            if (UBlackboardComponent* BB = AIC->GetBlackboardComponent())
-            {
-                BB->SetValueAsObject(BBKeys::TARGET_ACTOR, CapturedTarget);
-                BB->SetValueAsVector(BBKeys::LAST_KNOWN_LOCATION, CapturedTarget->GetActorLocation());
-            }
-
-            Reinforcement->OnAlertLevelChanged(EAlertLevel::Combat);
-            UE_LOG(LogTemp, Log, TEXT("[Boss] 증원 Combat 진입 완료 (지연 실행)"));
-        });
     }
 }
 

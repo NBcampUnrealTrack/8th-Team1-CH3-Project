@@ -14,6 +14,9 @@ class USkeletalMeshComponent;
 class UAmmoComponent;
 class UWeaponDataAsset;
 
+// Modified: 소유자 캐릭터 참조를 위한 전방 선언 추가
+class APlayerCharacter;
+
 // 투척 무기의 보유 수가 0에 도달했을 때 브로드캐스트. PlayerCharacter에서 슬롯 자동 복귀 처리
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnThrowableDepleted);
 
@@ -124,7 +127,18 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|VFX")
 	FName MuzzleSocketName = TEXT("Muzzle");
 
+protected:
+	// Modified: BeginPlay를 오버라이드하여 오너 캐싱 및 에셋 프리로드 수행
+	virtual void BeginPlay() override;
+
 private:
+	// Modified: 매번 Cast하는 비용을 줄이기 위해 소유자 캐릭터를 캐싱
+	UPROPERTY()
+	TObjectPtr<APlayerCharacter> OwnerCharacter;
+
+	// Modified: 게임 플레이 중 동기 로딩을 방지하기 위해 미리 로드하는 함수
+	void PreloadAssets();
+
 	// 카메라(에이밍) 시점의 시작 위치와 방향을 가져옴. 소유자/PC/CameraManager 중 하나라도 없으면 false
 	bool GetAimStartAndDirection(FVector& OutStart, FVector& OutDirection) const;
 

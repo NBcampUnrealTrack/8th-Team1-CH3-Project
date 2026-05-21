@@ -56,7 +56,7 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	float KnifeFrontDamage = 50.f;
-	
+
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	float BackAttackThreshold = 0.0f;
 
@@ -65,15 +65,15 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "Combat|Noise")
 	float HitNoiseRangeRock = 500.f; // 5m
-	
+
 	UPROPERTY(EditAnywhere, Category = "Combat|Noise")
-	float FireNoiseRangePistol = 30000.f; // 300m
-	
+	float FireNoiseRangePistol = 3000.f; // 30m
+
 	UPROPERTY(EditAnywhere, Category = "Combat|Noise")
-	float FireNoiseRangeRifle = 150000.f; // 1500m
-	
+	float FireNoiseRangeRifle = 15000.f; // 150m
+
 	UPROPERTY(EditAnywhere, Category = "Combat|Noise")
-	float FireNoiseRangeKnife = 1000.f; // 10m
+	float FireNoiseRangeKnife = 10.f; // 0.1m
 
 	// 사격 처리 메인 함수. bTriggerAIAggro=false면 발사/피격 소음을 발생시키지 않음(소음 무기 등)
 	void OnFire(const FVector& AimStart, const FVector& AimDirection, ECombatWeaponType WeaponType,

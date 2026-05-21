@@ -10,44 +10,74 @@ APlayerCharacter* UH_HUDWidget::GetOwningCharacter() const
 	return Cast<APlayerCharacter>(GetOwningPlayerPawn());
 }
 
-void UH_HUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
+//초기화 시 전용 델리게이트 바인딩 로직 구현
+void UH_HUDWidget::NativeConstruct()
 {
-	Super::NativeTick(MyGeometry, InDeltaTime);
+	Super::NativeConstruct();
 
 	APlayerCharacter* Character = GetOwningCharacter();
-	if (!Character)
-	{
-		return;
-	}
+	if (!Character) return;
 
+	// 1. 각 스탯별 전용 델리게이트 바인딩 (데이터 혼선 방지)
+	Character->OnHealthChangedUI.AddDynamic(this, &UH_HUDWidget::UpdateHealth);
+	Character->OnStaminaChangedUI.AddDynamic(this, &UH_HUDWidget::UpdateStamina);
+	Character->OnNoiseChangedUI.AddDynamic(this, &UH_HUDWidget::UpdateNoise);
+
+	// 2. 무기 변경 바인딩
+	Character->OnWeaponChanged.AddDynamic(this, &UH_HUDWidget::UpdateWeaponUI);
+
+	// 3. 초기 값 설정
+	UpdateWeaponUI(Character);
+	UpdateMissionUI();
+}
+
+void UH_HUDWidget::UpdateHealth(float Current, float Max)
+{
 	if (HealthBar)
 	{
-		HealthBar->UpdateFromCharacter(Character, EHStatType::Health);
+		HealthBar->UpdateStat(Current, Max);
+		HealthBar->UpdateBarColor(Current, Max, EHStatType::Health);
 	}
+}
 
+void UH_HUDWidget::UpdateStamina(float Current, float Max)
+{
 	if (StaminaBar)
 	{
-		StaminaBar->UpdateFromCharacter(Character, EHStatType::Stamina);
+		StaminaBar->UpdateStat(Current, Max);
+		StaminaBar->UpdateBarColor(Current, Max, EHStatType::Stamina);
 	}
+}
 
+void UH_HUDWidget::UpdateNoise(float Current, float Max)
+{
 	if (NoiseBar)
 	{
-		NoiseBar->UpdateFromCharacter(Character, EHStatType::Noise);
+		NoiseBar->UpdateStat(Current, Max);
+		NoiseBar->UpdateBarColor(Current, Max, EHStatType::Noise);
 	}
+}
 
-	if (WeaponUI)
+void UH_HUDWidget::UpdateWeaponUI(APlayerCharacter* Character)
+{
+	if (WeaponUI && Character)
 	{
 		WeaponUI->UpdateFromCharacter(Character);
 	}
+}
 
+void UH_HUDWidget::UpdateMissionUI()
+{
 	if (MissionUI)
 	{
-		MissionUI->UpdateFromCharacter(Character);
-	}
-
-	if (TimerUI)
-	{
-		float Time = Character->GetRemainingMissionTime();
-		TimerUI->UpdateTimer(Time);
+		MissionUI->UpdateFromCharacter(GetOwningCharacter());
 	}
 }
+
+// Removed: NativeTick을 통한 매 프레임 업데이트 로직 제거 (성능 개선)
+/*
+void UH_HUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
+{
+	...
+}
+*/

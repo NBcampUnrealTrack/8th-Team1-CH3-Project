@@ -81,21 +81,33 @@ void ABaseSpawnVolume::SpawnEnemies(int32 Count, ESpawnState NextStateOnSuccess)
 	}
 	
 	FActorSpawnParameters Params;
-	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+	// Removed: 기존의 AlwaysSpawn 방식은 끼임 문제를 발생시킴 (삭제됨)
+	// Modified: 끼임 방지를 위해 충돌 시 스폰하지 않도록 변경
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
 	
 	int32 SpawnedCount = 0;
+	// Modified: 스폰 실패 시 재시도 로직 추가 및 Z축 오프셋 적용
 	for (int32 i = 0; i < Count; i++)
 	{
-		FVector SpawnLoc;
-		if (!GetRandomSpawnLocation(SpawnLoc))
+		bool bSpawned = false;
+		for (int32 Try = 0; Try < 5; ++Try)
 		{
-			continue;
-		}
-		
-		const FRotator SpawnRot = FRotator(0.0f, FMath::FRandRange(0.0f, 360.0f), 0.0f);
-		if (World->SpawnActor<APawn>(EnemyClass, SpawnLoc, SpawnRot, Params))
-		{
-			++SpawnedCount;
+			FVector SpawnLoc;
+			if (!GetRandomSpawnLocation(SpawnLoc))
+			{
+				continue;
+			}
+			
+			// Modified: 바닥에 끼는 것을 방지하기 위해 약간 위쪽에서 스폰
+			SpawnLoc.Z += 50.0f;
+			
+			const FRotator SpawnRot = FRotator(0.0f, FMath::FRandRange(0.0f, 360.0f), 0.0f);
+			if (World->SpawnActor<APawn>(EnemyClass, SpawnLoc, SpawnRot, Params))
+			{
+				++SpawnedCount;
+				bSpawned = true;
+				break;
+			}
 		}
 	}
 

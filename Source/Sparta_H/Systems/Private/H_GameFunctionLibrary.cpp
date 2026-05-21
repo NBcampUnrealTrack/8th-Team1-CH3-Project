@@ -3,6 +3,8 @@
 #include "Characters/Public/PlayerCharacter.h"
 #include "Systems/Public/H_SaveGame.h"
 #include "Enemy/Public/BaseEnemy.h"
+#include "Spawn/Public/RespawnTrigger.h"
+#include "Spawn/Public/BaseSpawnVolume.h"
 
 // 정적 변수 초기화
 bool UH_GameFunctionLibrary::bIsLoadPending = false;
@@ -66,6 +68,9 @@ void UH_GameFunctionLibrary::HandlePendingLoad(const UObject* WorldContextObject
 
 				// 6. 맵상의 모든 적 제거
 				ClearAllEnemies(WorldContextObject);
+
+				// Modified: 모든 스폰 시스템(트리거 및 볼륨) 상태 초기화
+				ResetAllSpawnSystems(WorldContextObject);
 
 				// 7. 게임 일시정지 해제 및 입력 모드 복구
 				UGameplayStatics::SetGamePaused(WorldContextObject, false);
@@ -155,6 +160,37 @@ void UH_GameFunctionLibrary::ClearAllEnemies(const UObject* WorldContextObject)
 		if (IsValid(Enemy) && !Enemy->ActorHasTag(CCTV_TAG))
 		{
 			Enemy->Destroy();
+		}
+	}
+}
+
+// Modified: 모든 스폰 트리거와 볼륨 상태를 초기화하는 구현체 추가
+void UH_GameFunctionLibrary::ResetAllSpawnSystems(const UObject* WorldContextObject)
+{
+	if (!WorldContextObject)
+	{
+		return;
+	}
+
+	// 1. 모든 리스폰 트리거 초기화
+	TArray<AActor*> FoundTriggers;
+	UGameplayStatics::GetAllActorsOfClass(WorldContextObject, ARespawnTrigger::StaticClass(), FoundTriggers);
+	for (AActor* Actor : FoundTriggers)
+	{
+		if (ARespawnTrigger* Trigger = Cast<ARespawnTrigger>(Actor))
+		{
+			Trigger->ResetTrigger();
+		}
+	}
+
+	// 2. 모든 스폰 볼륨 초기화
+	TArray<AActor*> FoundVolumes;
+	UGameplayStatics::GetAllActorsOfClass(WorldContextObject, ABaseSpawnVolume::StaticClass(), FoundVolumes);
+	for (AActor* Actor : FoundVolumes)
+	{
+		if (ABaseSpawnVolume* Volume = Cast<ABaseSpawnVolume>(Actor))
+		{
+			Volume->ResetVolume();
 		}
 	}
 }

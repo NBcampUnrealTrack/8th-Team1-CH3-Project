@@ -23,6 +23,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Spawn")
 	ESpawnState GetSpawnState() const { return CurrentSpawnState; }
 
+	// 스폰 상태를 초기화하는 함수 추가 (리스폰 시 호출용)
+	UFUNCTION(BlueprintCallable, Category="Spawn")
+	void ResetVolume() { CurrentSpawnState = ESpawnState::Idle; }
+
 protected:
 	virtual void BeginPlay() override;
 

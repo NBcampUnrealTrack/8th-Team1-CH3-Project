@@ -13,11 +13,24 @@ class SPARTA_H_API UH_HUDWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	// NativeTick에서 하위 위젯들을 실시간 업데이트
-	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+	// Modified: NativeTick 제거 (성능 최적화)
 
 protected:
-	// Modified: 블루프린트에서 배치한 하위 위젯들을 코드로 연결
+	// 위젯 초기화 시 델리게이트 바인딩 수행
+	virtual void NativeConstruct() override;
+
+	// 각 스탯 및 무기 변경 시 호출될 콜백들
+	UFUNCTION()
+	void UpdateHealth(float Current, float Max);
+	UFUNCTION()
+	void UpdateStamina(float Current, float Max);
+	UFUNCTION()
+	void UpdateNoise(float Current, float Max);
+	UFUNCTION()
+	void UpdateWeaponUI(APlayerCharacter* Character);
+	UFUNCTION()
+	void UpdateMissionUI();
+
 	UPROPERTY(meta = (BindWidget))
 	class UH_StatBarWidget* HealthBar;
 
