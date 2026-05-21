@@ -32,6 +32,10 @@ protected:
 	UFUNCTION()
 	void UpdateMissionUI();
 
+	// Modified: 탄약 변경 이벤트를 처리하기 위한 핸들러 선언
+	UFUNCTION()
+	void HandleAmmoChanged(int32 CurrentAmmo, int32 MaxAmmo);
+
 	UPROPERTY(meta = (BindWidget))
 	class UH_StatBarWidget* HealthBar;
 

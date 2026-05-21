@@ -122,7 +122,8 @@ void APlayerCharacter::LoadCheckpoint(const FPlayerCheckpointData& CheckpointDat
 
 	// 2. 위치와 회전을 동시에 복구 (컨트롤러와 동일한 회전값 사용)
 	// ETeleportType::None을 사용하여 물리 엔진이 위치를 강제로 덮어쓰지 않도록 함
-	SetActorLocationAndRotation(CheckpointData.Location, CheckpointData.Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+	SetActorLocationAndRotation(CheckpointData.Location, CheckpointData.Rotation, false, nullptr,
+	                            ETeleportType::TeleportPhysics);
 
 	// 3. 다시 한번 컨트롤러와 액터를 동기화 (레이스 컨디션 방지)
 	if (Controller)
@@ -144,12 +145,12 @@ void APlayerCharacter::LoadCheckpoint(const FPlayerCheckpointData& CheckpointDat
 	}
 
 	// Modified: 리스폰 후 UI 스탯을 즉시 갱신하도록 강제 호출 (0으로 표시되는 문제 해결)
-	HandleHealthChanged(HealthComponent ? HealthComponent->GetCurrentHealth() : 0.f, 
-						HealthComponent ? HealthComponent->GetMaxHealth() : 100.f, nullptr);
-	HandleStaminaChanged(StaminaComponent ? StaminaComponent->GetCurrentStamina() : 100.f, 
-						 StaminaComponent ? StaminaComponent->GetMaxStamina() : 100.f);
-	HandleNoiseChanged(NoiseComponent ? NoiseComponent->GetCurrentNoise() : 0.f, 
-					   NoiseComponent ? NoiseComponent->GetMaxNoise() : 100.f);
+	HandleHealthChanged(HealthComponent ? HealthComponent->GetCurrentHealth() : 0.f,
+	                    HealthComponent ? HealthComponent->GetMaxHealth() : 100.f, nullptr);
+	HandleStaminaChanged(StaminaComponent ? StaminaComponent->GetCurrentStamina() : 100.f,
+	                     StaminaComponent ? StaminaComponent->GetMaxStamina() : 100.f);
+	HandleNoiseChanged(NoiseComponent ? NoiseComponent->GetCurrentNoise() : 0.f,
+	                   NoiseComponent ? NoiseComponent->GetMaxNoise() : 100.f);
 
 	Tags.Add(TEXT("Player"));
 }
@@ -790,12 +791,12 @@ void APlayerCharacter::OnFirePressed(const FInputActionValue& /*Value*/)
 	}
 	CurrentWeapon->Fire();
 
-	// 사격 시 즉시 최대 소음 발생
-	// Modified: 무기 종류에 따라 소음 수치 차등 적용 (권총 70, 소총 100) 및 AI 범위 동기화
+	// 사격 시 즉시 지정된 소음 발생
+	// Modified: 무기 종류에 따라 소음 수치 설정 (권총 70, 소총 100). 누적 방지를 위해 SetNoise 사용
 	if (NoiseComponent && Data && Data->WeaponType != EWeaponType::Knife)
 	{
 		float FireNoiseAmount = (Data->WeaponType == EWeaponType::Pistol) ? 70.0f : 100.0f;
-		NoiseComponent->AddNoise(FireNoiseAmount);
+		NoiseComponent->SetNoise(FireNoiseAmount);
 	}
 	bIsFiring = false;
 }

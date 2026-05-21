@@ -4,8 +4,9 @@
 #include "Components/ActorComponent.h"
 #include "AmmoComponent.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAmmoChanged, int32, CurrentAmmo, int32, MaxAmmo);
+
 // 무기 인스턴스에 부착해 탄약 수를 관리하는 컴포넌트.
-// 탄약이 있는 무기에만 부착하며, 근접/투척류는 사용하지 않음
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SPARTA_H_API UAmmoComponent : public UActorComponent
 {
@@ -13,6 +14,10 @@ class SPARTA_H_API UAmmoComponent : public UActorComponent
 
 public:
 	UAmmoComponent();
+
+	// Modified: 탄약 변경 통보를 위한 델리게이트 멤버 추가
+	UPROPERTY(BlueprintAssignable, Category = "Ammo|Events")
+	FOnAmmoChanged OnAmmoChanged;
 
 	// 무기 장착 시 DA의 MaxAmmoCount를 받아 초기 세팅
 	UFUNCTION(BlueprintCallable, Category = "Ammo")
