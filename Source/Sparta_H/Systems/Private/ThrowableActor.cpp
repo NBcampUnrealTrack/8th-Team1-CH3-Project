@@ -103,6 +103,10 @@ void AThrowableActor::HandleOnHit(UPrimitiveComponent* HitComponent, AActor* Oth
 	}
 	else if (ThrowableType == ECombatWeaponType::Rock)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[Rock] HandleOnHit 호출 | OtherActor=%s | Instigator=%s"),
+			OtherActor ? *OtherActor->GetName() : TEXT("NULL"),
+			GetInstigator() ? *GetInstigator()->GetName() : TEXT("NULL"));
+
 		if (IsValid(OtherActor) && OtherActor->ActorHasTag("Enemy"))
 		{
 			UGameplayStatics::ApplyDamage(
@@ -118,6 +122,10 @@ void AThrowableActor::HandleOnHit(UPrimitiveComponent* HitComponent, AActor* Oth
 			RockNoiseRange,
 			FName("Rock")
 		);
+
+		UE_LOG(LogTemp, Warning, TEXT("[Rock] ReportNoiseEvent 완료 | 위치=%s | 범위=%.0f | Instigator=%s"),
+			*GetActorLocation().ToString(), RockNoiseRange,
+			GetInstigator() ? *GetInstigator()->GetName() : TEXT("NULL"));
 	}
 
 	Destroy();

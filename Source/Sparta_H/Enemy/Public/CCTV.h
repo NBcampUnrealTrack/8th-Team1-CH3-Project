@@ -48,7 +48,4 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|CCTV", meta = (AllowPrivateAccess = "true"))
 	float ShareRange = 3000.0f;
 
-	// 파괴 시 스폰할 부서진 CCTV 스태틱 메시 (에디터에서 SM_CCTV_Broken 할당)
-	UPROPERTY(EditDefaultsOnly, Category = "AI|CCTV")
-	UStaticMesh* BrokenCCTVMesh;
 };
