@@ -5,6 +5,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Level/Public/MapBGMPlayer.h"
 
 AElevator::AElevator()
 {
@@ -173,6 +174,7 @@ void AElevator::Interact_Implementation(APlayerCharacter* Interactor)
     {
         TargetDoorAlpha = 1.0f;
         CurrentState = EElevatorState::Opening;
+        if (DoorOpenSound) UGameplayStatics::PlaySoundAtLocation(this, DoorOpenSound, GetActorLocation()); // 상호작용 후 문 열림 효과음 재생
     }
     else if (CurrentState == EElevatorState::Open && bIsPlayerInInner)
     {
@@ -196,6 +198,14 @@ void AElevator::ExecuteTeleport()
 
     FTimerHandle TimerHandle;
     GetWorldTimerManager().SetTimer(TimerHandle, this, &AElevator::FinishMovement, TravelDelay, false);
+
+    TArray<AActor*> FoundPlayers;
+    UGameplayStatics::GetAllActorsOfClass(this, AMapBGMPlayer::StaticClass(), FoundPlayers); // 맵의 BGM 컨트롤러를 찾아 페이드아웃 실행
+    if (FoundPlayers.Num() > 0)
+    {
+        AMapBGMPlayer* BGMPlayer = Cast<AMapBGMPlayer>(FoundPlayers[0]);
+        if (BGMPlayer) BGMPlayer->FadeOutCurrentBGM(TravelDelay); 
+    }
 }
 
 void AElevator::FinishMovement()
@@ -206,6 +216,17 @@ void AElevator::FinishMovement()
         if (DestinationElevator->ArrivalSound) 
             UGameplayStatics::PlaySoundAtLocation(this, DestinationElevator->ArrivalSound, DestinationElevator->GetActorLocation(), FRotator::ZeroRotator, DestinationElevator->ArrivalVolume);
         DestinationElevator->OpenDoorsAfterArrival();
+
+        TArray<AActor*> FoundPlayers;
+        UGameplayStatics::GetAllActorsOfClass(this, AMapBGMPlayer::StaticClass(), FoundPlayers); // 목적지에 도달 시 새 BGM 페이드인 실행
+        if (FoundPlayers.Num() > 0)
+        {
+            AMapBGMPlayer* BGMPlayer = Cast<AMapBGMPlayer>(FoundPlayers[0]);
+            if (BGMPlayer && DestinationElevator->StageDestinationBGM) 
+            {
+                BGMPlayer->FadeInNewBGM(DestinationElevator->StageDestinationBGM, DestinationElevator->BGMFadeDuration); 
+            }
+        }
     }
     CurrentState = EElevatorState::Idle;
 }
@@ -214,6 +235,7 @@ void AElevator::OpenDoorsAfterArrival()
 {
     TargetDoorAlpha = 1.0f;
     CurrentState = EElevatorState::Opening;
+    if (DoorOpenSound) UGameplayStatics::PlaySoundAtLocation(this, DoorOpenSound, GetActorLocation()); // 도착 후 문 열림 효과음 재생
 }
 
 bool AElevator::CanInteract_Implementation(APlayerCharacter* Interactor) const { return true; }
