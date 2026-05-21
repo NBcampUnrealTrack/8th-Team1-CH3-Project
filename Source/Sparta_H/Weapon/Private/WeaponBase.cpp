@@ -6,6 +6,8 @@
 #include "Animation/AnimMontage.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraComponent.h"
 #include "Camera/PlayerCameraManager.h"
 #include "GameFramework/PlayerController.h"
 #include "CombatManager.h"
@@ -342,7 +344,8 @@ void AWeaponBase::ReleaseThrow()
 	const float ChargedAlpha = CurrentChargeAlpha;
 	CurrentChargeAlpha = 0.0f;
 	SetActorTickEnabled(false);
-
+	ClearTrajectoryComponents();
+	
 	if (WeaponData == nullptr || WeaponData->ThrowableClass == nullptr)
 	{
 		return;
@@ -404,6 +407,7 @@ void AWeaponBase::CancelThrowCharge()
 	bIsChargingThrow = false;
 	CurrentChargeAlpha = 0.0f;
 	SetActorTickEnabled(false);
+	ClearTrajectoryComponents();
 }
 
 void AWeaponBase::OnThrowCooldownEnded()
@@ -413,16 +417,10 @@ void AWeaponBase::OnThrowCooldownEnded()
 
 void AWeaponBase::UpdateTrajectoryPreview()
 {
-	if (WeaponData == nullptr)
-	{
-		return;
-	}
+	if (WeaponData == nullptr) return;
 
 	FVector AimStart, Direction;
-	if (!GetAimStartAndDirection(AimStart, Direction))
-	{
-		return;
-	}
+	if (!GetAimStartAndDirection(AimStart, Direction)) return;
 
 	const FVector StartLocation = AimStart + Direction * 100.0f;
 	const float Speed = FMath::Lerp(WeaponData->MinThrowSpeed, WeaponData->MaxThrowSpeed, CurrentChargeAlpha);
@@ -446,19 +444,84 @@ void AWeaponBase::UpdateTrajectoryPreview()
 	FPredictProjectilePathResult PredictResult;
 	UGameplayStatics::PredictProjectilePath(this, PredictParams, PredictResult);
 
-	// PathData 의 인접 두 점 사이를 라인으로 잇기. 다음 틱에 다시 그릴 거라 LifeTime=0
-	for (int32 i = 0; i + 1 < PredictResult.PathData.Num(); ++i)
+	if (WeaponData->TrajectoryEffect)
 	{
-		DrawDebugLine(
-			GetWorld(),
-			PredictResult.PathData[i].Location,
-			PredictResult.PathData[i + 1].Location,
-			FColor::Yellow,
-			false,
-			0.0f,
-			0,
-			2.0f);
+		// 경로 점을 일정한 간격으로 샘플링 (최대 20개 도트)
+		const int32 TotalPoints = PredictResult.PathData.Num();
+		const int32 Step = FMath::Max(1, TotalPoints / 20);
+		
+		TArray<FVector> SamplePoints;
+		for (int32 i = 0; i < TotalPoints; i += Step)
+		{
+			SamplePoints.Add(PredictResult.PathData[i].Location);
+		}
+		
+		// 풀 부족하면 추가 스폰
+		while (TrajectoriesComponents.Num() < SamplePoints.Num())
+		{
+			UNiagaraComponent* Comp = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+				GetWorld(),
+				WeaponData->TrajectoryEffect,
+				FVector::ZeroVector,
+				FRotator::ZeroRotator,
+				FVector::OneVector,
+				false,
+				false);
+			TrajectoriesComponents.Add(Comp);
+		}
+
+		// 필요한 만큼 위치 갱신 + 활성화
+		for (int32 i = 0; i < SamplePoints.Num(); ++i)
+		{
+			if (IsValid(TrajectoriesComponents[i]))
+			{
+				TrajectoriesComponents[i]->SetWorldLocation(SamplePoints[i]);
+				TrajectoriesComponents[i]->SetVisibility(true);
+				if (!TrajectoriesComponents[i]->IsActive())
+				{
+					TrajectoriesComponents[i]->Activate();
+				}
+			}
+		}
+		
+		// 나머지 풀  숨기기
+		for (int32 i = SamplePoints.Num(); i < TrajectoriesComponents.Num(); ++i)
+		{
+			if (IsValid(TrajectoriesComponents[i]))
+			{
+				TrajectoriesComponents[i]->SetVisibility(false);
+			}
+		}
 	}
+	else // 나이아가라 없으면 디버그 라인
+	{
+		// PathData 의 인접 두 점 사이를 라인으로 잇기. 다음 틱에 다시 그릴 거라 LifeTime=0
+		for (int32 i = 0; i + 1 < PredictResult.PathData.Num(); ++i)
+		{
+			DrawDebugLine(
+				GetWorld(),
+				PredictResult.PathData[i].Location,
+				PredictResult.PathData[i + 1].Location,
+				FColor::Yellow,
+				false,
+				0.0f,
+				0,
+				2.0f);
+		}
+	}
+}
+
+void AWeaponBase::ClearTrajectoryComponents()
+{
+	for (UNiagaraComponent* Comp : TrajectoriesComponents)
+	{
+		if (IsValid(Comp))
+		{
+			Comp->DeactivateImmediate();
+			Comp->DestroyComponent();
+		}
+	}
+	TrajectoriesComponents.Empty();
 }
 
 float AWeaponBase::GetThrowCooldownRemaining() const

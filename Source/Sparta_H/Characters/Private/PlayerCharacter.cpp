@@ -268,8 +268,18 @@ void APlayerCharacter::Tick(float DeltaTime)
 	{
 		FVector HeadRelativeLoc = GetMesh()->GetSocketTransform(TEXT("head"), RTS_Actor).GetLocation();
 
-		float CurrentRootY = CameraRoot->GetRelativeLocation().Y;
+		// 1. [기존] 사격 시 전진 Offset 보간
+		static float CurrentFireForwardOffset = 0.0f;
+		float TargetFireForwardOffset = bIsFiring ? 15.0f : 0.0f; 
+		float FireForwardSpeed = 10.0f; 
+		CurrentFireForwardOffset = FMath::FInterpTo(CurrentFireForwardOffset, TargetFireForwardOffset, DeltaTime, FireForwardSpeed);
 
+		// 2. [수정] 기울이기(Lean) 보간 로직을 위로 올림
+		static float CurrentLeanY = 0.0f;
+		float TargetY = LeanAmount * MaxLeanOffset;
+		CurrentLeanY = FMath::FInterpTo(CurrentLeanY, TargetY, DeltaTime, LeanSpeed);
+
+		// 3. [기존] 상하 흔들림(Bobbing) 및 뼈대 위치 계산
 		static float TimeAccumulator = 0.0f;
 		TimeAccumulator += DeltaTime;
 
@@ -277,22 +287,18 @@ void APlayerCharacter::Tick(float DeltaTime)
 		float MovementRange = 2.0f;
 
 		float ZOffset = FMath::Sin(TimeAccumulator * MovementSpeed) * MovementRange;
-		float TargetZ = HeadRelativeLoc.Z + ZOffset;
+		float TargetZ = HeadRelativeLoc.Z + ZOffset+ 10.f;
 
-		FVector TargetCameraLoc = FVector(HeadRelativeLoc.X + 10.0f, CurrentRootY, TargetZ);
+		// 4. [핵심 수정] X, Z축뿐만 아니라 Y축(기울이기)까지 포함하여 최종 목표 위치를 단 하나의 FVector로 완성합니다.
+		FVector FinalCameraRootLoc = FVector(
+			HeadRelativeLoc.X + 10.0f + CurrentFireForwardOffset, // X축: 기본 오프셋 + 사격 전진 값
+			CurrentLeanY,                                         // Y축: [수정] 기울이기(Lean) 보간 값 직접 대입
+			TargetZ                                               // Z축: 머리 뼈 위치 + 상하 흔들림
+		);
 
-		// 카메라 루트 위치 적용
-		CameraRoot->SetRelativeLocation(TargetCameraLoc);
-
-		// 기울이기(Lean) 효과는 CameraRoot 밑에 있는 Camera 자체의 Y축을 움직여서 구현합니다.
-		if (Camera)
-		{
-			static float CurrentLeanY = 0.0f;
-			float TargetY = LeanAmount * MaxLeanOffset;
-			CurrentLeanY = FMath::FInterpTo(CurrentLeanY, TargetY, DeltaTime, LeanSpeed);
-
-			Camera->SetRelativeLocation(FVector(0.0f, CurrentLeanY, 0.0f));
-		}
+		// 5. 모든 연산이 끝난 최종 위치를 CameraRoot에 딱 한 번만 적용합니다.
+		CameraRoot->SetRelativeLocation(FinalCameraRootLoc);
+		
 	}
 }
 
@@ -763,6 +769,8 @@ void APlayerCharacter::OnEquipPreviousPressed(const FInputActionValue& /*Value*/
 
 void APlayerCharacter::OnFirePressed(const FInputActionValue& /*Value*/)
 {
+	UpperBodyBlendWeight = 1.0f;
+	
 	if (bIsRolling || bIsDead)
 	{
 		return; // 죽었거나 구르기 상태면 사격 차단
@@ -777,7 +785,6 @@ void APlayerCharacter::OnFirePressed(const FInputActionValue& /*Value*/)
 	{
 		return;
 	}
-	bIsFiring = true;
 
 	UWeaponDataAsset* Data = CurrentWeapon->GetWeaponData();
 
@@ -798,7 +805,6 @@ void APlayerCharacter::OnFirePressed(const FInputActionValue& /*Value*/)
 		float FireNoiseAmount = (Data->WeaponType == EWeaponType::Pistol) ? 70.0f : 100.0f;
 		NoiseComponent->SetNoise(FireNoiseAmount);
 	}
-	bIsFiring = false;
 }
 
 void APlayerCharacter::OnReloadPressed(const FInputActionValue& /*Value*/)
@@ -841,6 +847,7 @@ void APlayerCharacter::OnFireReleased(const FInputActionValue& /*Value*/)
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && ThrowableMontage && !bIsRolling && !bIsDead)
 	{
+		bIsFiring = true;
 		AnimInstance->Montage_JumpToSection(TEXT("Throw"), ThrowableMontage);
 	}
 	
@@ -858,6 +865,12 @@ void APlayerCharacter::OnFireReleased(const FInputActionValue& /*Value*/)
 void APlayerCharacter::ExecuteThrow()
 {
 	CurrentWeapon->ReleaseThrow();
+	bIsFiring = false;
+	
+	if (CurrentWeapon == ThrowableWeapon)
+	{
+		EquipWeaponByIndex(PreviousWeaponIndex);
+	}
 }
 
 void APlayerCharacter::OnThrowableEquipPressed(const FInputActionValue& /*Value*/)
