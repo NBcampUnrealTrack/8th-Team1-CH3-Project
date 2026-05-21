@@ -13,7 +13,8 @@ class SPARTA_H_API UH_HUDWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	// Modified: NativeTick 제거 (성능 최적화)
+	// Modified: 타이머 실시간 업데이트를 위해 NativeTick 복구 (최소한의 로직만 수행)
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
 protected:
 	// 위젯 초기화 시 델리게이트 바인딩 수행

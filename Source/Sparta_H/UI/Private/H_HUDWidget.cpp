@@ -94,7 +94,22 @@ void UH_HUDWidget::UpdateMissionUI()
 	}
 }
 
-// Removed: NativeTick을 통한 매 프레임 업데이트 로직 제거 (성능 개선)
+// Modified: 타이머 위젯의 실시간 카운트다운 표시를 위해 NativeTick 복구
+void UH_HUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+
+	if (TimerUI)
+	{
+		if (APlayerCharacter* Character = GetOwningCharacter())
+		{
+			float RemainingTime = Character->GetRemainingMissionTime();
+			TimerUI->UpdateTimer(RemainingTime);
+		}
+	}
+}
+
+// Removed: 불필요한 전체 업데이트 로직 제거 (델리게이트 방식으로 대체됨)
 /*
 void UH_HUDWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
