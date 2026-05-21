@@ -80,6 +80,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "AI|Animation")
 	UAnimMontage* FireMontage;
 
+	UPROPERTY(EditDefaultsOnly, Category = "AI|Sound")
+	USoundBase* FireSound;
+
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
 	UAIPerceptionComponent* AIPerceptionComp;

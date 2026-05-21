@@ -854,6 +854,10 @@ bool AEnemyCharacter::FireAtTarget(AActor* TargetActor)
                                                     FVector::ZeroVector, FRotator::ZeroRotator,
                                                     EAttachLocation::SnapToTarget, true);
     }
+    if (FireSound)
+    {
+       UGameplayStatics::PlaySoundAtLocation(this, FireSound, GetActorLocation());
+    }
 
     float ShootProb = FMath::FRand();
 	// 30퍼센트->70퍼센트로 상향, 대미지 15->9 하향
