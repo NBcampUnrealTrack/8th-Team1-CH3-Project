@@ -167,8 +167,8 @@ void ACCTV::AlertNearbyEnemies(AActor* TargetPlayer)
         if (Enemy->GetCurrentAlertLevel() < EAlertLevel::Combat)
         {
             Enemy->OnAlertLevelChanged(EAlertLevel::Combat);
-            BB->SetValueAsObject(TEXT("TargetActor"), TargetPlayer);
-            BB->SetValueAsVector(TEXT("LastKnownLocation"), TargetPlayer->GetActorLocation());
+            BB->SetValueAsObject(BBKeys::TARGET_ACTOR, TargetPlayer);
+            BB->SetValueAsVector(BBKeys::LAST_KNOWN_LOCATION, TargetPlayer->GetActorLocation());
 
             UE_LOG(LogTemp, Warning, TEXT("CCTV 경보: [%s] → Combat 전환"), *Enemy->GetName());
         }
