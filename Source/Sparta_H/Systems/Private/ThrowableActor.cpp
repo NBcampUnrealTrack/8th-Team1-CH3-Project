@@ -6,6 +6,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
+#include "NiagaraComponent.h"
 
 AThrowableActor::AThrowableActor()
 {
@@ -38,9 +39,22 @@ void AThrowableActor::HandleOnHit(UPrimitiveComponent* HitComponent, AActor* Oth
 		// 폭발 이펙트 재생
 		if (ExplosionEffect)
 		{
-			UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+			UNiagaraComponent* NiagaraComp = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
 				GetWorld(), ExplosionEffect, ExplosionLocation,
 				FRotator::ZeroRotator, FVector::OneVector, true, true);
+
+			if (NiagaraComp)
+			{
+				TWeakObjectPtr<UNiagaraComponent> WeakComp(NiagaraComp);
+				FTimerHandle EffectTimerHandle;
+				GetWorld()->GetTimerManager().SetTimer(EffectTimerHandle, FTimerDelegate::CreateLambda([WeakComp]()
+				{
+					if (WeakComp.IsValid())
+					{
+						WeakComp->DeactivateImmediate();
+					}
+				}), 3.0f, false);
+			}
 		}
 		if (ExplosionSound)
 		{
