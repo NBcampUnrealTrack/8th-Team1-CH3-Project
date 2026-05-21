@@ -90,7 +90,7 @@ FPlayerCheckpointData APlayerCharacter::SaveCheckpoint()
 		Data.Rotation = GetActorRotation();
 	}
 	
-	// Modified: 처치 수 및 경과 시간 저장
+	// 처치 수 및 경과 시간 저장
 	Data.KillCount = KillCount;
 	Data.ElapsedTime = GetWorld()->GetTimeSeconds() - MissionStartTime;
 	
@@ -99,31 +99,31 @@ FPlayerCheckpointData APlayerCharacter::SaveCheckpoint()
 
 void APlayerCharacter::LoadCheckpoint(const FPlayerCheckpointData& CheckpointData)
 {
+	//상태 복구 전 사망 플래그 및 물리 상태 초기화 (이동 및 회전 버그 방지)
+	bIsDead = false;
+	if (GetCharacterMovement())
+	{
+		GetCharacterMovement()->StopMovementImmediately();
+	}
+
 	CurrentMissionIndex = CheckpointData.MissionIndex;
 	bHasRifle = CheckpointData.bHasRifle;
 
-	// 위치 복구
-	SetActorLocation(CheckpointData.Location, false, nullptr, ETeleportType::TeleportPhysics);
-
-	// Modified: 컨트롤러의 회전값을 설정해야 시점이 올바르게 복구됨
+	// 위치와 회전을 동시에 복구하며 텔레포트 (180도 뒤를 보는 현상 방지)
+	SetActorLocationAndRotation(CheckpointData.Location, CheckpointData.Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+	
 	if (Controller)
 	{
 		Controller->SetControlRotation(CheckpointData.Rotation);
 	}
-	else
-	{
-		SetActorRotation(CheckpointData.Rotation, ETeleportType::TeleportPhysics);
-	}
-
-	// Modified: 처치 수 및 시작 시간 복구 (현재 시간에서 경과 시간을 뺌)
+	
 	KillCount = CheckpointData.KillCount;
 	MissionStartTime = GetWorld()->GetTimeSeconds() - CheckpointData.ElapsedTime;
 
 	// 미션 데이터 동기화 (UI 및 내부 상태 갱신)
 	UpdateMissionObjective();
 
-	// Modified: 사망 상태 해제 및 체력 최대치로 회복
-	bIsDead = false;
+	// 체력 최대치로 회복
 	if (HealthComponent)
 	{
 		HealthComponent->SetHealth(HealthComponent->GetMaxHealth());
@@ -136,6 +136,21 @@ void APlayerCharacter::LoadCheckpoint(const FPlayerCheckpointData& CheckpointDat
 void APlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// 각 컴포넌트의 델리게이트에 UI 통보용 함수 연결
+	if (HealthComponent)
+	{
+		HealthComponent->OnDeath.AddDynamic(this, &APlayerCharacter::OnDeath);
+		HealthComponent->OnHealthChanged.AddDynamic(this, &APlayerCharacter::HandleHealthChanged);
+	}
+	if (StaminaComponent)
+	{
+		StaminaComponent->OnStaminaChanged.AddDynamic(this, &APlayerCharacter::HandleStaminaChanged);
+	}
+	if (NoiseComponent)
+	{
+		NoiseComponent->OnNoiseChanged.AddDynamic(this, &APlayerCharacter::HandleNoiseChanged);
+	}
 
 	// 미션 시작 시간 기록
 	MissionStartTime = GetWorld()->GetTimeSeconds();
@@ -623,11 +638,33 @@ void APlayerCharacter::EquipWeaponByIndex(int32 NewWeaponIndex)
 
 	// 교체 몽타주 도입 시 이 라인을 종료 콜백으로 옮길 것
 	CurrentWeapon->SetWeaponState(EWeaponState::Idle);
+
+	// Modified: 무기 교체 통보 (UI 업데이트용)
+	OnWeaponChanged.Broadcast(this);
 }
 
 void APlayerCharacter::EquipNextWeapon()
 {
 	CycleWeapon(+1);
+}
+
+// Modified: UI 성능 최적화를 위한 스탯 변경 핸들러 구현체 추가
+void APlayerCharacter::HandleHealthChanged(float CurrentHealth, float MaxHealth, const UDamageType* DamageType)
+{
+	// UI에 전용 체력 변경 통보
+	OnHealthChangedUI.Broadcast(CurrentHealth, MaxHealth);
+}
+
+void APlayerCharacter::HandleStaminaChanged(float CurrentStamina, float MaxStamina)
+{
+	// UI에 전용 스태미나 변경 통보
+	OnStaminaChangedUI.Broadcast(CurrentStamina, MaxStamina);
+}
+
+void APlayerCharacter::HandleNoiseChanged(float CurrentNoise, float MaxNoise)
+{
+	// UI에 전용 소음 변경 통보
+	OnNoiseChangedUI.Broadcast(CurrentNoise, MaxNoise);
 }
 
 void APlayerCharacter::EquipPreviousWeapon()

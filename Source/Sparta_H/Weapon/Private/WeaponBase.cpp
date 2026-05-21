@@ -55,6 +55,34 @@ void AWeaponBase::Initialize(UWeaponDataAsset* InWeaponData)
 	{
 		AmmoComponent->InitializeAmmo(InWeaponData->MaxAmmoCount);
 	}
+
+	// Modified: 데이터 초기화 후 에셋 프리로드 수행
+	PreloadAssets();
+}
+
+// Modified: 소유자 캐싱 및 초기화 로직 구현
+void AWeaponBase::BeginPlay()
+{
+	Super::BeginPlay();
+
+	OwnerCharacter = Cast<APlayerCharacter>(GetOwner());
+	
+	// 초기화 시점에 데이터가 이미 있다면 프리로드 (Initialize가 먼저 호출될 경우 대비)
+	if (WeaponData)
+	{
+		PreloadAssets();
+	}
+}
+
+// Modified: 게임 플레이 중 끊김 방지를 위한 에셋 프리로드 구현
+void AWeaponBase::PreloadAssets()
+{
+	// 소프트 포인터들을 미리 로드하여 메모리에 올려둠
+	ReloadMontage1P.LoadSynchronous();
+	FireMontage1P.LoadSynchronous();
+	FireSound.LoadSynchronous();
+	MuzzleFlashEffect.LoadSynchronous();
+	ImpactVFX.LoadSynchronous();
 }
 
 void AWeaponBase::Fire()
@@ -81,7 +109,7 @@ void AWeaponBase::Fire()
 	{
 		if (AmmoComponent == nullptr || !AmmoComponent->ConsumeAmmo())
 		{
-			// 탄약 소진 - 자동 재장전 옵션이면 Reload 시작, 아니면 차단만 -> 자동 재장전으로 수정
+			// 탄약 소진 - 자동 재장전 옵면 Reload 시작, 아니면 차단만 -> 자동 재장전으로 수정
 			Reload();
 			return;
 		}
@@ -89,35 +117,42 @@ void AWeaponBase::Fire()
 
 	CurrentWeaponState = EWeaponState::Firing;
 	bCanFire = false;
-	APlayerCharacter* Character = Cast<APlayerCharacter>(GetOwner());
-	if (Character != nullptr)
+	
+	// Modified: 캐싱된 소유자 사용 (Cast 비용 절감)
+	if (OwnerCharacter != nullptr)
 	{
-		if (USkeletalMeshComponent* CharacterMesh = Character->GetMesh())
+		if (USkeletalMeshComponent* CharacterMesh = OwnerCharacter->GetMesh())
 		{
 			if (UAnimInstance* AnimInstance = CharacterMesh->GetAnimInstance())
 			{
-				if (FireMontage1P)
+				// Modified: Get()을 사용하여 이미 로드된 에셋 사용
+				if (UAnimMontage* FireMontage = FireMontage1P.Get())
 				{
-					AnimInstance->Montage_Play(FireMontage1P.Get(), 1.0f);
+					AnimInstance->Montage_Play(FireMontage, 1.0f);
 				}
 			}
 		}
 		// 리코일 틱 - 몽타주와 같은 프레임
-		Character->ApplyRecoil(WeaponData->RecoilData);
+		OwnerCharacter->ApplyRecoil(WeaponData->RecoilData);
 	}
 
 	FVector AimStart, AimDirection;
-	if (UCombatManager* CombatMgr = Character->GetCombatManager();
-			CombatMgr != nullptr && GetAimStartAndDirection(AimStart, AimDirection))
+	if (OwnerCharacter)
 	{
-		const ECombatWeaponType CombatType = ToCombatWeaponType(WeaponData->WeaponType);
-		CombatMgr->OnFire(AimStart, AimDirection, CombatType, WeaponData->Damage,
-						  WeaponData->bShouldTriggerAIAggro,
-						  ImpactVFX.LoadSynchronous());
+		if (UCombatManager* CombatMgr = OwnerCharacter->GetCombatManager();
+				CombatMgr != nullptr && GetAimStartAndDirection(AimStart, AimDirection))
+		{
+			const ECombatWeaponType CombatType = ToCombatWeaponType(WeaponData->WeaponType);
+			// Modified: Get() 사용하여 즉시 접근 (동기 로딩 제거), BaseDamage -> Damage로 수정
+			CombatMgr->OnFire(AimStart, AimDirection, CombatType, WeaponData->Damage,
+							  WeaponData->bShouldTriggerAIAggro,
+							  ImpactVFX.Get());
+		}
 	}
 
 	// 총구 화염 — 무기 메시 소켓에 부착해 스폰. 무기가 Hidden 상태로 토글돼도 부모 메시 따라 자연스럽게 사라짐
-	if (UNiagaraSystem* MuzzleFX = MuzzleFlashEffect.LoadSynchronous())
+	// Modified: Get() 사용
+	if (UNiagaraSystem* MuzzleFX = MuzzleFlashEffect.Get())
 	{
 		UNiagaraFunctionLibrary::SpawnSystemAttached(
 			MuzzleFX,
@@ -131,7 +166,8 @@ void AWeaponBase::Fire()
 	}
 
 	// 발사 사운드 - 총구 소켓에 부착해 재생
-	if (USoundBase* Sound = FireSound.LoadSynchronous())
+	// Modified: Get() 사용
+	if (USoundBase* Sound = FireSound.Get())
 	{
 		UGameplayStatics::SpawnSoundAttached(
 			Sound,
@@ -180,13 +216,15 @@ void AWeaponBase::Reload()
 	bCanFire = false;
 
 	// 재장전 몽타주 재생 — 풀바디 1인칭 구조라 ACharacter::GetMesh()를 사용
-	if (APlayerCharacter* Character = Cast<APlayerCharacter>(GetOwner()))
+	// Modified: 캐싱된 소유자 및 미리 로드된 몽타주 사용
+	if (OwnerCharacter != nullptr)
 	{
-		if (USkeletalMeshComponent* CharacterMesh = Character->GetMesh())
+		if (USkeletalMeshComponent* CharacterMesh = OwnerCharacter->GetMesh())
 		{
 			if (UAnimInstance* AnimInstance = CharacterMesh->GetAnimInstance())
 			{
-				if (UAnimMontage* Montage = ReloadMontage1P.LoadSynchronous())
+				// Modified: Get()을 사용하여 런타임 동기 로딩 제거
+				if (UAnimMontage* Montage = ReloadMontage1P.Get())
 				{
 					AnimInstance->Montage_Play(Montage, 1.0f);
 				}
@@ -202,10 +240,10 @@ void AWeaponBase::Reload()
 
 bool AWeaponBase::GetAimStartAndDirection(FVector& OutStart, FVector& OutDirection) const
 {
-	const APlayerCharacter* Character = Cast<APlayerCharacter>(GetOwner());
-	if (Character == nullptr) return false;
+	// Modified: 캐싱된 소유자 사용
+	if (OwnerCharacter == nullptr) return false;
 
-	const APlayerController* PC = Cast<APlayerController>(Character->GetController());
+	const APlayerController* PC = Cast<APlayerController>(OwnerCharacter->GetController());
 	if (PC == nullptr || PC->PlayerCameraManager == nullptr) return false;
 
 	OutStart = PC->PlayerCameraManager->GetCameraLocation();

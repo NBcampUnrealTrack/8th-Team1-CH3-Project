@@ -15,15 +15,18 @@ class SPARTA_H_API ARespawnTrigger : public AActor
 public:	
 	ARespawnTrigger();
 
-	// 트리거 상태 초기화 (다시하기 시 호출)
+	// Modified: 트리거 상태 초기화 및 중첩 확인을 위한 함수 선언 (구현부에서 상세 로직 처리)
 	UFUNCTION(BlueprintCallable, Category = "Trigger")
-	void ResetTrigger() { bHasTriggered = false; }
+	void ResetTrigger();
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Trigger|Settings")
 	bool bHasTriggered = false;
 
 protected:
 	virtual void BeginPlay() override;
+
+	// Modified: 실제 스폰 실행 로직을 별도 함수로 분리
+	void ExecuteSpawn();
 	
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category="Trigger|Components")
 	TObjectPtr<UBoxComponent> TriggerBox;

@@ -42,13 +42,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UI|Stat")
 	void SetBarColor(FLinearColor Color);
 
-protected:
 	// Modified: EHStatType 사용
 	void UpdateBarColor(float CurrentValue, float MaxValue, EHStatType StatType);
 
+protected:
 	UPROPERTY(meta = (BindWidget))
 	class UProgressBar* StatProgressBar;
-	
+
 	// 수치 전용 텍스트 (예: "100 / 100")
 	UPROPERTY(meta = (BindWidgetOptional))
 	class UTextBlock* StatText;
