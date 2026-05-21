@@ -30,11 +30,11 @@ void ABaseInteractableActor::BeginPlay()
 {
     Super::BeginPlay();
 
-    // 겹침 이벤트 바인딩
+    // Modified: 중복 바인딩 방지를 위해 AddUniqueDynamic 사용 (상속 구조에서 Super::BeginPlay 호출 시 안전 확보)
     if (SensorBox)
     {
-        SensorBox->OnComponentBeginOverlap.AddDynamic(this, &ABaseInteractableActor::OnSensorOverlapBegin);
-        SensorBox->OnComponentEndOverlap.AddDynamic(this, &ABaseInteractableActor::OnSensorOverlapEnd);
+        SensorBox->OnComponentBeginOverlap.AddUniqueDynamic(this, &ABaseInteractableActor::OnSensorOverlapBegin);
+        SensorBox->OnComponentEndOverlap.AddUniqueDynamic(this, &ABaseInteractableActor::OnSensorOverlapEnd);
     }
 
     // 초기 머티리얼 세팅

@@ -164,7 +164,7 @@ void UH_GameFunctionLibrary::ClearAllEnemies(const UObject* WorldContextObject)
 	}
 }
 
-// Modified: 모든 스폰 트리거와 볼륨 상태를 초기화하는 구현체 추가
+// Modified: 모든 스폰 트리거와 볼륨 상태를 초기화하는 구현체 수정 (순서 보정: 볼륨 -> 트리거)
 void UH_GameFunctionLibrary::ResetAllSpawnSystems(const UObject* WorldContextObject)
 {
 	if (!WorldContextObject)
@@ -172,18 +172,7 @@ void UH_GameFunctionLibrary::ResetAllSpawnSystems(const UObject* WorldContextObj
 		return;
 	}
 
-	// 1. 모든 리스폰 트리거 초기화
-	TArray<AActor*> FoundTriggers;
-	UGameplayStatics::GetAllActorsOfClass(WorldContextObject, ARespawnTrigger::StaticClass(), FoundTriggers);
-	for (AActor* Actor : FoundTriggers)
-	{
-		if (ARespawnTrigger* Trigger = Cast<ARespawnTrigger>(Actor))
-		{
-			Trigger->ResetTrigger();
-		}
-	}
-
-	// 2. 모든 스폰 볼륨 초기화
+	// 1. 모든 스폰 볼륨을 먼저 Idle 상태로 초기화
 	TArray<AActor*> FoundVolumes;
 	UGameplayStatics::GetAllActorsOfClass(WorldContextObject, ABaseSpawnVolume::StaticClass(), FoundVolumes);
 	for (AActor* Actor : FoundVolumes)
@@ -191,6 +180,17 @@ void UH_GameFunctionLibrary::ResetAllSpawnSystems(const UObject* WorldContextObj
 		if (ABaseSpawnVolume* Volume = Cast<ABaseSpawnVolume>(Actor))
 		{
 			Volume->ResetVolume();
+		}
+	}
+
+	// 2. 그 다음 리스폰 트리거를 초기화 (플레이어가 안에 있다면 여기서 위에서 초기화된 볼륨을 다시 Active로 만듦)
+	TArray<AActor*> FoundTriggers;
+	UGameplayStatics::GetAllActorsOfClass(WorldContextObject, ARespawnTrigger::StaticClass(), FoundTriggers);
+	for (AActor* Actor : FoundTriggers)
+	{
+		if (ARespawnTrigger* Trigger = Cast<ARespawnTrigger>(Actor))
+		{
+			Trigger->ResetTrigger();
 		}
 	}
 }

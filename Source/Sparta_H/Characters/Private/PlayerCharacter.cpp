@@ -26,17 +26,17 @@
 APlayerCharacter::APlayerCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
-	
+
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->SetupAttachment(RootComponent);
-	
+
 	CameraRoot = CreateDefaultSubobject<USceneComponent>(TEXT("CameraRoot"));
 	CameraRoot->SetupAttachment(RootComponent);
-	
+
 	// 카메라를 카메라 루트에 부착
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(CameraRoot);
-	
+
 	// 1인칭 FPS 필수: 마우스 움직임에 따라 카메라 회전
 	Camera->bUsePawnControlRotation = true;
 
@@ -44,7 +44,7 @@ APlayerCharacter::APlayerCharacter()
 	bUseControllerRotationYaw = true;
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
-	
+
 	GetMesh()->SetupAttachment(RootComponent);
 	GetMesh()->SetCastShadow(false);
 	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = true;
@@ -79,8 +79,8 @@ FPlayerCheckpointData APlayerCharacter::SaveCheckpoint()
 	Data.MissionIndex = CurrentMissionIndex;
 	Data.bHasRifle = bHasRifle;
 	Data.Location = GetActorLocation();
-	
-	// Modified: 액터의 회전 대신 컨트롤러의 회전(시점)을 저장하여 상하 시점까지 정확히 기억
+
+	// 저장 시 컨트롤러의 회전을 우선하되, 컨트롤러가 없다면 액터 회전을 저장 (정규화 포함)
 	if (Controller)
 	{
 		Data.Rotation = Controller->GetControlRotation();
@@ -89,11 +89,12 @@ FPlayerCheckpointData APlayerCharacter::SaveCheckpoint()
 	{
 		Data.Rotation = GetActorRotation();
 	}
-	
+	Data.Rotation.Normalize();
+
 	// 처치 수 및 경과 시간 저장
 	Data.KillCount = KillCount;
 	Data.ElapsedTime = GetWorld()->GetTimeSeconds() - MissionStartTime;
-	
+
 	return Data;
 }
 
@@ -101,22 +102,36 @@ void APlayerCharacter::LoadCheckpoint(const FPlayerCheckpointData& CheckpointDat
 {
 	//상태 복구 전 사망 플래그 및 물리 상태 초기화 (이동 및 회전 버그 방지)
 	bIsDead = false;
+
 	if (GetCharacterMovement())
 	{
 		GetCharacterMovement()->StopMovementImmediately();
+		GetCharacterMovement()->Velocity = FVector::ZeroVector;
+		GetCharacterMovement()->ClearAccumulatedForces();
 	}
 
 	CurrentMissionIndex = CheckpointData.MissionIndex;
 	bHasRifle = CheckpointData.bHasRifle;
 
-	// 위치와 회전을 동시에 복구하며 텔레포트 (180도 뒤를 보는 현상 방지)
-	SetActorLocationAndRotation(CheckpointData.Location, CheckpointData.Rotation, false, nullptr, ETeleportType::TeleportPhysics);
-	
+	// Modified: 180도 회전 버그 수정을 위한 정밀 텔레포트 순서
+	// 1. 컨트롤러 회전을 먼저 설정하여 시점의 기준을 잡음
 	if (Controller)
 	{
 		Controller->SetControlRotation(CheckpointData.Rotation);
 	}
-	
+
+	// 2. 위치와 회전을 동시에 복구 (컨트롤러와 동일한 회전값 사용)
+	// ETeleportType::None을 사용하여 물리 엔진이 위치를 강제로 덮어쓰지 않도록 함
+	SetActorLocationAndRotation(CheckpointData.Location, CheckpointData.Rotation, false, nullptr,
+	                            ETeleportType::TeleportPhysics);
+
+	// 3. 다시 한번 컨트롤러와 액터를 동기화 (레이스 컨디션 방지)
+	if (Controller)
+	{
+		Controller->SetControlRotation(CheckpointData.Rotation);
+		FaceRotation(CheckpointData.Rotation, 0.f);
+	}
+
 	KillCount = CheckpointData.KillCount;
 	MissionStartTime = GetWorld()->GetTimeSeconds() - CheckpointData.ElapsedTime;
 
@@ -128,6 +143,14 @@ void APlayerCharacter::LoadCheckpoint(const FPlayerCheckpointData& CheckpointDat
 	{
 		HealthComponent->SetHealth(HealthComponent->GetMaxHealth());
 	}
+
+	// Modified: 리스폰 후 UI 스탯을 즉시 갱신하도록 강제 호출 (0으로 표시되는 문제 해결)
+	HandleHealthChanged(HealthComponent ? HealthComponent->GetCurrentHealth() : 0.f,
+	                    HealthComponent ? HealthComponent->GetMaxHealth() : 100.f, nullptr);
+	HandleStaminaChanged(StaminaComponent ? StaminaComponent->GetCurrentStamina() : 100.f,
+	                     StaminaComponent ? StaminaComponent->GetMaxStamina() : 100.f);
+	HandleNoiseChanged(NoiseComponent ? NoiseComponent->GetCurrentNoise() : 0.f,
+	                   NoiseComponent ? NoiseComponent->GetMaxNoise() : 100.f);
 
 	Tags.Add(TEXT("Player"));
 }
@@ -161,8 +184,8 @@ void APlayerCharacter::BeginPlay()
 	if (!SpawnedWeapons.IsEmpty())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("StartWeapon: bHasRifle=%s, Index=%d"),
-				bHasRifle ? TEXT("true") : TEXT("false"),
-				bHasRifle ? 0 : 1);
+		       bHasRifle ? TEXT("true") : TEXT("false"),
+		       bHasRifle ? 0 : 1);
 		const int32 StartWeaponIndex = bHasRifle ? 0 : 1;
 		EquipWeaponByIndex(StartWeaponIndex);
 	}
@@ -170,12 +193,13 @@ void APlayerCharacter::BeginPlay()
 	// G키 투척 무기는 SpawnedWeapons 배열과 별개로 1개 스폰. Hidden 유지
 	SpawnThrowableWeapon();
 
-	// 플렝이어가 죽었을 때의 델리게이트에 함수 등록
+	// Removed: OnDeath 델리게이트가 위에서 이미 등록되었으므로 중복 등록 제거 (삭제됨)
+	/*
 	if (HealthComponent)
 	{
-		// "죽었을 때(OnDeath), 나(this)의 OnDeath 함수를 실행해줘"라고 등록
 		HealthComponent->OnDeath.AddDynamic(this, &APlayerCharacter::OnDeath);
 	}
+	*/
 
 	// 처치 피드백 델리게이트 등록
 	if (CombatManager && CombatManager->FeedbackHandler)
@@ -238,40 +262,38 @@ void APlayerCharacter::Tick(float DeltaTime)
 	{
 		StopRun(FInputActionValue()); // 스태미나 고갈 시 강제 정지
 	}
-	
+
 	// 앉기 동작시 자연스러운 카메라 보간
 	if (GetMesh() && CameraRoot)
 	{
-		
-		FVector HeadRelativeLoc = GetMesh()->GetSocketTransform(TEXT("head"), ERelativeTransformSpace::RTS_Actor).GetLocation();
-		
+		FVector HeadRelativeLoc = GetMesh()->GetSocketTransform(TEXT("head"), RTS_Actor).GetLocation();
+
 		float CurrentRootY = CameraRoot->GetRelativeLocation().Y;
-		
+
 		static float TimeAccumulator = 0.0f;
 		TimeAccumulator += DeltaTime;
 
-		float MovementSpeed = 3.0f;  
-		float MovementRange = 2.0f; 
-		
+		float MovementSpeed = 3.0f;
+		float MovementRange = 2.0f;
+
 		float ZOffset = FMath::Sin(TimeAccumulator * MovementSpeed) * MovementRange;
 		float TargetZ = HeadRelativeLoc.Z + ZOffset;
-		
+
 		FVector TargetCameraLoc = FVector(HeadRelativeLoc.X + 10.0f, CurrentRootY, TargetZ);
 
 		// 카메라 루트 위치 적용
 		CameraRoot->SetRelativeLocation(TargetCameraLoc);
-		
+
 		// 기울이기(Lean) 효과는 CameraRoot 밑에 있는 Camera 자체의 Y축을 움직여서 구현합니다.
 		if (Camera)
 		{
 			static float CurrentLeanY = 0.0f;
 			float TargetY = LeanAmount * MaxLeanOffset;
 			CurrentLeanY = FMath::FInterpTo(CurrentLeanY, TargetY, DeltaTime, LeanSpeed);
-			
+
 			Camera->SetRelativeLocation(FVector(0.0f, CurrentLeanY, 0.0f));
 		}
 	}
-	
 }
 
 // 캐릭터 상호작용 
@@ -373,7 +395,6 @@ void APlayerCharacter::Move(const FInputActionValue& value)
 
 		AddMovementInput(RightDirection, MoveInput.Y);
 		AddMovementInput(ForwardDirection, MoveInput.X);
-		
 	}
 }
 
@@ -455,7 +476,7 @@ void APlayerCharacter::Roll(const FInputActionValue& value)
 	{
 		return;
 	}
-	
+
 	UpperBodyBlendWeight = 0.0f;
 
 	// 몽타주 재생 명령
@@ -539,9 +560,15 @@ void APlayerCharacter::SpawnEquippedWeapons()
 
 AWeaponBase* APlayerCharacter::SpawnAndAttachWeapon(UWeaponDataAsset* Data)
 {
-	if (Data == nullptr || WeaponBaseClass == nullptr) return nullptr;
+	if (Data == nullptr || WeaponBaseClass == nullptr)
+	{
+		return nullptr;
+	}
 	UWorld* World = GetWorld();
-	if (World == nullptr) return nullptr;
+	if (World == nullptr)
+	{
+		return nullptr;
+	}
 
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = this;
@@ -550,24 +577,36 @@ AWeaponBase* APlayerCharacter::SpawnAndAttachWeapon(UWeaponDataAsset* Data)
 
 	TSubclassOf<AWeaponBase> ClassToSpawn = Data->WeaponClass ? Data->WeaponClass : WeaponBaseClass;
 	AWeaponBase* Weapon = World->SpawnActor<AWeaponBase>(ClassToSpawn, SpawnParams);
-	if (Weapon == nullptr) return nullptr;
+	if (Weapon == nullptr)
+	{
+		return nullptr;
+	}
 
 	Weapon->Initialize(Data);
-	Weapon->AttachToComponent(GetMesh(),FAttachmentTransformRules::SnapToTargetIncludingScale,
-									  Data->AttachSocketName);
+	Weapon->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale,
+	                          Data->AttachSocketName);
 	Weapon->SetActorHiddenInGame(true);
-		
+
 	return Weapon;
 }
 
 bool APlayerCharacter::CanEquipSlot(int32 Index) const
 {
-	if (!EquippedWeapons.IsValidIndex(Index)) return false;
+	if (!EquippedWeapons.IsValidIndex(Index))
+	{
+		return false;
+	}
 	const UWeaponDataAsset* Data = EquippedWeapons[Index];
-	if (Data == nullptr) return false;
+	if (Data == nullptr)
+	{
+		return false;
+	}
 
 	// 라이플 미보유 상태에서는 라이플 타입 슬롯 차단
-	if (Data->WeaponType == EWeaponType::Rifle && !bHasRifle) return false;
+	if (Data->WeaponType == EWeaponType::Rifle && !bHasRifle)
+	{
+		return false;
+	}
 
 	return true;
 }
@@ -663,7 +702,7 @@ void APlayerCharacter::HandleStaminaChanged(float CurrentStamina, float MaxStami
 
 void APlayerCharacter::HandleNoiseChanged(float CurrentNoise, float MaxNoise)
 {
-	// UI에 전용 소음 변경 통보
+	// Modified: UI에 전용 소음 변경 통보가 정상적으로 전달되는지 확인
 	OnNoiseChangedUI.Broadcast(CurrentNoise, MaxNoise);
 }
 
@@ -675,15 +714,24 @@ void APlayerCharacter::EquipPreviousWeapon()
 void APlayerCharacter::CycleWeapon(int32 Direction)
 {
 	const int32 Num = SpawnedWeapons.Num();
-	if (Num <= 0) return;
+	if (Num <= 0)
+	{
+		return;
+	}
 
 	int32 Index = CurrentWeaponIndex;
 	for (int32 i = 0; i < Num; ++i)
 	{
 		// 음수 모듈로 회피용 + Num. CurrentWeaponIndex == INDEX_NONE 초기 상태도 안전
 		Index = (Index + Direction + Num) % Num;
-		if (!CanEquipSlot(Index)) continue;
-		if (SpawnedWeapons[Index] != nullptr) break;
+		if (!CanEquipSlot(Index))
+		{
+			continue;
+		}
+		if (SpawnedWeapons[Index] != nullptr)
+		{
+			break;
+		}
 	}
 	EquipWeaponByIndex(Index);
 }
@@ -715,13 +763,16 @@ void APlayerCharacter::OnEquipPreviousPressed(const FInputActionValue& /*Value*/
 
 void APlayerCharacter::OnFirePressed(const FInputActionValue& /*Value*/)
 {
-	if (bIsRolling || bIsDead) return; // 죽었거나 구르기 상태면 사격 차단
-	
+	if (bIsRolling || bIsDead)
+	{
+		return; // 죽었거나 구르기 상태면 사격 차단
+	}
+
 	if (GetCharacterMovement() && GetCharacterMovement()->IsFalling())
 	{
 		return; // 공중에 떠 있는 낙하/점프 상태라면 사격 차단
 	}
-	
+
 	if (CurrentWeapon == nullptr)
 	{
 		return;
@@ -740,11 +791,12 @@ void APlayerCharacter::OnFirePressed(const FInputActionValue& /*Value*/)
 	}
 	CurrentWeapon->Fire();
 
-	// 사격 시 즉시 최대 소음 발생
-	// Modified: 칼 무기는 소음을 최대로 만들지 않음
+	// 사격 시 즉시 지정된 소음 발생
+	// Modified: 무기 종류에 따라 소음 수치 설정 (권총 70, 소총 100). 누적 방지를 위해 SetNoise 사용
 	if (NoiseComponent && Data && Data->WeaponType != EWeaponType::Knife)
 	{
-		NoiseComponent->SetNoiseToMax();
+		float FireNoiseAmount = (Data->WeaponType == EWeaponType::Pistol) ? 70.0f : 100.0f;
+		NoiseComponent->SetNoise(FireNoiseAmount);
 	}
 	bIsFiring = false;
 }
@@ -870,10 +922,16 @@ void APlayerCharacter::HandleThrowableDepleted()
 
 void APlayerCharacter::SpawnThrowableWeapon()
 {
-	if (ThrowableWeapon != nullptr) return;
+	if (ThrowableWeapon != nullptr)
+	{
+		return;
+	}
 
 	AWeaponBase* Spawned = SpawnAndAttachWeapon(CurrentThrowableData);
-	if (Spawned == nullptr) return;
+	if (Spawned == nullptr)
+	{
+		return;
+	}
 
 	Spawned->OnDepleted.AddDynamic(this, &APlayerCharacter::HandleThrowableDepleted);
 	ThrowableWeapon = Spawned;
@@ -1188,7 +1246,7 @@ void APlayerCharacter::UpdateMissionObjective()
 	}
 }
 
-float APlayerCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator,
+float APlayerCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEvent, AController* EventInstigator,
                                    AActor* DamageCauser)
 {
 	float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
@@ -1201,7 +1259,10 @@ float APlayerCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damag
 
 void APlayerCharacter::OnDeath()
 {
-	if (bIsDead) return; // 이미 죽었다면 무시
+	if (bIsDead)
+	{
+		return; // 이미 죽었다면 무시
+	}
 
 	bIsDead = true;
 	UE_LOG(LogTemp, Warning, TEXT("플레이어 사망: 모든 기능을 중지합니다."));

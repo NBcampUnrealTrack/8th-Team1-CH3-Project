@@ -86,9 +86,10 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 	// 3. 환경 오브젝트 → 피격 소음만
 	if (!bHitEnemy && !bHitPlayer)
 	{
-		if (bTriggerAIAggro)
+		float HitNoise = GetHitNoiseRange(WeaponType);
+		if (bTriggerAIAggro && HitNoise > 0.0f)
 		{
-			EmitNoise(HitResult.ImpactPoint, GetHitNoiseRange(WeaponType));
+			EmitNoise(HitResult.ImpactPoint, HitNoise);
 		}
 		return;
 	}
@@ -191,7 +192,6 @@ float UCombatManager::GetHitNoiseRange(ECombatWeaponType WeaponType) const
 {
 	switch (WeaponType)
 	{
-	case ECombatWeaponType::Pistol: return HitNoiseRangePistol;
 	case ECombatWeaponType::Rock: return HitNoiseRangeRock;
 	default: return 0.f;
 	}

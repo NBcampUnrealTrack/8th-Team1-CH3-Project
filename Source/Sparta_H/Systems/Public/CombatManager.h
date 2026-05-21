@@ -61,9 +61,6 @@ public:
 	float BackAttackThreshold = 0.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Combat|Noise")
-	float HitNoiseRangePistol = 200.f; // 2m
-
-	UPROPERTY(EditAnywhere, Category = "Combat|Noise")
 	float HitNoiseRangeRock = 500.f; // 5m
 
 	UPROPERTY(EditAnywhere, Category = "Combat|Noise")

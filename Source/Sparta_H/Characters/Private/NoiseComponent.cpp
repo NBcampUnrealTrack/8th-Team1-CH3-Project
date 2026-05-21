@@ -78,10 +78,13 @@ void UNoiseComponent::ReportFootstepNoise()
 	APawn* OwnerPawn = Cast<APawn>(GetOwner());
 	if (!OwnerPawn) return;
 
-	// 발소리 최대치는 30.0f (속도 기반)이므로 MaxNoise(100)가 아닌 30 기준으로 정규화
+	// Modified: AI 감지 범위를 CurrentNoise * 10.0f 로 변경
+	const float EffectiveRange = CurrentNoise * 10.0f;
+	
+	// LoudnessRatio는 엔진 내부 감쇄를 위해 0~1 사이값으로 전달 (EffectiveRange와 별개로 처리 가능하나 현재 수치 유지)
 	static constexpr float MaxFootstepNoise = 30.f;
 	const float LoudnessRatio = FMath::Clamp(CurrentNoise / MaxFootstepNoise, 0.f, 1.f);
-	const float EffectiveRange = MaxFootstepHearingRange * LoudnessRatio;
+
 	UE_LOG(LogTemp, Log, TEXT("[Footstep] 발소리 AI 보고 | Noise=%.1f | Range=%.0f"), CurrentNoise, EffectiveRange);
 	UAISense_Hearing::ReportNoiseEvent(
 		GetWorld(),
@@ -97,6 +100,14 @@ void UNoiseComponent::AddNoise(float Amount)
 {
 	CurrentNoise = FMath::Clamp(CurrentNoise + Amount, 0.0f, MaxNoise);
 	// Modified: 수동 업데이트 플래그 설정
+	bNoiseUpdatedThisFrame = true;
+	OnNoiseChanged.Broadcast(CurrentNoise, MaxNoise);
+}
+
+// Modified: 소음을 특정 수치로 설정하는 함수 구현체 추가
+void UNoiseComponent::SetNoise(float Value)
+{
+	CurrentNoise = FMath::Clamp(Value, 0.0f, MaxNoise);
 	bNoiseUpdatedThisFrame = true;
 	OnNoiseChanged.Broadcast(CurrentNoise, MaxNoise);
 }

@@ -20,6 +20,10 @@ bool UAmmoComponent::ConsumeAmmo()
 	}
 
 	CurrentAmmoCount--;
+
+	// Modified: 탄약 변경 통보 (UI 업데이트용)
+	OnAmmoChanged.Broadcast(CurrentAmmoCount, MaxAmmoCount);
+
 	return true;
 }
 
@@ -27,6 +31,9 @@ void UAmmoComponent::ReloadAmmo()
 {
 	// 부분 재장전 없이 풀 채움. 부분 재장전 필요 시 여기서 분기
 	CurrentAmmoCount = MaxAmmoCount;
+
+	// Modified: 탄약 변경 통보 (UI 업데이트용)
+	OnAmmoChanged.Broadcast(CurrentAmmoCount, MaxAmmoCount);
 }
 
 bool UAmmoComponent::HasAmmo() const
