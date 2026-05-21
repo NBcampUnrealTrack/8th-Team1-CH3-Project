@@ -489,15 +489,15 @@ void AEnemyCharacter::OnTargetPerceived(AActor* Actor, FAIStimulus Stimulus)
 
 			if (CurrentAlertLevel == EAlertLevel::Idle)
 			{
+				AIC->StopMovement();
 				OnAlertLevelChanged(EAlertLevel::Suspicious);
 			}
 			else if (CurrentAlertLevel == EAlertLevel::Suspicious)
 			{
-				SuspectedTarget = Actor;
-				BB->SetValueAsObject(BBKeys::TARGET_ACTOR, Actor);
-				// 이전 소음 위치로 가던 이동을 중단하고 Combat 전환 후 재탐색
+				// 새 소음 위치로 방향 전환, Suspicious 유지 (Combat은 시야로만)
 				AIC->StopMovement();
-				OnAlertLevelChanged(EAlertLevel::Combat);
+				GetWorldTimerManager().SetTimer(SuspiciousRevertTimerHandle, this,
+					&AEnemyCharacter::OnSuspiciousRevertTimerExpired, SuspiciousRevertDelay, false);
 			}
 			else if (CurrentAlertLevel == EAlertLevel::Lost)
 			{
