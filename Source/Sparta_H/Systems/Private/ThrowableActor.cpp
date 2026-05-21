@@ -100,6 +100,7 @@ void AThrowableActor::HandleOnHit(UPrimitiveComponent* HitComponent, AActor* Oth
 				*Target->GetName(), Distance, Multiplier, FinalDamage);
 			UGameplayStatics::ApplyDamage(Target, FinalDamage, nullptr, this, nullptr);
 		}
+		Destroy();
 	}
 	else if (ThrowableType == ECombatWeaponType::Rock)
 	{
@@ -126,9 +127,16 @@ void AThrowableActor::HandleOnHit(UPrimitiveComponent* HitComponent, AActor* Oth
 		UE_LOG(LogTemp, Warning, TEXT("[Rock] ReportNoiseEvent 완료 | 위치=%s | 범위=%.0f | Instigator=%s"),
 			*GetActorLocation().ToString(), RockNoiseRange,
 			GetInstigator() ? *GetInstigator()->GetName() : TEXT("NULL"));
+		
+		// 재충돌 방지
+		MeshComponent->OnComponentHit.RemoveAll(this);
+		if (ProjectileMovement)
+		{
+			ProjectileMovement->StopMovementImmediately();
+			ProjectileMovement->Deactivate();
+		}
+		SetLifeSpan(2.0); // 2초 후 자동 소멸
 	}
-
-	Destroy();
 }
 
 void AThrowableActor::Launch(const FVector& Direction, float Speed)
