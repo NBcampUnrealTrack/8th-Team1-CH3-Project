@@ -143,18 +143,32 @@ void APlayerCharacter::LoadCheckpoint(const FPlayerCheckpointData& CheckpointDat
 	{
 		HealthComponent->SetHealth(HealthComponent->GetMaxHealth());
 	}
+// Modified: 리스폰 시 UI 스탯을 즉시 갱신하도록 강제 호출 (0으로 표시되는 문제 해결)
+HandleHealthChanged(HealthComponent ? HealthComponent->GetCurrentHealth() : 0.f,
+                    HealthComponent ? HealthComponent->GetMaxHealth() : 100.f, nullptr);
+HandleStaminaChanged(StaminaComponent ? StaminaComponent->GetCurrentStamina() : 100.f,
+                     StaminaComponent ? StaminaComponent->GetMaxStamina() : 100.f);
 
-	// Modified: 리스폰 후 UI 스탯을 즉시 갱신하도록 강제 호출 (0으로 표시되는 문제 해결)
-	HandleHealthChanged(HealthComponent ? HealthComponent->GetCurrentHealth() : 0.f,
-	                    HealthComponent ? HealthComponent->GetMaxHealth() : 100.f, nullptr);
-	HandleStaminaChanged(StaminaComponent ? StaminaComponent->GetCurrentStamina() : 100.f,
-	                     StaminaComponent ? StaminaComponent->GetMaxStamina() : 100.f);
+	// Modified: 리스폰 시 투척무기 상태 초기화 로직 추가
+	if (ThrowableWeapon)
+	{
+		if (CurrentThrowableData == RockData)
+		{
+			// 돌맹이인 경우 쿨타임 초기화
+			ThrowableWeapon->ResetThrowCooldown();
+		}
+		else if (CurrentThrowableData == GrenadeData)
+		{
+			// 수류탄인 경우 소지 수 최대 충전
+			ThrowableWeapon->RefillStock();
+		}
+	}
+
 	HandleNoiseChanged(NoiseComponent ? NoiseComponent->GetCurrentNoise() : 0.f,
 	                   NoiseComponent ? NoiseComponent->GetMaxNoise() : 100.f);
 
 	Tags.Add(TEXT("Player"));
 }
-
 // Called when the game starts or when spawned
 void APlayerCharacter::BeginPlay()
 {
