@@ -33,6 +33,55 @@ void AMissionRope::BeginPlay()
     Super::BeginPlay(); 
 }
 
+// 오버랩 시작 시 플레이어 입력 활성화 및 F키 바인딩 수행
+void AMissionRope::OnSensorOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+    Super::OnSensorOverlapBegin(OverlappedComp, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult);
+
+    if (OtherActor && OtherActor->IsA(APlayerCharacter::StaticClass()))
+    {
+        APlayerController* PC = Cast<APlayerController>(Cast<APawn>(OtherActor)->GetController());
+        if (PC)
+        {
+            EnableInput(PC);
+            if (!bInputBound && InputComponent)
+            {
+                InputComponent->BindKey(EKeys::F, IE_Pressed, this, &AMissionRope::OnInteractKeyPressed);
+                bInputBound = true;
+            }
+        }
+    }
+}
+
+// 오버랩 종료 시 플레이어 입력 비활성화
+void AMissionRope::OnSensorOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+    Super::OnSensorOverlapEnd(OverlappedComp, OtherActor, OtherComp, OtherBodyIndex);
+
+    if (OtherActor && OtherActor->IsA(APlayerCharacter::StaticClass()))
+    {
+        APlayerController* PC = Cast<APlayerController>(Cast<APawn>(OtherActor)->GetController());
+        if (PC)
+        {
+            DisableInput(PC);
+        }
+    }
+}
+
+// 바인딩된 F키 입력 시 즉시 상호작용 실행
+void AMissionRope::OnInteractKeyPressed()
+{
+    APlayerController* PC = GetWorld()->GetFirstPlayerController();
+    if (PC)
+    {
+        APlayerCharacter* Player = Cast<APlayerCharacter>(PC->GetPawn());
+        if (Player)
+        {
+            Interact_Implementation(Player);
+        }
+    }
+}
+
 bool AMissionRope::CanInteract_Implementation(APlayerCharacter* Interactor) const 
 { 
     // Sweep 기반 레이캐스트 적중 시, 센서 오버랩 여부와 무관하게 즉각적인 상호작용 허용
