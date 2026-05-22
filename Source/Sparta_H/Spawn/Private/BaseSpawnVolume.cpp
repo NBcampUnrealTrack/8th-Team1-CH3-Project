@@ -8,7 +8,7 @@ ABaseSpawnVolume::ABaseSpawnVolume()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
-	SpawnArea = CreateDefaultSubobject<UBoxComponent>(TEXT("SpawnArea"));;
+	SpawnArea = CreateDefaultSubobject<UBoxComponent>(TEXT("SpawnArea"));
 	SetRootComponent(SpawnArea);
 	SpawnArea->SetBoxExtent(FVector(300.0f, 300.0f, 100.0f));
 	SpawnArea->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -35,7 +35,7 @@ void ABaseSpawnVolume::BeginPlay()
 
 void ABaseSpawnVolume::HandleCombatEntered(FVector CombatLocation)
 {
-	if (CurrentSpawnState != ESpawnState::Triggered)
+	if (CurrentSpawnState == ESpawnState::Completed)
 	{
 		return;
 	}
@@ -79,12 +79,12 @@ void ABaseSpawnVolume::SpawnEnemies(int32 Count, ESpawnState NextStateOnSuccess)
 	{
 		return;
 	}
-	
+
 	FActorSpawnParameters Params;
 	// Removed: 기존의 AlwaysSpawn 방식은 끼임 문제를 발생시킴 (삭제됨)
 	// Modified: 끼임 방지를 위해 충돌 시 스폰하지 않도록 변경
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
-	
+
 	int32 SpawnedCount = 0;
 	// Modified: 스폰 실패 시 재시도 로직 추가 및 Z축 오프셋 적용
 	for (int32 i = 0; i < Count; i++)
@@ -97,10 +97,10 @@ void ABaseSpawnVolume::SpawnEnemies(int32 Count, ESpawnState NextStateOnSuccess)
 			{
 				continue;
 			}
-			
+
 			// Modified: 바닥에 끼는 것을 방지하기 위해 약간 위쪽에서 스폰
 			SpawnLoc.Z += 50.0f;
-			
+
 			const FRotator SpawnRot = FRotator(0.0f, FMath::FRandRange(0.0f, 360.0f), 0.0f);
 			if (World->SpawnActor<APawn>(EnemyClass, SpawnLoc, SpawnRot, Params))
 			{
