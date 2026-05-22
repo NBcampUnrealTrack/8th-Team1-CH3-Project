@@ -50,13 +50,25 @@ protected:
     UPROPERTY(EditAnywhere, Category = "Ending Cinematic")
     TSubclassOf<UCameraShakeBase> HelicopterCameraShake;
 
+    // 센서 박스 오버랩 시작 시 직접 키 바인딩을 위한 오버라이드
+    virtual void OnSensorOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult) override;
+
+    // 센서 박스 오버랩 종료 시 직접 키 바인딩 해제를 위한 오버라이드
+    virtual void OnSensorOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex) override;
+
 private:
     float RunningTime;
     bool bIsEndingCinematic = false;
     float CinematicElapsedTime = 0.0f;
+    
+    // F키 입력 상태를 확인하는 플래그
+    bool bInputBound = false;
 
     UPROPERTY()
     UAudioComponent* HelicopterAudioComponent;
+
+    // F키가 눌렸을 때 직접 상호작용을 실행하는 함수
+    void OnInteractKeyPressed();
 
     // 시네마틱 2단계: 카메라 전환, 진동 및 화면 페이드 인 처리
     UFUNCTION()
