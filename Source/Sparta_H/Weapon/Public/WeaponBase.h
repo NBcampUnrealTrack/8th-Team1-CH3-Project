@@ -99,6 +99,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Weapon|Throwable")
 	float GetThrowCooldownPercent() const;
 
+	// Modified: 리스폰 시 상태 초기화를 위한 함수 추가
+	UFUNCTION(BlueprintCallable, Category = "Weapon|Throwable")
+	void ResetThrowCooldown();
+
+	UFUNCTION(BlueprintCallable, Category = "Weapon|Throwable")
+	void RefillStock();
+
 	UPROPERTY(BlueprintAssignable, Category = "Weapon|Throwable")
 	FOnThrowableDepleted OnDepleted;
 

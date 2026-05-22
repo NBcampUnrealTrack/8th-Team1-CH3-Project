@@ -541,3 +541,22 @@ float AWeaponBase::GetThrowCooldownPercent() const
 	}
 	return 0.0f;
 }
+
+// Modified: 리스폰 시 투척 무기 쿨타임 초기화
+void AWeaponBase::ResetThrowCooldown()
+{
+	if (GetWorld())
+	{
+		GetWorldTimerManager().ClearTimer(ThrowCooldownTimerHandle);
+	}
+	bThrowOnCooldown = false;
+}
+
+// Modified: 리스폰 시 투척 무기 소지 수 최대 충전
+void AWeaponBase::RefillStock()
+{
+	if (WeaponData)
+	{
+		CurrentStock = WeaponData->MaxStockCount;
+	}
+}

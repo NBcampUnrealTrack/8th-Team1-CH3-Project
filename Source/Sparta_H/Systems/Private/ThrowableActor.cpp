@@ -16,6 +16,7 @@ AThrowableActor::AThrowableActor()
 	RootComponent = MeshComponent;
 	MeshComponent->SetNotifyRigidBodyCollision(true);
 
+
 	ProjectileMovement = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovement"));
 	ProjectileMovement->InitialSpeed = 1500.f;
 	ProjectileMovement->MaxSpeed = 1500.f;
@@ -66,7 +67,7 @@ void AThrowableActor::HandleOnHit(UPrimitiveComponent* HitComponent, AActor* Oth
 		const FName TargetTag = bThrownByEnemy ? FName("Player") : FName("Enemy");
 
 		UE_LOG(LogTemp, Log, TEXT("[Grenade] 폭발 | 위치=(%.0f,%.0f,%.0f) | 반경=%.0f | 타겟팀=%s"),
-			ExplosionLocation.X, ExplosionLocation.Y, ExplosionLocation.Z, ExplosionRadius, *TargetTag.ToString());
+		       ExplosionLocation.X, ExplosionLocation.Y, ExplosionLocation.Z, ExplosionRadius, *TargetTag.ToString());
 
 		// 범위 안 액터 탐색
 		TArray<FOverlapResult> Overlaps;
@@ -82,22 +83,43 @@ void AThrowableActor::HandleOnHit(UPrimitiveComponent* HitComponent, AActor* Oth
 		for (FOverlapResult& Overlap : Overlaps)
 		{
 			AActor* Target = Overlap.GetActor();
-			if (!IsValid(Target)) continue;
-			if (!Target->ActorHasTag(TargetTag)) continue;
+			if (!IsValid(Target))
+			{
+				continue;
+			}
+			if (!Target->ActorHasTag(TargetTag))
+			{
+				continue;
+			}
 
 			const float Distance = FVector::Dist(ExplosionLocation, Target->GetActorLocation()) / 100.f;
 
 			float Multiplier = 0.f;
-			if (Distance <= 2.f) Multiplier = 1.0f;
-			else if (Distance <= 4.f) Multiplier = 0.7f;
-			else if (Distance <= 6.f) Multiplier = 0.5f;
-			else Multiplier = 0.f;
+			if (Distance <= 3.f)
+			{
+				Multiplier = 1.0f;
+			}
+			else if (Distance <= 4.f)
+			{
+				Multiplier = 0.7f;
+			}
+			else if (Distance <= 5.f)
+			{
+				Multiplier = 0.5f;
+			}
+			else
+			{
+				Multiplier = 0.f;
+			}
 
-			if (Multiplier <= 0.f) continue;
+			if (Multiplier <= 0.f)
+			{
+				continue;
+			}
 
 			const float FinalDamage = ExplosionDamage * Multiplier;
 			UE_LOG(LogTemp, Log, TEXT("[Grenade] 피해 → %s | 거리=%.1fm | 배율=%.1f | 데미지=%.0f"),
-				*Target->GetName(), Distance, Multiplier, FinalDamage);
+			       *Target->GetName(), Distance, Multiplier, FinalDamage);
 			UGameplayStatics::ApplyDamage(Target, FinalDamage, nullptr, this, nullptr);
 		}
 		Destroy();
@@ -105,8 +127,8 @@ void AThrowableActor::HandleOnHit(UPrimitiveComponent* HitComponent, AActor* Oth
 	else if (ThrowableType == ECombatWeaponType::Rock)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[Rock] HandleOnHit 호출 | OtherActor=%s | Instigator=%s"),
-			OtherActor ? *OtherActor->GetName() : TEXT("NULL"),
-			GetInstigator() ? *GetInstigator()->GetName() : TEXT("NULL"));
+		       OtherActor ? *OtherActor->GetName() : TEXT("NULL"),
+		       GetInstigator() ? *GetInstigator()->GetName() : TEXT("NULL"));
 
 		if (IsValid(OtherActor) && OtherActor->ActorHasTag("Enemy"))
 		{
@@ -125,9 +147,9 @@ void AThrowableActor::HandleOnHit(UPrimitiveComponent* HitComponent, AActor* Oth
 		);
 
 		UE_LOG(LogTemp, Warning, TEXT("[Rock] ReportNoiseEvent 완료 | 위치=%s | 범위=%.0f | Instigator=%s"),
-			*GetActorLocation().ToString(), RockNoiseRange,
-			GetInstigator() ? *GetInstigator()->GetName() : TEXT("NULL"));
-		
+		       *GetActorLocation().ToString(), RockNoiseRange,
+		       GetInstigator() ? *GetInstigator()->GetName() : TEXT("NULL"));
+
 		// 재충돌 방지
 		MeshComponent->OnComponentHit.RemoveAll(this);
 		if (ProjectileMovement)
