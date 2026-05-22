@@ -591,8 +591,10 @@ void AEnemyCharacter::ExecuteFireStep()
 			FireAtTarget(SuspectedTarget);
 			CurrentShotCount++;
 
-			UE_LOG(LogTemp, Log, TEXT("[%s] 발사 단계 성공. 0.4초 후 다음 탄 발사를 예약합니다. 대상: %s"), *GetName(), *TargetName);
-			GetWorldTimerManager().SetTimer(FirePatternTimerHandle, this, &AEnemyCharacter::ExecuteFireStep, 0.4f,
+			// Modified: 발사 간격을 0.3~0.5초 사이의 랜덤 값으로 변경
+			const float NextFireInterval = FMath::FRandRange(0.3f, 0.5f);
+			UE_LOG(LogTemp, Log, TEXT("[%s] 발사 단계 성공. %.2f초 후 다음 탄 발사를 예약합니다. 대상: %s"), *GetName(), NextFireInterval, *TargetName);
+			GetWorldTimerManager().SetTimer(FirePatternTimerHandle, this, &AEnemyCharacter::ExecuteFireStep, NextFireInterval,
 			                                false);
 		}
 		else
@@ -630,9 +632,11 @@ void AEnemyCharacter::ExecuteFireStep()
 	}
 	else
 	{
-		UE_LOG(LogTemp, Log, TEXT("[%s] 3점사 발사 완료. 0.8초간 사격 쿨다운 제어에 들어갑니다. 대상: %s"), *GetName(), *TargetName);
+		// Modified: 점사 후 딜레이를 0.6~1.0초 사이의 랜덤 값으로 변경
+		const float NextBurstDelay = FMath::FRandRange(0.6f, 1.0f);
+		UE_LOG(LogTemp, Log, TEXT("[%s] 3점사 발사 완료. %.2f초간 사격 쿨다운 제어에 들어갑니다. 대상: %s"), *GetName(), NextBurstDelay, *TargetName);
 		CurrentShotCount = 0;
-		GetWorldTimerManager().SetTimer(FirePatternTimerHandle, 0.8f, false);
+		GetWorldTimerManager().SetTimer(FirePatternTimerHandle, NextBurstDelay, false);
 	}
 }
 
