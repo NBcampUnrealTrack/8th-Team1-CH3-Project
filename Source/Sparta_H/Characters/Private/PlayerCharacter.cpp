@@ -844,22 +844,31 @@ void APlayerCharacter::OnFireReleased(const FInputActionValue& /*Value*/)
 		return;
 	}
 	
+	if (bIsFiring)
+	{
+		return;
+	}
+	
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && ThrowableMontage && !bIsRolling && !bIsDead)
 	{
 		bIsFiring = true;
 		AnimInstance->Montage_JumpToSection(TEXT("Throw"), ThrowableMontage);
+		
+		if (AnimInstance->Montage_GetCurrentSection(ThrowableMontage) != TEXT("Throw"))
+		{
+			AnimInstance->Montage_JumpToSection(TEXT("Throw"), ThrowableMontage);
+		}
+       
+		FTimerHandle ThrowTimerHandle;
+		GetWorldTimerManager().SetTimer(
+		   ThrowTimerHandle, 
+		   this, 
+		   &APlayerCharacter::ExecuteThrow, 
+		   1.0f, 
+		   false
+		);
 	}
-	
-	FTimerHandle ThrowTimerHandle;
-	GetWorldTimerManager().SetTimer(
-		ThrowTimerHandle, 
-		this, 
-		&APlayerCharacter::ExecuteThrow, // 실제 던지기 로직을 담을 함수
-		1.0f, 
-		false
-	);
-	
 }
 
 void APlayerCharacter::ExecuteThrow()

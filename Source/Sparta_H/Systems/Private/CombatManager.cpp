@@ -81,12 +81,13 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 
 	const bool bHitEnemy    = HitActor->ActorHasTag("Enemy");
 	const bool bHitPlayer   = HitActor->ActorHasTag("Player");
+	const bool bHitHostage  = HitActor->ActorHasTag("Hostage");
 
-	UE_LOG(LogTemp, Warning, TEXT("[CombatManager] Hit: %s | bHitEnemy=%d bHitPlayer=%d bOwnerIsEnemy=%d"),
-		*HitActor->GetName(), bHitEnemy, bHitPlayer, bOwnerIsEnemy);
+	UE_LOG(LogTemp, Warning, TEXT("[CombatManager] Hit: %s | bHitEnemy=%d bHitPlayer=%d bHitHostage=%d bOwnerIsEnemy=%d"),
+		*HitActor->GetName(), bHitEnemy, bHitPlayer, bHitHostage, bOwnerIsEnemy);
 
 	// 3. 환경 오브젝트 → 피격 소음만
-	if (!bHitEnemy && !bHitPlayer)
+	if (!bHitEnemy && !bHitPlayer && !bHitHostage)
 	{
 		float HitNoise = GetHitNoiseRange(WeaponType);
 		if (bTriggerAIAggro && HitNoise > 0.0f)
@@ -117,7 +118,7 @@ void UCombatManager::OnFire(const FVector& AimStart, const FVector& AimDirection
 	DamageInfo.HitBone    = EHitBone::None;
 
 	// 플레이어→적: 캡슐이 아닌 스켈레탈 메시 물리 바디에 직접 트레이스해 본 이름 획득
-	if (!bOwnerIsEnemy && bHitEnemy)
+	if (bHitEnemy || bHitHostage)
 	{
 		if (ACharacter* EnemyChar = Cast<ACharacter>(HitActor))
 		{
