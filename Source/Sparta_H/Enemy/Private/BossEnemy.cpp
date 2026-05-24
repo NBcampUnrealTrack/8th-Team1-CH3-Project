@@ -336,6 +336,7 @@ void ABossEnemy::SpawnGrenade()
 
 	if (Grenade)
 	{
+		Grenade->ExplosionDamage = BossGrenadeDamage;
 		Grenade->SetInstigator(this);
 		Grenade->SetOwner(this);
 

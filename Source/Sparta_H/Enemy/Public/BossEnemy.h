@@ -76,6 +76,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Boss|Attack")
 	float GrenadeThrowSpeed = 1200.f;
 
+	// 보스가 던지는 수류탄 전용 폭발 데미지 (플레이어용 BP 기본값과 별개로 에디터에서 조정)
+	UPROPERTY(EditDefaultsOnly, Category = "Boss|Attack")
+	float BossGrenadeDamage = 50.f;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Boss|Animation")
 	TObjectPtr<UAnimMontage> GrenadeMontage;
 
