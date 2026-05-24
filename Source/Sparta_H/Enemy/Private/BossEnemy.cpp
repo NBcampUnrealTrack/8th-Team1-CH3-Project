@@ -345,31 +345,29 @@ void ABossEnemy::SpawnGrenade()
 			GrenadeRoot->IgnoreActorWhenMoving(this, true);
 			GetCapsuleComponent()->IgnoreActorWhenMoving(Grenade, true);
 		}
-		// SuggestProjectileVelocity_CustomArc으로 중력을 고려한 아크 궤적 계산
+		// GrenadeThrowSpeed 속도로 낼 수 있는 가장 낮은 포물선으로 발사
+		// GrenadeThrowSpeed가 높을수록 궤적이 평평해짐
 		FVector LaunchVelocity;
-		const bool bFoundArc = UGameplayStatics::SuggestProjectileVelocity_CustomArc(
+		const bool bFoundPath = UGameplayStatics::SuggestProjectileVelocity(
 			this, LaunchVelocity, Origin, TargetLocation,
-			0.f, // 기본 중력 사용
-			0.4f // 아크 값: 0=직선, 1=고각도, 0.4=자연스러운 투척
+			GrenadeThrowSpeed,
+			false,  // bFavorHighArc=false → 낮은 포물선
+			0.f,
+			0.f,
+			ESuggestProjVelocityTraceOption::DoNotTrace
 		);
 
-		if (bFoundArc)
+		if (bFoundPath)
 		{
-			// 계산 속도가 너무 느리면 GrenadeThrowSpeed로 스케일업 (방향은 유지)
-			const float CalcSpeed = LaunchVelocity.Size();
-			const float FinalSpeed = FMath::Max(CalcSpeed, GrenadeThrowSpeed);
-			const FVector FinalVelocity = LaunchVelocity.GetSafeNormal() * FinalSpeed;
-			Grenade->ProjectileMovement->Velocity = FinalVelocity;
-			Grenade->ProjectileMovement->InitialSpeed = FinalSpeed;
-			Grenade->ProjectileMovement->MaxSpeed = FinalSpeed;
-			UE_LOG(LogTemp, Log, TEXT("[Boss] 수류탄 발사 (아크) | 속도=%.0f | 방향=(%.2f,%.2f,%.2f)"),
-			       FinalSpeed, FinalVelocity.GetSafeNormal().X, FinalVelocity.GetSafeNormal().Y,
-			       FinalVelocity.GetSafeNormal().Z);
+			Grenade->ProjectileMovement->Velocity = LaunchVelocity;
+			Grenade->ProjectileMovement->InitialSpeed = LaunchVelocity.Size();
+			Grenade->ProjectileMovement->MaxSpeed = LaunchVelocity.Size();
+			UE_LOG(LogTemp, Log, TEXT("[Boss] 수류탄 발사 (낮은 포물선) | 속도=%.0f"), LaunchVelocity.Size());
 		}
 		else
 		{
 			Grenade->Launch(ThrowDir, GrenadeThrowSpeed);
-			UE_LOG(LogTemp, Warning, TEXT("[Boss] 아크 계산 실패 — 직선 발사 | 방향=(%.2f,%.2f,%.2f)"),
+			UE_LOG(LogTemp, Warning, TEXT("[Boss] 궤적 계산 실패 — 직선 발사 | 방향=(%.2f,%.2f,%.2f)"),
 			       ThrowDir.X, ThrowDir.Y, ThrowDir.Z);
 		}
 	}
