@@ -58,6 +58,7 @@ void UH_GameFunctionLibrary::HandlePendingLoad(const UObject* WorldContextObject
 				FPlayerCheckpointData CheckpointData;
 				CheckpointData.MissionIndex = SaveData->CurrentMission;
 				CheckpointData.bHasRifle = SaveData->bHasRifle;
+				CheckpointData.bHasBossKey = SaveData->bHasBossKey;
 				CheckpointData.Location = SaveData->CurrentLocation;
 				CheckpointData.Rotation = SaveData->CurrentRotation;
 				CheckpointData.Rotation.Pitch = 0.f;
@@ -126,6 +127,7 @@ void UH_GameFunctionLibrary::RequestSaveGame(const UObject* WorldContextObject)
 		// 4. 세이브 데이터 필드에 값 복사
 		SaveData->CurrentMission = Checkpoint.MissionIndex;
 		SaveData->bHasRifle = Checkpoint.bHasRifle;
+		SaveData->bHasBossKey = Checkpoint.bHasBossKey;
 		SaveData->CurrentLocation = Checkpoint.Location;
 		SaveData->CurrentRotation = Checkpoint.Rotation;
 		SaveData->KillCount = Checkpoint.KillCount;

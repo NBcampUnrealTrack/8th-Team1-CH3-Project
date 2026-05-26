@@ -1,4 +1,6 @@
 #include "Enemy/Public/BossKey.h"
+
+#include "PlayerCharacter.h"
 #include "Systems/Public/RooftopDoor.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -45,6 +47,12 @@ void ABossKey::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* Other
 	bool bFromSweep, const FHitResult& SweepResult)
 {
 	if (!OtherActor || !OtherActor->ActorHasTag(TEXT("Player"))) return;
+
+	if (APlayerCharacter* Player = Cast<APlayerCharacter>(OtherActor))
+	{
+		Player->bHasBossKey = true;
+		UE_LOG(LogTemp, Log, TEXT("BossKey: 플레이어가 열쇠를 획득했습니다."));
+	}
 
 	ARooftopDoor* Door = Cast<ARooftopDoor>(
 		UGameplayStatics::GetActorOfClass(this, ARooftopDoor::StaticClass()));

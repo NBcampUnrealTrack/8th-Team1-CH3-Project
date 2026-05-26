@@ -17,6 +17,9 @@ public:
 	bool bHasRifle = false;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "SaveData")
+	bool bHasBossKey = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "SaveData")
 	FVector CurrentLocation = FVector::ZeroVector;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "SaveData")

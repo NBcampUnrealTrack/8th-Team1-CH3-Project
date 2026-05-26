@@ -13,6 +13,7 @@
 #include "MissionInteractableInterface.h"
 #include "Kismet/GameplayStatics.h"
 #include "Systems/Public/H_GameFunctionLibrary.h"
+#include "Systems/Public/RooftopDoor.h"
 
 #include "HealthComponent.h"
 #include "InteractionComponent.h"
@@ -78,6 +79,7 @@ FPlayerCheckpointData APlayerCharacter::SaveCheckpoint()
 	FPlayerCheckpointData Data;
 	Data.MissionIndex = CurrentMissionIndex;
 	Data.bHasRifle = bHasRifle;
+	Data.bHasBossKey = bHasBossKey;
 	Data.Location = GetActorLocation();
 
 	// 저장 시 컨트롤러의 회전을 우선하되, 컨트롤러가 없다면 액터 회전을 저장 (정규화 포함)
@@ -112,6 +114,21 @@ void APlayerCharacter::LoadCheckpoint(const FPlayerCheckpointData& CheckpointDat
 
 	CurrentMissionIndex = CheckpointData.MissionIndex;
 	bHasRifle = CheckpointData.bHasRifle;
+	bHasBossKey = CheckpointData.bHasBossKey;
+
+	// Modified: 보스 열쇠 소지 상태 복구 시 RooftopDoor 상태도 동기화
+	if (bHasBossKey)
+	{
+		TArray<AActor*> FoundDoors;
+		UGameplayStatics::GetAllActorsOfClass(GetWorld(), ARooftopDoor::StaticClass(), FoundDoors);
+		for (AActor* Actor : FoundDoors)
+		{
+			if (ARooftopDoor* Door = Cast<ARooftopDoor>(Actor))
+			{
+				Door->OpenDoor();
+			}
+		}
+	}
 
 	// Modified: 180도 회전 버그 수정을 위한 정밀 텔레포트 순서
 	// 1. 컨트롤러 회전을 먼저 설정하여 시점의 기준을 잡음

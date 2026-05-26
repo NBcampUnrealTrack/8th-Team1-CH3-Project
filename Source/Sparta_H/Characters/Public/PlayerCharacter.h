@@ -48,6 +48,9 @@ struct FPlayerCheckpointData
 	bool bHasRifle = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bHasBossKey = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FVector Location = FVector::ZeroVector;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -74,6 +77,9 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Status")
 	bool bHasRifle = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Status")
+	bool bHasBossKey = false;
 
 	UFUNCTION(BlueprintPure, Category = "Weapon")
 	bool IsRifle() const {return bHasRifle;}

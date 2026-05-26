@@ -5,6 +5,7 @@
 #include "Components/SphereComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "BrainComponent.h"
+#include "Framework/Public/H_PlayerController.h"
 
 #include "PlayerCharacter.h"
 
@@ -179,6 +180,9 @@ void AHostageCharacter::ChangeState(EHostageState NewState)
                
                // [핵심] 일정 시간(몽타주 길이) 후에 AnimBP 연결을 끊고 애니메이션을 중지시킵니다.
                FTimerHandle TimerHandle;
+               // Modified: 몽타주 길이에 맞춰 타이머 설정 (기존 1.6초 유지 또는 몽타주 길이 사용 가능)
+               float MontageDuration = DeathMontage->GetPlayLength();
+               
                GetWorldTimerManager().SetTimer(TimerHandle, [this]()
                {
                    // 애니메이션 블루프린트와의 연결을 완전히 끊음
@@ -191,7 +195,28 @@ void AHostageCharacter::ChangeState(EHostageState NewState)
                    GetWorldTimerManager().ClearAllTimersForObject(this);
                 
                    UE_LOG(LogTemp, Log, TEXT("인질: 애니메이션 시스템 연결이 해제되었습니다."));
-               }, 1.6, false);
+
+                   // 4. 미션 실패 UI 표시
+                   // Modified: 인질 사망 몽타주가 끝난 후 미션 실패 UI 호출
+                   if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+                   {
+                      if (AH_PlayerController* HPC = Cast<AH_PlayerController>(PC))
+                      {
+                         HPC->ShowFailMenu(FText::FromString(TEXT("인질이 사망했습니다.")));
+                      }
+                   }
+               }, MontageDuration, false);
+            }
+            else
+            {
+               // 몽타주가 없는 경우 즉시 표시
+               if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+               {
+                  if (AH_PlayerController* HPC = Cast<AH_PlayerController>(PC))
+                  {
+                     HPC->ShowFailMenu(FText::FromString(TEXT("인질이 사망했습니다.")));
+                  }
+               }
             }
          }
       }
