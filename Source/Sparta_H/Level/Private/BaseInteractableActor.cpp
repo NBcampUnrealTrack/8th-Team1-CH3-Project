@@ -13,11 +13,6 @@ ABaseInteractableActor::ABaseInteractableActor()
     MainMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MainMesh"));
     MainMesh->SetupAttachment(RootComponent);
 
-    GlowMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GlowMesh"));
-    GlowMesh->SetupAttachment(MainMesh);
-    GlowMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-    GlowMesh->SetHiddenInGame(true);
-
     SensorBox = CreateDefaultSubobject<UBoxComponent>(TEXT("SensorBox"));
     SensorBox->SetupAttachment(MainMesh);
     SensorBox->SetCollisionObjectType(ECC_WorldDynamic);
@@ -30,30 +25,20 @@ void ABaseInteractableActor::BeginPlay()
 {
     Super::BeginPlay();
 
-    // Modified: 중복 바인딩 방지를 위해 AddUniqueDynamic 사용 (상속 구조에서 Super::BeginPlay 호출 시 안전 확보)
     if (SensorBox)
     {
         SensorBox->OnComponentBeginOverlap.AddUniqueDynamic(this, &ABaseInteractableActor::OnSensorOverlapBegin);
         SensorBox->OnComponentEndOverlap.AddUniqueDynamic(this, &ABaseInteractableActor::OnSensorOverlapEnd);
     }
 
-    // 초기 머티리얼 세팅
-    if (MainMesh && GlowMesh)
+    if (MainMesh)
     {
         MainMesh->SetOverlayMaterial(nullptr);
-        UStaticMesh* TargetMesh = MainMesh->GetStaticMesh();
         
-        if (TargetMesh)
+        int32 MaterialCount = MainMesh->GetNumMaterials();
+        for (int32 i = 0; i < MaterialCount; ++i)
         {
-            GlowMesh->SetStaticMesh(TargetMesh);
-            if (RedGlowMaterial)
-            {
-                int32 MaterialCount = GlowMesh->GetNumMaterials();
-                for (int32 i = 0; i < MaterialCount; ++i)
-                {
-                    GlowMesh->SetMaterial(i, RedGlowMaterial);
-                }
-            }
+            OriginalMaterials.Add(MainMesh->GetMaterial(i));
         }
     }
 }
@@ -63,14 +48,23 @@ void ABaseInteractableActor::OnSensorOverlapBegin(UPrimitiveComponent* Overlappe
     if (OtherActor && OtherActor->IsA(APlayerCharacter::StaticClass()))
     {
         bIsPlayerNearby = true;
-        if (MainMesh && OutlineOverlayMaterial)
+        
+        if (MainMesh)
         {
-            MainMesh->SetRenderCustomDepth(true);
-            MainMesh->SetOverlayMaterial(OutlineOverlayMaterial);
-        }
-        if (GlowMesh)
-        {
-            GlowMesh->SetHiddenInGame(false);
+            if (OutlineOverlayMaterial)
+            {
+                MainMesh->SetRenderCustomDepth(true);
+                MainMesh->SetOverlayMaterial(OutlineOverlayMaterial);
+            }
+            
+            if (RedGlowMaterial)
+            {
+                int32 MaterialCount = MainMesh->GetNumMaterials();
+                for (int32 i = 0; i < MaterialCount; ++i)
+                {
+                    MainMesh->SetMaterial(i, RedGlowMaterial);
+                }
+            }
         }
     }
 }
@@ -80,14 +74,19 @@ void ABaseInteractableActor::OnSensorOverlapEnd(UPrimitiveComponent* OverlappedC
     if (OtherActor && OtherActor->IsA(APlayerCharacter::StaticClass()))
     {
         bIsPlayerNearby = false;
+        
         if (MainMesh)
         {
             MainMesh->SetRenderCustomDepth(false);
             MainMesh->SetOverlayMaterial(nullptr);
-        }
-        if (GlowMesh)
-        {
-            GlowMesh->SetHiddenInGame(true);
+            
+            for (int32 i = 0; i < OriginalMaterials.Num(); ++i)
+            {
+                if (OriginalMaterials[i])
+                {
+                    MainMesh->SetMaterial(i, OriginalMaterials[i]);
+                }
+            }
         }
     }
 }
