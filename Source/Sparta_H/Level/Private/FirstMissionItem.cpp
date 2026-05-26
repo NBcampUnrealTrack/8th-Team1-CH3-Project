@@ -26,20 +26,20 @@ void AFirstMissionItem::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (APlayerCharacter* Player = Cast<APlayerCharacter>(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0)))
-	{
-		if (Player->CurrentMissionData)
-		{
-			for (FMissionGoal& Goal : Player->CurrentMissionData->MissionGoals)
-			{
-				if (Goal.GoalID == TargetGoalID)
-				{
-					Goal.TargetLocation = GetActorLocation();
-					break;
-				}
-			}
-		}
-	}
+	// if (APlayerCharacter* Player = Cast<APlayerCharacter>(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0)))
+	// {
+	// 	if (Player->CurrentMissionData)
+	// 	{
+	// 		for (FMissionGoal& Goal : Player->CurrentMissionData->MissionGoals)
+	// 		{
+	// 			if (Goal.GoalID == TargetGoalID)
+	// 			{
+	// 				Goal.TargetLocation = GetActorLocation();
+	// 				break;
+	// 			}
+	// 		}
+	// 	}
+	// }
 }
 
 void AFirstMissionItem::Interact_Implementation(APlayerCharacter* Interactor)

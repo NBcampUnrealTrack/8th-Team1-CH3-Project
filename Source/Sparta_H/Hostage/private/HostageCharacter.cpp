@@ -35,36 +35,36 @@ void AHostageCharacter::BeginPlay()
 {
     Super::BeginPlay();
    
-   if (DetectionSphere)
-   {
-      DetectionSphere->OnComponentBeginOverlap.AddDynamic(this, &AHostageCharacter::OnDetectionSphereOverlap);
-   }
+   // if (DetectionSphere)
+   // {
+   //    DetectionSphere->OnComponentBeginOverlap.AddDynamic(this, &AHostageCharacter::OnDetectionSphereOverlap);
+   // }
 }
-
-void AHostageCharacter::OnDetectionSphereOverlap(
-    UPrimitiveComponent* OverlappedComponent, 
-    AActor* OtherActor, 
-    UPrimitiveComponent* OtherComp, 
-    int32 OtherBodyIndex, 
-    bool bFromSweep, 
-    const FHitResult& SweepResult)
-{
-   if (CurrentState == EHostageState::Dead) return;
-   
-   APlayerCharacter* Player = Cast<APlayerCharacter>(OtherActor);
-   if (Player)
-   {
-      if (CurrentState == EHostageState::Following)
-      {
-         if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Orange, TEXT("Hostage: 플레이어와 접촉하여 대기(Stay) 상태로 변경됩니다!"));
-         
-         GetWorld()->GetTimerManager().ClearTimer(StandUpTimerHandle); 
-         
-         bIsInteracted = false;
-         ChangeState(EHostageState::Stay);
-      }
-   }
-}
+//
+// void AHostageCharacter::OnDetectionSphereOverlap(
+//     UPrimitiveComponent* OverlappedComponent, 
+//     AActor* OtherActor, 
+//     UPrimitiveComponent* OtherComp, 
+//     int32 OtherBodyIndex, 
+//     bool bFromSweep, 
+//     const FHitResult& SweepResult)
+// {
+//    if (CurrentState == EHostageState::Dead) return;
+//    
+//    APlayerCharacter* Player = Cast<APlayerCharacter>(OtherActor);
+//    if (Player)
+//    {
+//       if (CurrentState == EHostageState::Following)
+//       {
+//          if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Orange, TEXT("Hostage: 플레이어와 접촉하여 대기(Stay) 상태로 변경됩니다!"));
+//          
+//          GetWorld()->GetTimerManager().ClearTimer(StandUpTimerHandle); 
+//          
+//          bIsInteracted = false;
+//          ChangeState(EHostageState::Stay);
+//       }
+//    }
+// }
 
 void AHostageCharacter::Interact_Implementation(APlayerCharacter* Interactor)
 {

@@ -53,16 +53,16 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	class USphereComponent* DetectionSphere; // (주의: USphereComponent 입니다)
 
-	// 2. 오버랩 이벤트 발생 시 실행될 함수
-	UFUNCTION()
-	void OnDetectionSphereOverlap(
-		UPrimitiveComponent* OverlappedComponent, 
-		AActor* OtherActor, 
-		UPrimitiveComponent* OtherComp, 
-		int32 OtherBodyIndex, 
-		bool bFromSweep, 
-		const FHitResult& SweepResult
-	);
+	// // 2. 오버랩 이벤트 발생 시 실행될 함수
+	// UFUNCTION()
+	// void OnDetectionSphereOverlap(
+	// 	UPrimitiveComponent* OverlappedComponent, 
+	// 	AActor* OtherActor, 
+	// 	UPrimitiveComponent* OtherComp, 
+	// 	int32 OtherBodyIndex, 
+	// 	bool bFromSweep, 
+	// 	const FHitResult& SweepResult
+	// );
 	
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, 
 							class AController* EventInstigator, AActor* DamageCauser) override;
