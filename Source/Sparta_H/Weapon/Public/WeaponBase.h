@@ -106,6 +106,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Weapon|Throwable")
 	void RefillStock();
 
+	// Modified: 리스폰 시 일반 무기 탄약 보충을 위한 함수 추가
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
+	void RefillAmmo();
+
 	UPROPERTY(BlueprintAssignable, Category = "Weapon|Throwable")
 	FOnThrowableDepleted OnDepleted;
 

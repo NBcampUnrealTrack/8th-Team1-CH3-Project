@@ -545,3 +545,11 @@ void AWeaponBase::RefillStock()
 		CurrentStock = WeaponData->MaxStockCount;
 	}
 }
+
+void AWeaponBase::RefillAmmo()
+{
+	if (AmmoComponent)
+	{
+		AmmoComponent->ReloadAmmo();
+	}
+}

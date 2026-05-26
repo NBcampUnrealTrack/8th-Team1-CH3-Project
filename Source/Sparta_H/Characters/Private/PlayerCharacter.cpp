@@ -181,6 +181,14 @@ HandleStaminaChanged(StaminaComponent ? StaminaComponent->GetCurrentStamina() : 
 		}
 	}
 
+	for (AWeaponBase* Weapon : SpawnedWeapons)
+	{
+		if (Weapon)
+		{
+			Weapon->RefillAmmo();
+		}
+	}
+
 	HandleNoiseChanged(NoiseComponent ? NoiseComponent->GetCurrentNoise() : 0.f,
 	                   NoiseComponent ? NoiseComponent->GetMaxNoise() : 100.f);
 
@@ -1081,7 +1089,8 @@ void APlayerCharacter::NotifyEnemyKilled()
 
 void APlayerCharacter::SetCrosshairState(ECrosshairState NewState)
 {
-	if (CurrentCrosshairState != NewState)
+	// Modified: KillConfirm 상태의 경우 동일한 상태라도 애니메이션 재시작을 위해 브로드캐스트를 허용합니다.
+	if (CurrentCrosshairState != NewState || NewState == ECrosshairState::KillConfirm)
 	{
 		CurrentCrosshairState = NewState;
 		OnCrosshairStateChanged.Broadcast(CurrentCrosshairState);
