@@ -296,6 +296,7 @@ void ABossEnemy::ThrowGrenade()
 	}
 
 	bIsPerformingSpecialAttack = true;
+	GetCharacterMovement()->DisableMovement();
 	UE_LOG(LogTemp, Log, TEXT("[Boss] 수류탄 투척 시작"));
 
 	if (GrenadeMontage)
@@ -401,6 +402,7 @@ void ABossEnemy::StartPrecisionAim()
 	}
 
 	bIsPerformingSpecialAttack = true;
+	GetCharacterMovement()->DisableMovement();
 	UE_LOG(LogTemp, Warning, TEXT("[Boss] 정밀사격 조준 시작 — %.1f초 후 발사"), PrecisionAimDuration);
 
 	if (PrecisionMontage)
@@ -630,6 +632,7 @@ void ABossEnemy::OnSpecialMontageEnded(UAnimMontage* Montage, bool bInterrupted)
 	if (Montage == PrecisionMontage || Montage == GrenadeMontage)
 	{
 		bIsPerformingSpecialAttack = false;
+		GetCharacterMovement()->SetMovementMode(MOVE_Walking);
 		UE_LOG(LogTemp, Log, TEXT("[Boss] 특수 공격 몽타주 종료 (중단=%s) — 버스트 재개 가능"),
 		       bInterrupted ? TEXT("O") : TEXT("X"));
 	}
