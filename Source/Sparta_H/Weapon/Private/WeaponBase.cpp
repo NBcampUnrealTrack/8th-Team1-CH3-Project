@@ -57,9 +57,7 @@ void AWeaponBase::Initialize(UWeaponDataAsset* InWeaponData)
 	{
 		AmmoComponent->InitializeAmmo(InWeaponData->MaxAmmoCount);
 	}
-
-	// Modified: 데이터 초기화 후 에셋 프리로드 수행
-	PreloadAssets();
+	
 }
 
 // Modified: 소유자 캐싱 및 초기화 로직 구현
@@ -69,23 +67,10 @@ void AWeaponBase::BeginPlay()
 
 	OwnerCharacter = Cast<APlayerCharacter>(GetOwner());
 	
-	// 초기화 시점에 데이터가 이미 있다면 프리로드 (Initialize가 먼저 호출될 경우 대비)
-	if (WeaponData)
-	{
-		PreloadAssets();
-	}
+	// Removed: 초기화 시점에 데이터가 이미 있다면 프리로드 (Initialize가 먼저 호출될 경우 대비)
 }
 
-// Modified: 게임 플레이 중 끊김 방지를 위한 에셋 프리로드 구현
-void AWeaponBase::PreloadAssets()
-{
-	// 소프트 포인터들을 미리 로드하여 메모리에 올려둠
-	ReloadMontage1P.LoadSynchronous();
-	FireMontage1P.LoadSynchronous();
-	FireSound.LoadSynchronous();
-	MuzzleFlashEffect.LoadSynchronous();
-	ImpactVFX.LoadSynchronous();
-}
+
 
 void AWeaponBase::Fire()
 {

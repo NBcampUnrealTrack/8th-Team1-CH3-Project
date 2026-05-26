@@ -113,23 +113,23 @@ public:
 
 	// 1인칭 팔(Mesh1P)에 재생할 발사 몽타주. 풀바디 임포트 애니는 팔 스켈레톤으로 리타게팅 후 몽타주화
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Animation")
-	TSoftObjectPtr<UAnimMontage> FireMontage1P;
+	TObjectPtr<UAnimMontage> FireMontage1P;
 	
 	// 1인칭 팔(Mesh1P)에 재생할 재장전 몽타주. 길이는 DA의 ReloadTime과 맞춰 세팅
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Animation")
-	TSoftObjectPtr<UAnimMontage> ReloadMontage1P;
+	TObjectPtr<UAnimMontage> ReloadMontage1P;
 
 	// 발사 시 재생할 사운드. 플레이어가 듣는 청각 피드백 — AI 어그로 노이즈(EmitNoise)와는 별개
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|Audio")
-	TSoftObjectPtr<USoundBase> FireSound;
+	TObjectPtr<USoundBase> FireSound;
 
 	// 발사 시 무기 메시의 MuzzleSocketName 위치에 스폰할 총구 화염 이펙트
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|VFX")
-	TSoftObjectPtr<UNiagaraSystem> MuzzleFlashEffect;
+	TObjectPtr<UNiagaraSystem> MuzzleFlashEffect;
 
 	// 라인 트레이스 적중점에 스폰할 임팩트 이펙트 (피격 표면 스파크/데칼 등)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|VFX")
-	TSoftObjectPtr<UNiagaraSystem> ImpactVFX;
+	TObjectPtr<UNiagaraSystem> ImpactVFX;
 
 	// 무기 스켈레탈 메시에 만들어 둔 총구 소켓 이름. 메시별로 다를 수 있어 DA에서 지정
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon|VFX")
@@ -143,10 +143,7 @@ private:
 	// Modified: 매번 Cast하는 비용을 줄이기 위해 소유자 캐릭터를 캐싱
 	UPROPERTY()
 	TObjectPtr<APlayerCharacter> OwnerCharacter;
-
-	// Modified: 게임 플레이 중 동기 로딩을 방지하기 위해 미리 로드하는 함수
-	void PreloadAssets();
-
+	
 	// 카메라(에이밍) 시점의 시작 위치와 방향을 가져옴. 소유자/PC/CameraManager 중 하나라도 없으면 false
 	bool GetAimStartAndDirection(FVector& OutStart, FVector& OutDirection) const;
 
