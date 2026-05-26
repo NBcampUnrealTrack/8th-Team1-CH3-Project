@@ -23,12 +23,8 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	USceneComponent* DefaultSceneRoot;
 
-	// 자식 클래스에서 메인 메시로 사용할 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* MainMesh;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	UStaticMeshComponent* GlowMesh;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UBoxComponent* SensorBox;
@@ -39,7 +35,6 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction|Materials")
 	UMaterialInterface* RedGlowMaterial;
 
-	// 겹침 감지 이벤트
 	UFUNCTION()
 	virtual void OnSensorOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
@@ -48,8 +43,11 @@ protected:
 
 	bool bIsPlayerNearby = false;
 
+private:
+	UPROPERTY()
+	TArray<UMaterialInterface*> OriginalMaterials;
+
 public:
-	// 인터페이스 기본 구현
 	virtual void Interact_Implementation(class APlayerCharacter* Interactor) override;
 	virtual bool CanInteract_Implementation(class APlayerCharacter* Interactor) const override;
 	virtual FString GetInteractionText_Implementation() const override;
