@@ -1,52 +1,160 @@
-# 8th-Team1-CH3-Project
+# 🎮 Sparta_H
 
-## Naming Convention ✅
+> **언리얼 엔진 5.5 기반 3인칭 전술 슈터 게임**  
+> 스파르타 코딩클럽 내배캠 언리얼 트랙 8기 1팀 CH3 프로젝트
 
-### Branch Naming Convention 🪵
+---
 
-| 머릿말  | 설명                               |
-| ------- | ---------------------------------- |
-| main    | 서비스 브랜치                      |
-| develop | 배포 전 작업 기준                  |
-| feat    | 기능 단위 구현                     |
-| hotfix  | 서비스 중 긴급 수정 건에 대한 처리 |
+## 🎬 플레이 영상
 
-### Commit Convention 🚥
+[![Sparta_H 플레이 영상](https://img.youtube.com/vi/ecklhQSUvD0/0.jpg)](https://youtu.be/ecklhQSUvD0?si=_HgBCQFw7UTjxx9m)
 
-| 머릿말   | 설명                                                 |
-| -------- | ---------------------------------------------------- |
-| feat     | 기능 구현, 추가                                      |
-| fix      | 버그 수정, 예외 케이스 대응, 기능 개선               |
-| design   | UI 디자인                                            |
-| setting  | 패키지 설치, 개발 설정                               |
-| refactor | 코드 리팩터링                                        |
-| style    | 코드 스타일 수정 (code formatting, 세미콜론 추가 등) |
-| rename   | 파일명(or 폴더명)을 수정한 경우                      |
-| test     | 테스트 코드 추가                                     |
-| docs     | README.md 작성 및 변경                               |
-| hotfix   | 치명적인 버그를 급하게 수정하는 경우                 |
+---
 
-### Naming Rule 📄
+## 🖼 스크린샷
 
-| 머릿말            | 설명                             |
-| ----------------- | -------------------------------- |
-| Components        | PascalCase                       |
-| State variables   | (boolean values) is, has, should |
-| Event handlers    | handle                           |
-| Constants         | UPPER_SNAKE_CASE                 |
+> 추후 스크린샷을 추가해 주세요.
 
+<!-- 예시:
+![게임플레이](screenshots/gameplay.png)
+![보스전](screenshots/boss.png)
+-->
 
-### Unreal Naming Rule
-| 머릿말            | 설명                             |
-| ----------------- | -------------------------------- |
-| SM_               | Static Mesh                      |
-| SK_               | Skeletal Mesh                    |
-| T_                | Texture                          |
-| M_                | Material                         |
-| MI_               | Material Instance                |
-| BP_               | Blueprint                        |
-| WBP_              | Widget Blueprint                 |
-| DA_               | Data Asset                       |
-| DT_               | Data Table                       |
-| ABP_              | Animation Blueprint              |
-| AM_               | Animation Montage                |
+---
+
+## 📖 게임 소개
+
+Sparta_H는 건물에 침투해 인질을 구출하는 3인칭 전술 슈터 게임입니다.  
+다양한 무기와 투척물을 활용하고, 적의 경계 시스템을 피해 임무를 완수하세요.  
+체력, 스태미너, 소음, 가시성 시스템이 복합적으로 작동하는 전술적 전투를 경험할 수 있습니다.
+
+---
+
+## 👥 팀원
+
+| 이름 | 역할 |
+|------|------|
+| (이름) | (역할) |
+| (이름) | (역할) |
+| (이름) | (역할) |
+| (이름) | (역할) |
+| (이름) | (역할) |
+
+---
+
+## 🛠 개발 환경
+
+| 항목 | 내용 |
+|------|------|
+| 엔진 | Unreal Engine 5.5 |
+| 언어 | C++ |
+| 플랫폼 | Windows |
+| 형상 관리 | Git / GitHub |
+
+---
+
+## 🎯 핵심 기능
+
+### 🧍 플레이어 시스템
+- **체력 / 스태미너** — 전투 및 이동에 영향을 주는 이중 자원 관리
+- **소음 시스템** — 이동·사격 소음이 AI 탐지 범위에 영향
+- **가시성 시스템** — 조명·엄폐물에 따른 적 시야 판정
+- **체크포인트 저장** — 위치, 무기 보유 여부, 열쇠, 처치 수 저장
+
+### 🔫 무기 시스템
+| 무기 | 사격 방식 |
+|------|----------|
+| 라이플 (Rifle) | 완전 자동 (Full Auto) |
+| 권총 (Pistol) | 반자동 (Semi Auto) |
+| 칼 (Knife) | 근접 (Melee) |
+| 수류탄 (Grenade) | 투척 (Throwable) |
+| 돌멩이 (Rock) | 투척 (Throwable) |
+
+- 반동(Recoil) 및 회복 시스템
+- 재장전, 탄약 관리, 리스폰 시 자동 재장전
+- 크로스헤어 상태: 기본 / 권총 / 라이플 / 킬 컨펌
+
+### 🤖 적 AI 시스템
+- **경계 레벨 3단계**: `순찰(Patrol)` → `의심(Suspicious)` → `전투(Combat)`
+- 소음 감지 및 시야 기반 탐지
+- CCTV 감시 시스템
+- Alert Manager를 통한 적 간 경보 공유
+- 사격 쿨다운 랜덤화, 피격 확률 밸런싱
+
+### 👹 보스 전투
+| 페이즈 | 패턴 |
+|--------|------|
+| Phase 1 | 5발 연사 (Burst Fire) |
+| Phase 2 | 수류탄 투척 + 증원 요청 |
+| Phase 3 | 전체 패턴 복합 사용 |
+
+### 🎯 미션 시스템
+- 단계별 미션 목표 (목표 ID, 설명, 위치, 제한 시간)
+- 인질 구출 성공/실패 판정
+- 미션 완료 / 실패 UI 재생
+
+### 🔊 BGM 시스템
+- 구역 진입 시 BGM 크로스페이드 자동 전환
+- 시작 → 건물 진입 → 전면전 단계별 BGM
+
+---
+
+## 🗂 프로젝트 구조
+
+```
+Source/Sparta_H/
+├── Characters/     # 플레이어 캐릭터, 체력·스태미너·소음·가시성 컴포넌트
+├── Enemy/          # 일반 적, 보스, CCTV, 경계 시스템
+├── Weapon/         # 무기 베이스, 투척물, 탄약 컴포넌트
+├── AI/             # AI 컨트롤러
+├── Hostage/        # 인질 캐릭터 및 AI
+├── Systems/        # 전투 관리, 데미지, 미션, 세이브, 히트 감지
+├── Level/          # 문, 엘리베이터, 로프, BGM 트리거
+├── Spawn/          # 스폰 볼륨, 리스폰 트리거
+├── UI/             # HUD, 크로스헤어, 무기 슬롯, 미션·타이머·실패 위젯
+└── Framework/      # 게임 모드, 플레이어 컨트롤러
+```
+
+---
+
+## 📋 네이밍 컨벤션
+
+### 브랜치 전략
+
+| 브랜치 | 설명 |
+|--------|------|
+| `main` | 서비스 브랜치 |
+| `develop` | 배포 전 작업 기준 |
+| `feat/...` | 기능 단위 구현 |
+| `hotfix/...` | 긴급 수정 |
+
+### 커밋 메시지
+
+| 머릿말 | 설명 |
+|--------|------|
+| `feat` | 기능 구현, 추가 |
+| `fix` | 버그 수정, 예외 케이스 대응 |
+| `design` | UI 디자인 |
+| `setting` | 패키지 설치, 개발 설정 |
+| `refactor` | 코드 리팩터링 |
+| `style` | 코드 스타일 수정 |
+| `rename` | 파일/폴더명 변경 |
+| `test` | 테스트 코드 추가 |
+| `docs` | README 작성 및 변경 |
+| `hotfix` | 치명적 버그 긴급 수정 |
+
+### 언리얼 애셋 네이밍
+
+| 접두사 | 설명 |
+|--------|------|
+| `SM_` | Static Mesh |
+| `SK_` | Skeletal Mesh |
+| `T_` | Texture |
+| `M_` | Material |
+| `MI_` | Material Instance |
+| `BP_` | Blueprint |
+| `WBP_` | Widget Blueprint |
+| `DA_` | Data Asset |
+| `DT_` | Data Table |
+| `ABP_` | Animation Blueprint |
+| `AM_` | Animation Montage |
