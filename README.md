@@ -13,12 +13,9 @@
 
 ## 🖼 스크린샷
 
-> 추후 스크린샷을 추가해 주세요.
+<img width="1172" height="535" alt="Image" src="https://github.com/user-attachments/assets/c6d8f5e5-90b6-4672-aadb-63dbb7faa124" />
 
-<!-- 예시:
-![게임플레이](screenshots/gameplay.png)
-![보스전](screenshots/boss.png)
--->
+<img width="1752" height="863" alt="Image" src="https://github.com/user-attachments/assets/15b35970-b548-4133-b479-c730e34e751d" />
 
 ---
 
