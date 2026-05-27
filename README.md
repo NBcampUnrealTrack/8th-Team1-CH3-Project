@@ -53,10 +53,30 @@
 
 ---
 
+## 🚀 설치 및 실행
+
+### 요구 사항
+
+- Unreal Engine 5.5
+- Visual Studio 2022 (C++ 워크로드 포함)
+- Windows 10 이상
+
+### 빌드 다운로드
+
+개발 환경 없이 바로 플레이하려면 아래 링크에서 빌드 파일을 다운로드하세요.
+
+📦 **[Google Drive에서 다운로드](https://drive.google.com/file/d/163Gv9d9DwhjSiIXlvuznSUV2QQb5MoXh/view?usp=sharing)**
+
+다운로드 후 압축 해제 → `Sparta_H.exe` 실행
+
+
+---
+
 ## 🛠 개발 환경
 
 | 항목 | 내용 |
 |------|------|
+| 개발 기간 | 2026.05.01 ~ 2026.05.22 |
 | 엔진 | Unreal Engine 5.5 |
 | 언어 | C++ |
 | 플랫폼 | Windows PC |
